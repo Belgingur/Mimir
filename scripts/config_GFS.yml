@@ -1,0 +1,44 @@
+# Example configuration for netcdf2image.py — GFS atmospheric model
+# Usage: python netcdf2image.py --config config_GFS.yml -i /path/to/forecast.nc
+
+# Required: model identifier (used as folder name in the output catalog)
+model: GFS
+
+# Required: root directory for all output files
+out_root: ./output
+
+# Parallel worker processes (one per variable); set to 1 to disable parallelism
+jobs: 4
+
+# Regridder weight cache — speeds up repeated runs on the same grid
+weights_dir: ./weights
+
+# Variables to export (comment out any you don't need)
+include:
+  - air_temperature_at_2m_agl
+  - wind_from_direction_at_10m_agl
+  - wind_speed_at_10m_agl
+  - lwe_precipitation_rate
+  - cloud_area_fraction
+  - lwe_snow_depth
+  - snow_fraction
+  - U_true_at_10m_agl
+  - V_true_at_10m_agl
+
+# Scaling mode:
+#   auto  — derives min/max from percentiles (pmin/pmax) across all frames
+#   fixed — uses explicit ranges from a JSON file (see --scale-config / scale_config)
+# Auto is fine for exploration; use fixed to lock colours across model runs.
+scale_mode: auto
+# scale_mode: fixed
+# scale_config: ./scales_gfs.json   # generate with --emit-scale-config on first run
+
+# Output image format (WEBP recommended; PNG also supported)
+format: WEBP
+
+# Regridding method for curvilinear/projected grids (bilinear or nearest)
+# Not needed for rectilinear lat/lon grids such as standard GFS output.
+# regrid_method: bilinear
+
+# Print per-frame progress
+verbose: true

@@ -1,0 +1,48 @@
+{
+  "name": "mimir",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest",
+    "preview": "vite preview",
+    "postinstall": "patch-package"
+  },
+  "dependencies": {
+    "@deck.gl/core": "9.3.2",
+    "@deck.gl/extensions": "9.3.2",
+    "@deck.gl/layers": "9.3.2",
+    "@deck.gl/mapbox": "9.3.2",
+    "@luma.gl/core": "^9.3.3",
+    "@luma.gl/engine": "^9.3.3",
+    "@luma.gl/webgl": "^9.3.3",
+    "d3-contour": "^4.0.2",
+    "d3-time-format": "^4.1.0",
+    "geotiff": "^3.0.0",
+    "maplibre-gl": "^5.2.0",
+    "weatherlayers-gl": "2026.5.1"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.8.0",
+    "@vitest/coverage-v8": "^4.1.0",
+    "@yr/weather-symbols": "^7.0.0",
+    "jsdom": "^26.1.0",
+    "patch-package": "^8.0.0",
+    "typescript": "^5.5.4",
+    "typescript-eslint": "^8.60.0",
+    "vite": "^7.3.1",
+    "vitest": "^4.0.17"
+  },
+  "engines": {
+    "node": ">=26"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "^4.60.1"
+  }
+}

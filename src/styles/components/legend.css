@@ -1,0 +1,114 @@
+/*
+ * The weatherlayers-gl LegendControl renders the colour ramp as a 256-px PNG
+ * data-URL inside an SVG <image> element.  Without this rule the browser uses
+ * bilinear interpolation when scaling that image to the display width, which
+ * blurs step boundaries and makes the legend look like a smooth gradient.
+ * "pixelated" (crisp-edges on Firefox) forces nearest-neighbour scaling so
+ * every colour band stays a solid block, matching the discrete raster rendering.
+ */
+.weatherlayers-legend-control image {
+  image-rendering: -moz-crisp-edges;
+  image-rendering: pixelated;
+}
+
+.legend-stack-card {
+  /* position: absolute within .map-wrap (position: relative; height: 100vh)
+     gives the same visual result as position: fixed, but is unaffected by
+     any containment that MapLibre or backdrop-filter might impose on fixed. */
+  position: absolute;
+  right: 12px;
+  bottom: calc(var(--bottom-bar-height) + 8px);
+  width: fit-content;
+  max-width: calc(100vw - 24px);
+  gap: 10px;
+  z-index: var(--z-chrome);
+  cursor: grab;
+  touch-action: none;
+}
+
+.legend-stack-card {
+  padding: 0;
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.legend-stack-card.is-dragging {
+  cursor: grabbing;
+}
+
+.legend-stack-card .legend-host {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.legend-host {
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+}
+
+.precip-legend {
+  display: grid;
+  width: fit-content;
+  gap: 5px;
+  padding: 8px 10px;
+  background: hsla(0, 0%, 100%, 0.5);
+  font-size: 12px;
+  line-height: 14px;
+  color: rgba(0, 0, 0, 0.75);
+  font-family:
+    Helvetica Neue,
+    Arial,
+    Helvetica,
+    sans-serif;
+}
+
+.precip-legend__title {
+  font-weight: 700;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.precip-legend__unit {
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.75);
+}
+
+.precip-legend__scale {
+  position: relative;
+  display: grid;
+  grid-template-columns: 24px max-content;
+  width: fit-content;
+  gap: 10px;
+  min-height: 220px;
+  margin-top: 5px;
+}
+
+.precip-legend__bar {
+  width: 24px;
+  border-radius: 0;
+  border: 0;
+  background: #fff;
+}
+
+.precip-legend__labels {
+  position: relative;
+  min-width: 32px;
+  font-variant-numeric: tabular-nums;
+}
+
+.precip-legend__label {
+  position: absolute;
+  transform: translateY(50%);
+  font-size: 11px;
+  color: var(--text);
+}

@@ -1,0 +1,196 @@
+.chart-modal {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-overlay);
+  backdrop-filter: blur(2px);
+  z-index: var(--z-modal);
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 180ms ease,
+    visibility 180ms;
+}
+
+.chart-modal.is-open {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.chart-modal__card {
+  width: min(900px, 94vw);
+  max-height: 90vh;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid rgba(10, 10, 10, 0.12);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: translateY(12px);
+  transition: transform 180ms ease;
+}
+
+.chart-modal.is-open .chart-modal__card {
+  transform: translateY(0);
+}
+
+.chart-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.chart-modal__title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.chart-modal__subtitle {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.chart-modal__close {
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  cursor: pointer;
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 120ms ease;
+}
+
+.chart-modal__close:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.chart-modal__close:focus-visible {
+  outline: 2px solid rgba(42, 127, 98, 0.5);
+  outline-offset: 1px;
+}
+
+.wavegram-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+  margin-right: 8px;
+}
+
+.wavegram-actions button {
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: #f7f7f9;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
+}
+
+.wavegram-actions button:hover:not(:disabled) {
+  background: #eef0f3;
+  border-color: rgba(0, 0, 0, 0.22);
+}
+
+.wavegram-actions button:focus-visible {
+  outline: 2px solid rgba(42, 127, 98, 0.5);
+  outline-offset: 1px;
+}
+
+.wavegram-actions button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.chart-modal__status {
+  padding: 10px 18px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.chart-modal__status:not(:empty) {
+  animation: status-pulse 1.5s ease infinite;
+}
+
+@keyframes status-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.chart-modal__host {
+  flex: 1;
+  overflow: auto;
+  padding: 8px 12px 18px;
+}
+
+.wavegram-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px 12px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.wavegram-tech-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.wavegram-caption {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 0 4px 10px;
+}
+
+.wavegram-controls select {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.wavegram-image {
+  width: 100%;
+  max-width: 100%;
+  display: block;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #f5f7f9;
+  min-height: 220px;
+}
+
+.wavegram-image:not([src]),
+.wavegram-image[src=""] {
+  background: linear-gradient(90deg, #f5f7f9 25%, #edf0f3 37%, #f5f7f9 63%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}

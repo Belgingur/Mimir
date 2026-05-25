@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="75px" height="335px">
+  <style>
+    .scale-text {
+    font-family: 'Roboto Condensed',sans-serif;
+    font-size: 14px;
+    }
+  </style>
+  <g class="scale-text">
+    <text y="15" x="20" text-anchor="middle">mm</text>
+  </g>
+  <rect x="10" y="295" width="20" height="30" fill="rgb(255, 255, 255)" stroke="rgb(255, 255, 255)">
+  </rect>
+  <rect x="10" y="265" width="20" height="30" fill="rgb(191, 242, 242)" stroke="rgb(191, 242, 242)">
+  </rect>
+  <rect x="10" y="235" width="20" height="30" fill="rgb(92, 191, 191)" stroke="rgb(92, 191, 191)">
+  </rect>
+  <rect x="10" y="205" width="20" height="30" fill="rgb(26, 115, 140)" stroke="rgb(26, 115, 140)">
+  </rect>
+  <rect x="10" y="175" width="20" height="30" fill="rgb(153, 178, 255)" stroke="rgb(153, 178, 255)">
+  </rect>
+  <rect x="10" y="145" width="20" height="30" fill="rgb(102, 128, 230)" stroke="rgb(102, 128, 230)">
+  </rect>
+  <rect x="10" y="115" width="20" height="30" fill="rgb(51, 76, 230)" stroke="rgb(51, 76, 230)">
+  </rect>
+  <rect x="10" y="85" width="20" height="30" fill="rgb(191, 178, 230)" stroke="rgb(191, 178, 230)">
+  </rect>
+  <rect x="10" y="55" width="20" height="30" fill="rgb(153, 115, 204)" stroke="rgb(153, 115, 204)">
+  </rect>
+  <path d="M20,25L30,55L10,55" fill="rgb(128, 51, 178)">
+  </path>
+  <g class="scale-text">
+    <text x="35" y="330">0</text>
+    <text x="35" y="300">1</text>
+    <text x="35" y="270">5</text>
+    <text x="35" y="240">10</text>
+    <text x="35" y="210">20</text>
+    <text x="35" y="180">50</text>
+    <text x="35" y="150">100</text>
+    <text x="35" y="120">200</text>
+    <text x="35" y="90">500</text>
+    <text x="35" y="60">1K</text>
+    <text x="35" y="30">5K</text>
+  </g>
+  <path d="M10,55L20,25L30,55L30,325L10,325Z" style="stroke: black; stroke-width: 1; fill: none;">
+  </path>
+</svg>

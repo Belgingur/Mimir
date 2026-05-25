@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="75px" height="335px">
+  <style>
+    .scale-text {
+    font-family: 'Roboto Condensed',sans-serif;
+    font-size: 14px;
+    }
+  </style>
+  <g class="scale-text">
+    <text y="15" x="20" text-anchor="middle">W/m²</text>
+  </g>
+  <rect x="10" y="300" width="20" height="25" fill="rgb(255, 255, 255)" stroke="rgb(255, 255, 255)">
+  </rect>
+  <rect x="10" y="275" width="20" height="25" fill="rgb(255, 255, 192)" stroke="rgb(255, 255, 192)">
+  </rect>
+  <rect x="10" y="250" width="20" height="25" fill="rgb(255, 247, 128)" stroke="rgb(255, 247, 128)">
+  </rect>
+  <rect x="10" y="225" width="20" height="25" fill="rgb(192, 238, 128)" stroke="rgb(192, 238, 128)">
+  </rect>
+  <rect x="10" y="200" width="20" height="25" fill="rgb(128, 192, 128)" stroke="rgb(128, 192, 128)">
+  </rect>
+  <rect x="10" y="175" width="20" height="25" fill="rgb(155, 217, 217)" stroke="rgb(155, 217, 217)">
+  </rect>
+  <rect x="10" y="150" width="20" height="25" fill="rgb(155, 193, 236)" stroke="rgb(155, 193, 236)">
+  </rect>
+  <rect x="10" y="125" width="20" height="25" fill="rgb(140, 140, 236)" stroke="rgb(140, 140, 236)">
+  </rect>
+  <rect x="10" y="100" width="20" height="25" fill="rgb(208, 170, 230)" stroke="rgb(208, 170, 230)">
+  </rect>
+  <rect x="10" y="75" width="20" height="25" fill="rgb(192, 128, 128)" stroke="rgb(192, 128, 128)">
+  </rect>
+  <rect x="10" y="50" width="20" height="25" fill="rgb(247, 128, 128)" stroke="rgb(247, 128, 128)">
+  </rect>
+  <path d="M20,25L30,50L10,50" fill="rgb(128, 128, 128)">
+  </path>
+  <g class="scale-text">
+    <text x="35" y="330">0</text>
+    <text x="35" y="305">100</text>
+    <text x="35" y="280">250</text>
+    <text x="35" y="255">500</text>
+    <text x="35" y="230">750</text>
+    <text x="35" y="205">1K</text>
+    <text x="35" y="180">1.5K</text>
+    <text x="35" y="155">2.5K</text>
+    <text x="35" y="130">5K</text>
+    <text x="35" y="105">10K</text>
+    <text x="35" y="80">25K</text>
+    <text x="35" y="55">50K</text>
+    <text x="35" y="30"> </text>
+  </g>
+  <path d="M10,50L20,25L30,50L30,325L10,325Z" style="stroke: black; stroke-width: 1; fill: none;">
+  </path>
+</svg>

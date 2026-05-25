@@ -1,0 +1,255 @@
+/* ══════════════════════════════════════════════════════════════════
+   LANDSCAPE FIX — compact controls for mobile landscape
+   Applies to: (max-height: 500px) and (orientation: landscape)
+   This overrides mobile-small.css display:none !important rules for
+   .layer-switch-card and .utility-toggle, restoring them in landscape.
+   ══════════════════════════════════════════════════════════════════ */
+
+@media (max-height: 500px) and (orientation: landscape) {
+  :root {
+    --bottom-bar-height: 36px;
+  }
+
+  /* ── 0. Hide mobile-only elements ────────────────────────────── */
+  /* Overrides: mobile-small.css (max-width: 480px) shows these; here we always hide them */
+
+  .layer-toggle-trigger {
+    display: none !important;
+  }
+
+  .layer-switch-card .layer-group-list {
+    display: flex !important;
+  }
+
+  /* ── Always-visible elements in landscape ────────────────────── */
+  /* These are explicit visibility guarantees. Even if other breakpoints hide them,
+     they must be visible in landscape because the drawer is not available. */
+
+  .zoom-buttons {
+    display: flex !important;
+    visibility: visible !important;
+  }
+
+  .info-button {
+    display: inline-flex !important;
+    visibility: visible !important;
+  }
+
+  .bottom-bar {
+    display: flex !important;
+    visibility: visible !important;
+  }
+
+  .legend-stack-card {
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  /* .model-card intentionally NOT forced — it is controlled by JS render state */
+
+  /* ── 1. TOP BAR: view-toggle + utility + layers in one row ───── */
+  /* Overrides: mobile-small.css (max-width: 480px) hides .utility-toggle and .layer-switch-card */
+
+  .view-toggle--map {
+    position: fixed !important;
+    top: 8px !important;
+    left: 8px !important;
+    right: auto !important;
+    bottom: auto !important;
+    display: inline-flex !important;
+    visibility: visible !important;
+    flex-direction: row !important;
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .mode-icon-button {
+    width: var(--icon-button-xs);
+    height: var(--icon-button-xs);
+    border-radius: var(--radius-md);
+  }
+
+  .mode-icon-button__icon {
+    width: 17px;
+    height: 17px;
+  }
+
+  /* Grid toggle is now in .zoom-buttons — no separate utility-toggle in landscape */
+
+  /* ── LAYER SWITCH: horizontal strip, top-right ───────────────── */
+  /* Overrides: mobile-small.css (max-width: 480px) hides this with display: none !important */
+
+  .layer-switch-card {
+    position: fixed !important;
+    top: 8px !important;
+    left: auto !important;
+    right: 8px !important;
+    bottom: auto !important;
+    display: block !important;
+    visibility: visible !important;
+    width: auto;
+    max-width: calc(100vw - 200px);
+    max-height: none;
+    overflow: visible;
+    padding: 4px;
+    border-radius: 12px;
+  }
+
+  .layer-group-list {
+    flex-direction: row !important;
+    gap: 3px;
+    flex-wrap: nowrap;
+  }
+
+  .layer-slot__button {
+    width: var(--icon-button-xs);
+    height: var(--icon-button-xs);
+    border-radius: var(--radius-md);
+  }
+
+  .layer-slot__icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .wind-style-flyout,
+  .wind-style-flyout.is-open {
+    top: calc(100% + 8px);
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .map-overlay--top-left {
+    display: contents;
+  }
+
+  /* ── 2. BOTTOM BAR: landscape tweaks ───────────────────────── */
+
+  .bottom-bar {
+    background: linear-gradient(
+      180deg,
+      rgba(19, 24, 29, 0.82),
+      rgba(12, 16, 20, 0.92)
+    );
+    backdrop-filter: blur(12px);
+  }
+
+  /* ── 3. TIMELINE: compact sizing for landscape ──────────────── */
+
+  .timeline-shell {
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 5px;
+  }
+
+  .timeline-play {
+    width: 24px;
+    height: 24px;
+    font-size: 10px;
+    flex-shrink: 0;
+  }
+
+  .timeline-bubble {
+    top: -22px;
+    padding: 2px 6px;
+    font-size: 9px;
+  }
+
+  .timeline-day-segment {
+    padding: 2px 4px;
+    font-size: 9px;
+  }
+
+  .timeline-rail {
+    height: 4px;
+  }
+
+  .timeline-rail__marker {
+    width: 12px;
+    height: 12px;
+    top: -4px;
+  }
+
+  /* ── 4. LEGEND: bottom-left, compact, above bar ────────────── */
+
+  .legend-stack-card {
+    left: 8px;
+    right: auto;
+    bottom: calc(var(--bottom-bar-height) + 6px);
+    max-width: min(180px, calc(100vw - 320px));
+  }
+
+  /* ── 5. ZOOM BUTTONS: bottom-left stack ─────────────────────── */
+
+  .zoom-buttons {
+    top: auto;
+    left: 8px;
+    bottom: calc(var(--bottom-bar-height) + 50px);
+  }
+
+  .zoom-buttons {
+    padding: 3px;
+    gap: 3px;
+  }
+
+  .zoom-buttons button {
+    width: 26px;
+    height: 26px;
+    font-size: 13px;
+  }
+
+  .zoom-buttons__grid svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  /* ── 6. Compact controls: strip shadow, reduce padding ──────── */
+
+  .view-toggle--map,
+  .layer-switch-card {
+    box-shadow: none;
+    padding: 3px;
+  }
+
+  .mode-icon-button__label,
+  .layer-slot::after {
+    display: none;
+  }
+
+  /* ── 7. CHART MODAL: fill viewport in landscape ─────────────── */
+
+  .chart-modal__card {
+    width: 98vw;
+    max-height: 96vh;
+    border-radius: var(--radius-sm);
+  }
+
+  .chart-modal__header {
+    padding: 8px 12px;
+  }
+
+  .chart-modal__title {
+    font-size: 13px;
+  }
+
+  .chart-modal__subtitle {
+    font-size: 10px;
+  }
+
+  .chart-modal__host {
+    padding: 4px 8px 8px;
+  }
+
+  .chart-modal__close {
+    width: 28px;
+    height: 28px;
+    font-size: 16px;
+  }
+
+  /* ── 8. MAP OVERLAYS: keep clear of top bar ──────────────────── */
+
+  .map-overlay--top-right {
+    top: 50px;
+    right: 8px;
+  }
+}

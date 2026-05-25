@@ -1,0 +1,26 @@
+/* Desktop layout (> 1024px) — default positioning lives in components.
+   This file captures the max-width: 900px breakpoint that adjusts
+   positions for smaller desktops / large tablets. */
+
+@media (max-width: 900px) {
+  .map-overlay--top-left {
+    right: 12px;
+    max-width: min(420px, calc(100vw - 24px));
+  }
+
+  .map-overlay--top-right {
+    max-width: min(280px, calc(100vw - 24px));
+  }
+
+  .legend-stack-card {
+    right: 12px;
+    bottom: calc(var(--bottom-bar-height) + 8px);
+    width: fit-content;
+    max-width: calc(100vw - 24px);
+  }
+
+  .model-card {
+    right: 12px;
+    width: min(320px, calc(100vw - 24px));
+  }
+}

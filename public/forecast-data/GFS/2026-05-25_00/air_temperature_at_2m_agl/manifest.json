@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "id": "air_temperature_at_2m_agl",
+  "title": "Temperature at 2m",
+  "variable": "air_temperature_at_2m_agl",
+  "unit": "°C",
+  "projection": "EPSG:4326",
+  "bounds": [
+    -180.0,
+    -90.0,
+    179.75,
+    90.0
+  ],
+  "srcMin": -50.0,
+  "srcMax": 50.0,
+  "imageUnscale": [
+    -50.0,
+    50.0
+  ],
+  "format": "webp",
+  "prefix": "air_temperature_at_2m_agl_",
+  "count": 121,
+  "fileTemplate": "air_temperature_at_2m_agl_{index:03d}.webp",
+  "shape": {
+    "width": 1440,
+    "height": 721
+  },
+  "encoding": {
+    "kind": "scalar",
+    "dtype": "uint8",
+    "valueChannel": "R (from Luminance)",
+    "nodata": "A==0"
+  },
+  "flipYApplied": true,
+  "generatedAt": "2026-05-25T04:24:07.963681Z",
+  "times": [
+    "2026-05-25T00:00:00Z",
+    "2026-05-25T01:00:00Z",
+    "2026-05-25T02:00:00Z",
+    "2026-05-25T03:00:00Z",
+    "2026-05-25T04:00:00Z",
+    "2026-05-25T05:00:00Z",
+    "2026-05-25T06:00:00Z",
+    "2026-05-25T07:00:00Z",
+    "2026-05-25T08:00:00Z",
+    "2026-05-25T09:00:00Z",
+    "2026-05-25T10:00:00Z",
+    "2026-05-25T11:00:00Z",
+    "2026-05-25T12:00:00Z",
+    "2026-05-25T13:00:00Z",
+    "2026-05-25T14:00:00Z",
+    "2026-05-25T15:00:00Z",
+    "2026-05-25T16:00:00Z",
+    "2026-05-25T17:00:00Z",
+    "2026-05-25T18:00:00Z",
+    "2026-05-25T19:00:00Z",
+    "2026-05-25T20:00:00Z",
+    "2026-05-25T21:00:00Z",
+    "2026-05-25T22:00:00Z",
+    "2026-05-25T23:00:00Z",
+    "2026-05-26T00:00:00Z",
+    "2026-05-26T01:00:00Z",
+    "2026-05-26T02:00:00Z",
+    "2026-05-26T03:00:00Z",
+    "2026-05-26T04:00:00Z",
+    "2026-05-26T05:00:00Z",
+    "2026-05-26T06:00:00Z"
+  ],
+  "analysisTime": "2026-05-25_00",
+  "analysisTimeISO": "2026-05-25T00:00:00Z",
+  "historyIntervalMinutes": 60,
+  "coordVars": {
+    "lat": "XLAT",
+    "lon": "XLONG",
+    "inferred": true,
+    "normalizedLon": false
+  },
+  "scaling": {
+    "mode": "policy_yml",
+    "policyFile": "manifest_scaling_v2.yml",
+    "matchedVariable": "air_temperature_at_2m_agl",
+    "canonicalUnits": "°C"
+  },
+  "rendering": {
+    "detailScale": 1.0,
+    "targetWidth": 1440,
+    "targetHeight": 721
+  }
+}

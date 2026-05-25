@@ -1,0 +1,20 @@
+/* iPad / tablet landscape */
+
+@media (min-width: 641px) and (max-width: 1024px) and (max-height: 800px) and (orientation: landscape) {
+  .model-card {
+    right: 12px;
+    bottom: calc(var(--bottom-bar-height) + 4px);
+    width: min(300px, calc(100vw - 24px));
+    z-index: 280;
+  }
+
+  .layer-switch-card {
+    max-height: calc(100vh - 180px);
+    max-height: calc(100dvh - 180px);
+    overflow-y: auto;
+  }
+
+  .legend-stack-card {
+    bottom: calc(var(--bottom-bar-height) + 48px);
+  }
+}

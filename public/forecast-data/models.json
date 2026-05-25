@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "models": [
+    {
+      "id": "GFS",
+      "title": "GFS",
+      "default": true
+    },
+    {
+      "id": "GWES",
+      "title": "GWES",
+      "default": false
+    }
+  ]
+}

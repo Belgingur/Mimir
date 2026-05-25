@@ -1,0 +1,75 @@
+:root {
+  color-scheme: light;
+
+  /* ── Surfaces ─────────────────────────── */
+  --surface-glass: rgba(16, 21, 26, 0.72);
+  --surface-glass-light: rgba(255, 255, 255, 0.92);
+  --surface-card: rgba(255, 255, 255, 0.96);
+  --surface-overlay: rgba(14, 18, 22, 0.35);
+
+  /* ── Text ─────────────────────────────── */
+  --text-primary: #1f1f1f;
+  --text-secondary: #5a5a5a;
+  --text-on-dark: #f3f6f8;
+  --text-on-dark-muted: rgba(232, 239, 243, 0.72);
+
+  /* ── Accent ───────────────────────────── */
+  --accent-orange: #f59b3a;
+  --accent-orange-dark: #ef7f1a;
+  --accent-orange-border: rgba(255, 181, 91, 0.9);
+  --accent-orange-glow: rgba(239, 127, 26, 0.32);
+  --accent-green: #2a7f62;
+
+  /* ── Borders ──────────────────────────── */
+  --border-light: rgba(0, 0, 0, 0.12);
+  --border-on-dark: rgba(255, 255, 255, 0.12);
+
+  /* ── Radii ────────────────────────────── */
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-pill: 999px;
+
+  /* ── Shadows ──────────────────────────── */
+  --shadow-card: 0 12px 28px rgba(0, 0, 0, 0.18);
+  --shadow-popup: 0 10px 24px rgba(0, 0, 0, 0.14);
+  --shadow-button: 0 8px 16px rgba(0, 0, 0, 0.12);
+
+  /* ── Z-index scale ────────────────────── */
+  --z-map: 1;
+  --z-deck: 10;
+  --z-labels: 40;
+  --z-grid: 90;
+  --z-controls: 200;
+  --z-overlay: 240;
+  --z-chrome: 245;
+  --z-tooltip: 260;
+  --z-popup: 270;
+  --z-modal: 1000;
+  --z-debug: 5000;
+
+  /* ── Sizing ───────────────────────────── */
+  --icon-button-size: 42px;
+  --icon-button-sm: 38px;
+  --icon-button-xs: 34px;
+  --bottom-bar-height: 34px;
+
+  /* ── Breakpoints (for reference/JS) ───── */
+  --bp-mobile: 640px;
+  --bp-mobile-sm: 480px;
+  --bp-tablet: 1024px;
+
+  /* ── Legacy aliases ───────────────────── */
+  --panel-bg: var(--surface-glass-light);
+  --panel-border: rgba(20, 20, 20, 0.08);
+  --text: var(--text-primary);
+  --muted: var(--text-secondary);
+  --accent: var(--accent-green);
+  --layer-edge-hit-extension: 0px;
+  --view-edge-hit-extension: 0px;
+  --view-edge-hit-extension-left: 0px;
+  --view-edge-hit-extension-top: 0px;
+  --view-edge-hit-extension-y: 0px;
+  --utility-edge-hit-extension: 0px;
+}

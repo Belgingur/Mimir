@@ -1,0 +1,328 @@
+version: 2
+description: Expanded product-focused scaling policy for manifest generation. Defines
+  canonical output variables, canonical units, fixed srcMin/srcMax, clipping behavior,
+  and source-key mappings independent of source model.
+defaults:
+  mode: fixed
+  fallback: auto
+  imageUnscaleFrom: srcMinMax
+variables:
+  air_pressure_at_sea_level:
+    canonical_units: hPa
+    srcMin: 900.0
+    srcMax: 1100.0
+    clip: BOTH
+    imageUnscale:
+    - 900.0
+    - 1100.0
+    source_keys:
+    - MSLP
+    notes: Curated product range; independent of source model.
+  air_pressure_at_surface:
+    canonical_units: hPa
+    srcMin: 300.0
+    srcMax: 1100.0
+    clip: BOTH
+    imageUnscale:
+    - 300.0
+    - 1100.0
+    source_keys:
+    - PSFC
+    notes: Curated product range; independent of source model.
+  air_temperature_at_2m_agl:
+    canonical_units: °C
+    srcMin: -50.0
+    srcMax: 50.0
+    clip: BOTH
+    imageUnscale:
+    - -50.0
+    - 50.0
+    source_keys:
+    - T2
+    notes: Curated product range; independent of source model.
+  convective_available_potential_energy:
+    canonical_units: J kg-1
+    srcMin: 0.0
+    srcMax: 5000.0
+    clip: LOW
+    source_keys: []
+    imageUnscale:
+    - 0.0
+    - 5000.0
+  convective_inhibition:
+    canonical_units: J kg-1
+    srcMin: -500.0
+    srcMax: 0.0
+    clip: BOTH
+    source_keys: []
+    imageUnscale:
+    - -500.0
+    - 0.0
+  cloud_area_fraction:
+    canonical_units: '%'
+    srcMin: 0.0
+    srcMax: 1.0      # cloud_area_fraction is stored as a fraction (0–1), not percent
+    clip: BOTH
+    source_keys: []
+    imageUnscale:    # viewer decodes to percent (0–100 %), so hover shows e.g. "78 %"
+    - 0.0
+    - 100.0
+  cloud_base_altitude:
+    canonical_units: m
+    srcMin: 0.0
+    srcMax: 32766.0
+    clip: BOTH
+    source_keys:
+    - cloud_base_altitude
+    - cloud_base_height
+    imageUnscale:
+    - 0.0
+    - 32766.0
+    notes: Initial product range inferred from variables.yml and may need tuning.
+  cloud_top_altitude:
+    canonical_units: m
+    srcMin: 0.0
+    srcMax: 16000.0
+    clip: LOW
+    source_keys: []
+    imageUnscale:
+    - 0.0
+    - 16000.0
+  dew_point_temperature:
+    canonical_units: ''
+    srcMin: -50.0
+    srcMax: 50.0
+    clip: BOTH
+    source_keys:
+    - qc_dew_point_temperature
+    imageUnscale:
+    - -50.0
+    - 50.0
+    notes: Initial product range inferred from variables.yml and may need tuning.
+  dew_point_temperature_at_2m_agl:
+    canonical_units: °C
+    srcMin: -50.0
+    srcMax: 50.0
+    clip: BOTH
+    imageUnscale:
+    - -50.0
+    - 50.0
+    source_keys: []
+    notes: Curated product range; independent of source model.
+  geopotential_height:
+    canonical_units: m
+    srcMin: -2000.0
+    srcMax: 11106.4
+    clip: BOTH
+    source_keys:
+    - HGT
+    imageUnscale:
+    - -2000.0
+    - 11106.4
+    notes: Initial product range inferred from variables.yml and may need tuning.
+  radar_reflectivity:
+    canonical_units: dBZ
+    srcMin: -20.0
+    srcMax: 75.0
+    clip: BOTH
+    imageUnscale:
+    - -20.0
+    - 75.0
+    source_keys: []
+    notes: Curated product range; independent of source model.
+  relative_humidity:
+    canonical_units: '%'
+    srcMin: 0.0
+    srcMax: 100.0
+    clip: BOTH
+    source_keys:
+    - qc_relative_humidity
+    imageUnscale:
+    - 0.0
+    - 100.0
+    notes: Initial product range inferred from variables.yml and may need tuning.
+  relative_humidity_at_2m_agl:
+    canonical_units: '%'
+    srcMin: 0.0
+    srcMax: 100.0
+    clip: BOTH
+    imageUnscale:
+    - 0.0
+    - 100.0
+    source_keys:
+    - RH2
+    - RELHUM
+    notes: Curated product range; independent of source model.
+  road_temperature:
+    canonical_units: °C
+    srcMin: -50.0
+    srcMax: 50.0
+    clip: BOTH
+    imageUnscale:
+    - -50.0
+    - 50.0
+    source_keys:
+    - road_temperature
+    - qc_road_temperature
+    notes: Curated product range; independent of source model.
+  sea_surface_temperature:
+    canonical_units: °C
+    srcMin: -5.0
+    srcMax: 45.0
+    clip: BOTH
+    imageUnscale:
+    - -5.0
+    - 45.0
+    source_keys: []
+    notes: Curated product range; independent of source model.
+  snow_fraction:
+    canonical_units: '1'
+    srcMin: 0.0
+    srcMax: 1.0      # snow_fraction is a dimensionless fraction always in [0, 1]
+    clip: BOTH
+    source_keys: []
+    imageUnscale:    # viewer decodes to fraction [0, 1]; overlay thresholds match directly
+    - 0.0
+    - 1.0
+  lwe_snow_depth:
+    canonical_units: mm # Model output is in [kg m-2] but we prefer to use [mm]
+    srcMin: 0.0
+    srcMax: 20000.0    # hover reads true values up to 20000 mm; colours cap at 5000 mm (top palette stop)
+                       # Keep in mind srcMax should be equal to snowDepthMax in src/controllers/LayerComposer.ts !!
+    clip: LOW          # snow depth is always non-negative
+    imageScale: log1p
+    imageUnscale:
+    - 0.0
+    - 20000.0
+    source_keys:
+    - lwe_snow_depth
+    - SNOW             # WRF native variable name for snow water equivalent
+    notes: >
+      Snow water equivalent of accumulated snow depth (instantaneous).
+      xarray unpacks NetCDF scale_factor/add_offset automatically, so srcMin/srcMax
+      reflect the physical display range, not the raw packed encoding.
+      srcMax=20000 covers operational NWP output; extreme values are clipped by the viewer.
+  snowfall_amount:
+    canonical_units: kg m-3
+    srcMin: 0.0
+    srcMax: 655.32
+    clip: LOW
+    source_keys:
+    - lwe_snowfall_sum
+    - surface_snow_density
+    imageUnscale:
+    - 0.0
+    - 655.32
+    notes: Initial product range inferred from variables.yml and may need tuning.
+  soil_temperature:
+    canonical_units: °C
+    srcMin: -50.0
+    srcMax: 50.0
+    clip: BOTH
+    source_keys: []
+    imageUnscale:
+    - -50.0
+    - 50.0
+  surface_temperature:
+    canonical_units: °C
+    srcMin: -50.0
+    srcMax: 50.0
+    clip: BOTH
+    imageUnscale:
+    - -50.0
+    - 50.0
+    source_keys:
+    - TSK
+    notes: Curated product range; independent of source model.
+  precipitation_rate:
+    canonical_units: mm/hr
+    srcMin: 0.0
+    srcMax: 250.0
+    clip: LOW
+    imageScale: log1p
+    imageUnscale:
+    - 0.0
+    - 250.0
+    source_keys:
+    - lwe_precipitation_rate
+    notes: Curated product range; independent of source model. Log1p encoding gives ~0.02 mm/hr resolution near zero (distinguishes 0 from 0.025) while still covering the full 0-250 range.
+  total_precipitation:
+    canonical_units: mm
+    srcMin: 0.0
+    srcMax: 1000.0
+    clip: LOW
+    imageUnscale:
+    - 0.0
+    - 1000.0
+    source_keys:
+    - RAINC
+    - RAINNC
+    - TP
+    - lwe_precipitation_sum
+    notes: Curated product range; independent of source model.
+  visibility:
+    canonical_units: m
+    srcMin: 0.0
+    srcMax: 65532.0
+    clip: BOTH
+    source_keys:
+    - visibility_in_air
+    imageUnscale:
+    - 0.0
+    - 65532.0
+    notes: Initial product range inferred from variables.yml and may need tuning.
+  wind_speed_at_10m_agl:
+    canonical_units: m s-1
+    srcMin: 0.0
+    srcMax: 100.0
+    clip: LOW
+    standard_height: 10m_agl
+    imageUnscale:
+    - 0.0
+    - 100.0
+    source_keys:
+    - wind_speed
+    notes: Curated product range; independent of source model.
+  wind_speed_of_gust:
+    canonical_units: 'm s-1'
+    srcMin: 0.0
+    srcMax: 100.0
+    clip: BOTH
+    source_keys:
+    - qc_wind_speed_of_gust
+    imageUnscale:
+    - 0.0
+    - 100.0
+    notes: Initial product range inferred from variables.yml and may need tuning.
+  wind_speed_of_gust_at_10m_agl:
+    canonical_units: m s-1
+    srcMin: 0.0
+    srcMax: 100.0
+    clip: LOW
+    standard_height: 10m_agl
+    imageUnscale:
+    - 0.0
+    - 100.0
+    source_keys:
+    - WSPD10MAX
+    - wind_speed_of_gust
+    notes: Curated product range; independent of source model.
+unit_conversions:
+  temperature:
+    from:
+    - K
+    - kelvin
+    to: °C
+    formula: degC = K - 273.15
+  pressure:
+    from:
+    - Pa
+    - pascal
+    - pascals
+    to: hPa
+    formula: hPa = Pa * 0.01
+matching_rules:
+  priority:
+  - exact canonical output variable name
+  - source_keys alias match
+  - height-aware base-name match using standard_height

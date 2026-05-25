@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "model": "GFS",
+  "analysis": "2026-05-25_00",
+  "variables": [
+    {
+      "id": "snow_fraction",
+      "title": "Fraction of frozen precipitation",
+      "unit": "1",
+      "manifest": "snow_fraction/manifest.json",
+      "defaultLayer": "raster"
+    },
+    {
+      "id": "cloud_area_fraction",
+      "title": "Total cloud cover",
+      "unit": "%",
+      "manifest": "cloud_area_fraction/manifest.json",
+      "defaultLayer": "raster"
+    },
+    {
+      "id": "lwe_precipitation_rate",
+      "title": "Precipitation rate",
+      "unit": "mm/hr",
+      "manifest": "lwe_precipitation_rate/manifest.json",
+      "defaultLayer": "raster"
+    },
+    {
+      "id": "lwe_snow_depth",
+      "title": "Water equivalent of accumulated snow depth",
+      "unit": "mm",
+      "manifest": "lwe_snow_depth/manifest.json",
+      "defaultLayer": "raster"
+    },
+    {
+      "id": "air_temperature_at_2m_agl",
+      "title": "Temperature at 2m",
+      "unit": "°C",
+      "manifest": "air_temperature_at_2m_agl/manifest.json",
+      "defaultLayer": "raster"
+    },
+    {
+      "id": "wind_speed_at_10m_agl",
+      "title": "Wind speed at 10m",
+      "unit": "m s-1",
+      "manifest": "wind_speed_at_10m_agl/manifest.json",
+      "defaultLayer": "raster"
+    },
+    {
+      "id": "wind_from_direction_at_10m_agl",
+      "title": "wind direction at 10m",
+      "unit": "deg",
+      "manifest": "wind_from_direction_at_10m_agl/manifest.json",
+      "defaultLayer": "raster"
+    },
+    {
+      "id": "wind_uv_10m",
+      "title": "10m wind (u/v, true)",
+      "unit": "m/s",
+      "manifest": "wind_uv_10m/manifest.json",
+      "defaultLayer": "vector"
+    }
+  ]
+}

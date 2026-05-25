@@ -1,0 +1,9 @@
+# Core dependencies for netcdf2image.py
+numpy
+Pillow
+PyYAML
+xarray
+
+# Optional: regridding curvilinear/projected grids (requires ESMF)
+# Install via conda-forge: conda install -c conda-forge xesmf
+# xesmf

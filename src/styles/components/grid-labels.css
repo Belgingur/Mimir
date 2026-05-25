@@ -1,0 +1,39 @@
+.grid-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-size: 11px;
+  color: #3a3a3a;
+  z-index: var(--z-grid);
+}
+
+.grid-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.8);
+  padding: 2px 4px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  white-space: nowrap;
+}
+
+.wave-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: var(--z-labels);
+}
+
+.wave-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  background: var(--surface-glass-light);
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  box-shadow: var(--shadow-popup);
+}

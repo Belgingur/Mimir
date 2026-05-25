@@ -1,0 +1,215 @@
+.right-edge-debug-dummy {
+  position: fixed;
+  top: 220px;
+  right: 12px;
+  width: var(--icon-button-size);
+  height: var(--icon-button-size);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  background: rgba(255, 80, 80, 0.85);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  z-index: 246;
+  pointer-events: auto;
+}
+
+.right-edge-debug-panel {
+  position: fixed;
+  top: auto;
+  left: 12px;
+  bottom: 12px;
+  width: min(420px, calc(100vw - 24px));
+  max-height: min(70vh, calc(100vh - 24px));
+  overflow: auto;
+  z-index: var(--z-debug);
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(11, 15, 19, 0.94);
+  color: #f7f9fb;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+  font:
+    11px/1.35 "IBM Plex Sans",
+    "Source Sans 3",
+    system-ui,
+    sans-serif;
+  pointer-events: none;
+}
+
+.right-edge-debug-panel.is-frozen {
+  outline: 2px solid rgba(255, 120, 120, 0.95);
+  box-shadow:
+    0 0 0 2px rgba(255, 120, 120, 0.28),
+    0 12px 30px rgba(0, 0, 0, 0.28);
+}
+
+.right-edge-debug-panel.is-armed:not(.is-frozen) {
+  outline: 2px solid rgba(255, 210, 120, 0.9);
+  box-shadow:
+    0 0 0 2px rgba(255, 210, 120, 0.22),
+    0 12px 30px rgba(0, 0, 0, 0.28);
+}
+
+.right-edge-debug-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.right-edge-debug-panel__title {
+  font-weight: 700;
+}
+
+.right-edge-debug-panel__actions {
+  display: none;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.right-edge-debug-panel__actions button {
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.12);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.right-edge-debug-panel__status {
+  margin-top: 6px;
+  color: rgba(247, 249, 251, 0.72);
+}
+
+.right-edge-debug-panel.is-frozen .right-edge-debug-panel__status {
+  color: #ffb0b0;
+  font-weight: 700;
+}
+
+.right-edge-debug-panel.is-armed:not(.is-frozen)
+  .right-edge-debug-panel__status {
+  color: #ffe0a6;
+  font-weight: 700;
+}
+
+.right-edge-debug-panel__rows {
+  margin-top: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.right-edge-debug-panel__events {
+  margin-top: 10px;
+  display: grid;
+  gap: 4px;
+}
+
+.right-edge-debug-panel__row {
+  padding: 8px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.right-edge-debug-panel__row.is-anomalous {
+  background: rgba(180, 36, 36, 0.28);
+  outline: 1px solid rgba(255, 120, 120, 0.65);
+}
+
+.right-edge-debug-panel__row-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.right-edge-debug-panel__event {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.right-edge-debug-panel__event.is-anomalous {
+  background: rgba(180, 36, 36, 0.22);
+}
+
+.debug-exit {
+  margin-top: 6px;
+  align-self: flex-start;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
+  background: var(--surface-glass-light);
+  font-size: 12px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.debug-panel {
+  display: none;
+  gap: 10px;
+}
+
+.debug-panel.is-visible {
+  display: grid;
+}
+
+.debug-actions {
+  display: grid;
+  grid-auto-flow: row;
+  gap: 8px;
+}
+
+.debug-actions button {
+  border: 1px solid rgba(10, 10, 10, 0.15);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  background: rgba(10, 10, 10, 0.04);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.debug-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.debug-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.debug-select {
+  width: 100%;
+  border: 1px solid var(--border-on-dark);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  background: var(--surface-glass-light);
+  font-size: 13px;
+  color: #11181d;
+}
+
+.debug-status {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.debug-output {
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(20, 20, 20, 0.85);
+  background: rgba(10, 10, 10, 0.04);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.debug-output.is-error {
+  color: #7a1f1f;
+  background: rgba(140, 40, 40, 0.1);
+}

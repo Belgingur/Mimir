@@ -1,0 +1,350 @@
+/* ── Layer toggle trigger — same style as mode-icon-button ──── */
+.layer-toggle-trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-button-size);
+  height: var(--icon-button-size);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-on-dark);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-on-dark);
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.layer-toggle-trigger__label {
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 10px);
+  transform: translateY(-50%);
+  padding: 4px 8px;
+  border-radius: var(--radius-pill);
+  background: rgba(11, 15, 19, 0.94);
+  color: #f7f9fb;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.layer-toggle-trigger:hover .layer-toggle-trigger__label,
+.layer-toggle-trigger:focus-visible .layer-toggle-trigger__label {
+  opacity: 1;
+}
+
+.layer-toggle-trigger__icon {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+}
+
+.layer-toggle-trigger__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Swap icons: layers when collapsed, up-arrow when expanded */
+.layer-toggle-trigger__icon--collapse {
+  display: none;
+}
+
+.layer-toggle-trigger.is-open .layer-toggle-trigger__icon--layers {
+  display: none;
+}
+
+.layer-toggle-trigger.is-open .layer-toggle-trigger__icon--collapse {
+  display: inline-flex;
+}
+
+.layer-toggle-trigger:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.layer-toggle-trigger:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.22);
+  outline-offset: 1px;
+}
+
+.layer-toggle-trigger.is-open {
+  background: linear-gradient(
+    180deg,
+    var(--accent-orange) 0%,
+    var(--accent-orange-dark) 100%
+  );
+  color: #fff8ef;
+  border-color: var(--accent-orange-border);
+  box-shadow: 0 8px 18px var(--accent-orange-glow);
+}
+
+/* ── Layer switch card ────────────────────────────────────────── */
+.layer-switch-card {
+  position: relative;
+  z-index: var(--z-chrome);
+  gap: 0;
+  padding: 6px;
+  border-radius: var(--radius-xl);
+  background: var(--surface-glass);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-card);
+  max-height: calc(100vh - 200px);
+  pointer-events: auto;
+  overflow: visible;
+}
+
+.layer-switch-card .layer-toggle-trigger {
+  margin-bottom: 6px;
+}
+
+.layer-switch-card .layer-toggle-trigger:last-child,
+.layer-switch-card .layer-toggle-trigger:not(.is-open) {
+  margin-bottom: 0;
+}
+
+.layer-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.layer-group-list[hidden] {
+  display: none;
+}
+
+.layer-slot {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.layer-slot::after {
+  content: attr(data-label);
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 10px);
+  transform: translateY(-50%);
+  padding: 4px 8px;
+  border-radius: var(--radius-pill);
+  background: rgba(11, 15, 19, 0.94);
+  color: #f7f9fb;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.layer-slot__button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-button-size);
+  height: var(--icon-button-size);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-on-dark);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-on-dark);
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease,
+    transform 120ms ease;
+}
+
+.layer-slot--wind.is-wind-active::before {
+  content: attr(data-wind-style-badge);
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(11, 15, 19, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(247, 249, 251, 0.9);
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.layer-slot--wind.is-wind-flyout-open::after {
+  opacity: 0;
+}
+
+.wind-style-flyout {
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 10px);
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--radius-pill);
+  background: rgba(11, 15, 19, 0.94);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-card);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+  z-index: 300;
+}
+
+.wind-style-flyout.is-open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(-50%);
+}
+
+/* Wrapper around the wind label + flyout so the flyout lives outside the
+   <label>, preventing mobile browsers from forwarding button taps to the
+   radio input via the label's implicit activation behaviour. */
+.layer-slot-wrap {
+  position: relative;
+  overflow: visible;
+}
+
+/* Ensure flyout can overflow the card on touch devices */
+.layer-slot--wind {
+  overflow: visible;
+}
+
+.wind-style-flyout__option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: rgba(247, 249, 251, 0.82);
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    color 120ms ease,
+    box-shadow 120ms ease,
+    opacity 120ms ease;
+}
+
+.wind-style-flyout__icon {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+}
+
+.wind-style-flyout__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.wind-style-flyout__option:hover,
+.wind-style-flyout__option:focus-visible {
+  color: #fffaf4;
+}
+
+.wind-style-flyout__option:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.22);
+  outline-offset: 1px;
+}
+
+.wind-style-flyout__option.is-active {
+  background: linear-gradient(
+    180deg,
+    var(--accent-orange) 0%,
+    var(--accent-orange-dark) 100%
+  );
+  color: #fff8ef;
+  box-shadow: 0 8px 18px var(--accent-orange-glow);
+}
+
+.wind-style-flyout__option.is-disabled {
+  color: rgba(247, 249, 251, 0.34);
+  opacity: 0.7;
+}
+
+.wind-style-flyout__option.is-disabled:not(.is-active) {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.layer-slot__icon {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+}
+
+.layer-slot__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.layer-slot__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.layer-slot:hover .layer-slot__button,
+.layer-slot:focus-visible .layer-slot__button {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.layer-slot:hover::after {
+  opacity: 1;
+}
+
+.layer-slot:focus-visible .layer-slot__button {
+  outline: 2px solid rgba(255, 255, 255, 0.2);
+  outline-offset: 1px;
+}
+
+.layer-slot:focus-visible {
+  outline: none;
+}
+
+.layer-slot .layer-slot__button.is-active {
+  background: linear-gradient(
+    180deg,
+    var(--accent-orange) 0%,
+    var(--accent-orange-dark) 100%
+  );
+  color: #fff8ef;
+  border-color: var(--accent-orange-border);
+  box-shadow: 0 8px 18px var(--accent-orange-glow);
+}

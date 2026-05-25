@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="75px" height="335px">
+  <style>
+    .scale-text {
+    font-family: 'Roboto Condensed',sans-serif;
+    font-size: 14px;
+    }
+  </style>
+  <rect x="10" y="265" width="20" height="60" fill="rgb(255, 255, 255)" stroke="rgb(255, 255, 255)">
+  </rect>
+  <rect x="10" y="205" width="20" height="60" fill="rgb(236, 233, 230)" stroke="rgb(236, 233, 230)">
+  </rect>
+  <rect x="10" y="145" width="20" height="60" fill="rgb(217, 210, 204)" stroke="rgb(217, 210, 204)">
+  </rect>
+  <rect x="10" y="85" width="20" height="60" fill="rgb(198, 188, 178)" stroke="rgb(198, 188, 178)">
+  </rect>
+  <rect x="10" y="25" width="20" height="60" fill="rgb(177, 165, 152)" stroke="rgb(177, 165, 152)">
+  </rect>
+  <g class="scale-text">
+    <text x="35" y="330">0</text>
+    <text x="35" y="270">1/4</text>
+    <text x="35" y="210">2/4</text>
+    <text x="35" y="150">3/4</text>
+    <text x="35" y="90">4/4</text>
+    <text x="35" y="30"> </text>
+  </g>
+  <path d="M10,25L30,25L30,325L10,325Z" style="stroke: black; stroke-width: 1; fill: none;">
+  </path>
+</svg>

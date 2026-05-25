@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="75px" height="335px">
+  <style>
+    .scale-text {
+    font-family: 'Roboto Condensed',sans-serif;
+    font-size: 14px;
+    }
+  </style>
+  <g class="scale-text">
+    <text y="15" x="20" text-anchor="middle">m⅔/s</text>
+  </g>
+  <rect x="10" y="310" width="20" height="15" fill="rgb(255, 255, 255)" stroke="rgb(255, 255, 255)">
+  </rect>
+  <rect x="10" y="295" width="20" height="15" fill="rgb(255, 255, 255)" stroke="rgb(255, 255, 255)">
+  </rect>
+  <rect x="10" y="280" width="20" height="15" fill="rgb(213, 236, 252)" stroke="rgb(213, 236, 252)">
+  </rect>
+  <rect x="10" y="265" width="20" height="15" fill="rgb(165, 213, 247)" stroke="rgb(165, 213, 247)">
+  </rect>
+  <rect x="10" y="250" width="20" height="15" fill="rgb(123, 171, 223)" stroke="rgb(123, 171, 223)">
+  </rect>
+  <rect x="10" y="235" width="20" height="15" fill="rgb(91, 147, 183)" stroke="rgb(91, 147, 183)">
+  </rect>
+  <rect x="10" y="220" width="20" height="15" fill="rgb(88, 172, 104)" stroke="rgb(88, 172, 104)">
+  </rect>
+  <rect x="10" y="205" width="20" height="15" fill="rgb(128, 199, 60)" stroke="rgb(128, 199, 60)">
+  </rect>
+  <rect x="10" y="190" width="20" height="15" fill="rgb(193, 220, 70)" stroke="rgb(193, 220, 70)">
+  </rect>
+  <rect x="10" y="175" width="20" height="15" fill="rgb(235, 234, 75)" stroke="rgb(235, 234, 75)">
+  </rect>
+  <rect x="10" y="160" width="20" height="15" fill="rgb(238, 194, 59)" stroke="rgb(238, 194, 59)">
+  </rect>
+  <rect x="10" y="145" width="20" height="15" fill="rgb(235, 156, 46)" stroke="rgb(235, 156, 46)">
+  </rect>
+  <rect x="10" y="130" width="20" height="15" fill="rgb(233, 126, 33)" stroke="rgb(233, 126, 33)">
+  </rect>
+  <rect x="10" y="115" width="20" height="15" fill="rgb(216, 76, 35)" stroke="rgb(216, 76, 35)">
+  </rect>
+  <rect x="10" y="100" width="20" height="15" fill="rgb(197, 35, 35)" stroke="rgb(197, 35, 35)">
+  </rect>
+  <rect x="10" y="85" width="20" height="15" fill="rgb(164, 27, 26)" stroke="rgb(164, 27, 26)">
+  </rect>
+  <rect x="10" y="70" width="20" height="15" fill="rgb(149, 24, 21)" stroke="rgb(149, 24, 21)">
+  </rect>
+  <rect x="10" y="55" width="20" height="15" fill="rgb(104, 36, 34)" stroke="rgb(104, 36, 34)">
+  </rect>
+  <rect x="10" y="40" width="20" height="15" fill="rgb(59, 48, 47)" stroke="rgb(59, 48, 47)">
+  </rect>
+  <rect x="10" y="25" width="20" height="15" fill="rgb(14, 60, 60)" stroke="rgb(14, 60, 60)">
+  </rect>
+  <g class="scale-text">
+    <text x="35" y="330">0</text>
+    <text x="35" y="300">0.1</text>
+    <text x="35" y="270">0.2</text>
+    <text x="35" y="240">0.3</text>
+    <text x="35" y="210">0.4</text>
+    <text x="35" y="180">0.5</text>
+    <text x="35" y="150">0.6</text>
+    <text x="35" y="120">0.7</text>
+    <text x="35" y="90">0.8</text>
+    <text x="35" y="60">0.9</text>
+    <text x="35" y="30">1</text>
+  </g>
+  <path d="M10,25L30,25L30,325L10,325Z" style="stroke: black; stroke-width: 1; fill: none;">
+  </path>
+</svg>

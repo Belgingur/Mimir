@@ -1,0 +1,97 @@
+diff --git a/node_modules/@luma.gl/webgl/dist/adapter/resources/webgl-texture.js b/node_modules/@luma.gl/webgl/dist/adapter/resources/webgl-texture.js
+index fa1e575..a9cab5b 100644
+--- a/node_modules/@luma.gl/webgl/dist/adapter/resources/webgl-texture.js
++++ b/node_modules/@luma.gl/webgl/dist/adapter/resources/webgl-texture.js
+@@ -197,11 +197,19 @@ export class WEBGLTexture extends Texture {
+             throw new Error('writeBuffer for compressed textures is not implemented in WebGL');
+         }
+         const { bytesPerPixel } = this.device.getTextureFormatInfo(this.format);
+-        const unpackRowLength = bytesPerPixel ? options.bytesPerRow / bytesPerPixel : undefined;
++        let unpackRowLength;
++        if (bytesPerPixel) {
++            const tightBytesPerRow = width * bytesPerPixel;
++            if (options.bytesPerRow !== tightBytesPerRow) {
++                unpackRowLength = options.bytesPerRow / bytesPerPixel;
++            }
++        }
+         const glParameters = {
+             [3317]: this.byteAlignment,
+             ...(unpackRowLength !== undefined ? { [3314]: unpackRowLength } : {}),
+-            [32878]: options.rowsPerImage
++            ...(this.dimension === '2d' || this.dimension === 'cube'
++                ? {}
++                : { [32878]: options.rowsPerImage })
+         };
+         this.gl.bindTexture(this.glTarget, this.handle);
+         this.gl.bindBuffer(35052, buffer.handle);
+@@ -231,14 +239,19 @@ export class WEBGLTexture extends Texture {
+         if (!compressed) {
+             const { bytesPerPixel } = this.device.getTextureFormatInfo(this.format);
+             if (bytesPerPixel) {
+-                unpackRowLength = options.bytesPerRow / bytesPerPixel;
++                const tightBytesPerRow = width * bytesPerPixel;
++                if (options.bytesPerRow !== tightBytesPerRow) {
++                    unpackRowLength = options.bytesPerRow / bytesPerPixel;
++                }
+             }
+         }
+         const glParameters = !this.compressed
+             ? {
+                 [3317]: this.byteAlignment,
+                 ...(unpackRowLength !== undefined ? { [3314]: unpackRowLength } : {}),
+-                [32878]: options.rowsPerImage
++                ...(this.dimension === '2d' || this.dimension === 'cube'
++                    ? {}
++                    : { [32878]: options.rowsPerImage })
+             }
+             : {};
+         const sourceElementOffset = getWebGLTextureSourceElementOffset(typedArray, byteOffset);
+diff --git a/node_modules/@luma.gl/webgl/src/adapter/resources/webgl-texture.ts b/node_modules/@luma.gl/webgl/src/adapter/resources/webgl-texture.ts
+index 4540406..df9d7c3 100644
+--- a/node_modules/@luma.gl/webgl/src/adapter/resources/webgl-texture.ts
++++ b/node_modules/@luma.gl/webgl/src/adapter/resources/webgl-texture.ts
+@@ -271,11 +271,19 @@ export class WEBGLTexture extends Texture {
+     }
+ 
+     const {bytesPerPixel} = this.device.getTextureFormatInfo(this.format);
+-    const unpackRowLength = bytesPerPixel ? options.bytesPerRow / bytesPerPixel : undefined;
++    let unpackRowLength: number | undefined;
++    if (bytesPerPixel) {
++      const tightBytesPerRow = width * bytesPerPixel;
++      if (options.bytesPerRow !== tightBytesPerRow) {
++        unpackRowLength = options.bytesPerRow / bytesPerPixel;
++      }
++    }
+     const glParameters: GLValueParameters = {
+       [GL.UNPACK_ALIGNMENT]: this.byteAlignment,
+       ...(unpackRowLength !== undefined ? {[GL.UNPACK_ROW_LENGTH]: unpackRowLength} : {}),
+-      [GL.UNPACK_IMAGE_HEIGHT]: options.rowsPerImage
++      ...(this.dimension === '2d' || this.dimension === 'cube'
++        ? {}
++        : {[GL.UNPACK_IMAGE_HEIGHT]: options.rowsPerImage})
+     };
+ 
+     this.gl.bindTexture(this.glTarget, this.handle);
+@@ -336,7 +344,10 @@ export class WEBGLTexture extends Texture {
+     if (!compressed) {
+       const {bytesPerPixel} = this.device.getTextureFormatInfo(this.format);
+       if (bytesPerPixel) {
+-        unpackRowLength = options.bytesPerRow / bytesPerPixel;
++        const tightBytesPerRow = width * bytesPerPixel;
++        if (options.bytesPerRow !== tightBytesPerRow) {
++          unpackRowLength = options.bytesPerRow / bytesPerPixel;
++        }
+       }
+     }
+ 
+@@ -344,7 +355,9 @@ export class WEBGLTexture extends Texture {
+       ? {
+           [GL.UNPACK_ALIGNMENT]: this.byteAlignment,
+           ...(unpackRowLength !== undefined ? {[GL.UNPACK_ROW_LENGTH]: unpackRowLength} : {}),
+-          [GL.UNPACK_IMAGE_HEIGHT]: options.rowsPerImage
++          ...(this.dimension === '2d' || this.dimension === 'cube'
++            ? {}
++            : {[GL.UNPACK_IMAGE_HEIGHT]: options.rowsPerImage})
+         }
+       : {};
+     const sourceElementOffset = getWebGLTextureSourceElementOffset(typedArray, byteOffset);

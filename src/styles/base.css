@@ -1,0 +1,354 @@
+@import "maplibre-gl/dist/maplibre-gl.css";
+
+body.is-loading {
+  cursor: progress;
+}
+
+.loading-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+body.is-loading .loading-bar {
+  opacity: 1;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #d97433 30%,
+    var(--accent-orange) 50%,
+    #d97433 70%,
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: loading-slide 1.4s ease infinite;
+}
+
+@keyframes loading-slide {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+#app {
+  position: relative;
+  background: radial-gradient(circle at 20% 20%, #f2f5f7, #e6ecef 60%, #dde4e8);
+  height: 100vh;
+  opacity: 1;
+  transition: opacity 0.15s ease;
+}
+
+.map-wrap {
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+
+#map {
+  position: absolute;
+  inset: 0;
+  background: #e6ecef;
+}
+
+.maplibregl-map {
+  z-index: var(--z-map);
+}
+
+.maplibregl-canvas,
+.mapboxgl-canvas {
+  position: absolute;
+  z-index: var(--z-map);
+}
+
+.deckgl-overlay,
+.deckgl-canvas-container,
+.deckgl-canvas {
+  position: absolute;
+  z-index: var(--z-deck);
+}
+
+.maplibregl-control-container {
+  position: absolute;
+  z-index: var(--z-controls);
+}
+
+.maplibregl-ctrl-top-left,
+.maplibregl-ctrl-top-right,
+.maplibregl-ctrl-bottom-left,
+.maplibregl-ctrl-bottom-right {
+  z-index: 30;
+}
+
+.panel {
+  display: none;
+}
+
+body:not(.is-dev) .dev-only {
+  display: none;
+}
+
+.control {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.control .toggle + .toggle {
+  margin-top: 4px;
+}
+
+.map-control-card {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-glass);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-card);
+  color: var(--text-on-dark);
+}
+
+.map-control-card .control-label,
+.map-control-card label,
+.map-control-card .debug-label {
+  color: var(--text-on-dark-muted);
+}
+
+.map-control-card .debug-status,
+.map-control-card .value {
+  color: rgba(232, 239, 243, 0.78);
+}
+
+.control label,
+.control .control-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.value {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.hint {
+  margin-top: auto;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.hint + .hint {
+  margin-top: 6px;
+}
+
+.hint.hidden {
+  display: none;
+}
+
+.legacy-hidden {
+  display: none !important;
+}
+
+.bottom-bar {
+  display: flex;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--bottom-bar-height);
+  align-items: center;
+  z-index: 280;
+  padding: 0 10px;
+  border-radius: 10px 10px 0 0;
+  background: linear-gradient(
+    180deg,
+    rgba(19, 24, 29, 0.78),
+    rgba(12, 16, 20, 0.88)
+  );
+  backdrop-filter: blur(10px);
+  pointer-events: auto;
+}
+
+.bottom-bar__sep {
+  display: block;
+  width: 1px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.15);
+  margin: 0 6px;
+  flex-shrink: 0;
+}
+
+.model-pill-wrap {
+  display: flex;
+  align-items: center;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.model-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px 5px 8px;
+  border-radius: 8px;
+  border: none;
+  background: #d97433;
+  color: #fffaf4;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 120ms ease;
+}
+
+.model-pill:hover {
+  background: #e8863a;
+}
+
+.model-pill__meta {
+  font-weight: 500;
+  opacity: 0.8;
+  font-size: 10px;
+}
+
+.model-pill__chevron {
+  font-size: 8px;
+  transition: transform 200ms ease;
+}
+
+.model-pill[aria-expanded="true"] .model-pill__chevron {
+  transform: rotate(180deg);
+}
+
+.model-popover {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px;
+  border-radius: 12px;
+  background: rgba(16, 21, 26, 0.94);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.3);
+  min-width: 140px;
+  z-index: 10;
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease;
+}
+
+.model-popover.is-open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.model-popover__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #f3f6f8;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+  transition: background 120ms ease;
+}
+
+.model-popover__item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.model-popover__item.is-active {
+  background: #d97433;
+  color: #fffaf4;
+}
+
+.model-popover__meta {
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(247, 249, 251, 0.55);
+}
+
+.model-popover__item.is-active .model-popover__meta {
+  color: rgba(255, 250, 244, 0.7);
+}
+
+.inhouse-controls button {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
+  background: var(--surface-glass-light);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.inhouse-render-mode {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.inhouse-render-mode select {
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border-light);
+  background: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.inhouse-controls input[type="range"] {
+  width: 100%;
+  accent-color: #2d6cdf;
+}
+
+#wind-particles-advanced {
+  display: grid;
+  gap: 8px;
+}

@@ -1,0 +1,104 @@
+.utility-toggle {
+  position: fixed;
+  top: 114px;
+  right: 12px;
+  z-index: var(--z-chrome);
+  display: inline-flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  width: auto;
+  border-radius: var(--radius-xl);
+  transition: none;
+}
+
+.utility-toggle.debug-grid-corridor-enabled::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: calc(-1 * var(--utility-edge-hit-extension));
+  bottom: 0;
+  width: var(--utility-edge-hit-extension);
+  background: transparent;
+  pointer-events: auto;
+}
+
+.utility-icon-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-button-size);
+  height: var(--icon-button-size);
+  border: 1px solid var(--border-on-dark);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-on-dark);
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.utility-icon-button__icon {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+}
+
+.utility-icon-button__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.utility-icon-button__label {
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 10px);
+  transform: translateY(-50%);
+  padding: 4px 8px;
+  border-radius: var(--radius-pill);
+  background: rgba(11, 15, 19, 0.94);
+  color: #f7f9fb;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.utility-icon-button:hover,
+.utility-toggle.debug-grid-corridor-enabled:hover .utility-icon-button,
+.utility-toggle.debug-grid-corridor-enabled:focus-within .utility-icon-button,
+.utility-icon-button:focus-visible {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.utility-icon-button:hover .utility-icon-button__label,
+.utility-toggle.debug-grid-corridor-enabled:hover .utility-icon-button__label,
+.utility-toggle.debug-grid-corridor-enabled:focus-within
+  .utility-icon-button__label,
+.utility-icon-button:focus-visible .utility-icon-button__label {
+  opacity: 1;
+}
+
+.utility-icon-button:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.22);
+  outline-offset: 1px;
+}
+
+.utility-icon-button.is-active {
+  background: linear-gradient(
+    180deg,
+    var(--accent-orange) 0%,
+    var(--accent-orange-dark) 100%
+  );
+  color: #fff8ef;
+  border-color: var(--accent-orange-border);
+  box-shadow: 0 8px 18px var(--accent-orange-glow);
+}

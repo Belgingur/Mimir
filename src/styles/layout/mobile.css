@@ -1,0 +1,173 @@
+/* ══════════════════════════════════════════════════════════════════
+   MOBILE — (max-width: 640px)
+   Covers 481-640px range in portrait (desktop-style controls, no drawer)
+   and is also active for <=480px together with mobile-small.css.
+   ══════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 640px) {
+  #app {
+    grid-template-rows: minmax(320px, 1fr) auto;
+  }
+
+  /* ── Always-visible elements in this breakpoint ──────────────── */
+  /* In the 481-640px range, no drawer is used; all desktop-style controls
+     must remain visible. Explicit declarations prevent orientation-transition stale state. */
+
+  .zoom-buttons {
+    display: flex;
+    visibility: visible;
+  }
+
+  .view-toggle--map {
+    display: inline-flex;
+    visibility: visible;
+  }
+
+  /* Grid toggle is inside .zoom-buttons — no separate utility-toggle */
+
+  .layer-switch-card {
+    display: block;
+    visibility: visible;
+  }
+
+  .bottom-bar {
+    display: flex;
+    visibility: visible;
+  }
+
+  .legend-stack-card {
+    display: block;
+    visibility: visible;
+  }
+
+  .info-button {
+    display: flex;
+    visibility: visible;
+  }
+
+  /* .model-card intentionally not forced — JS-controlled render state */
+
+  .panel {
+    padding: 18px 16px;
+    gap: 12px;
+  }
+
+  .control {
+    min-width: 100%;
+  }
+
+  .map-overlay {
+    width: auto;
+  }
+
+  .map-overlay--top-left {
+    align-items: flex-end;
+    right: 8px;
+    pointer-events: auto;
+    overflow: visible;
+  }
+
+  .map-overlay--top-right {
+    align-items: flex-end;
+  }
+
+  .map-overlay .control,
+  .map-overlay .map-control-card,
+  .view-toggle--map,
+  .utility-toggle,
+  .layer-switch-card {
+    min-width: 0;
+    width: auto;
+    max-width: calc(100vw - 16px);
+    align-self: auto;
+  }
+
+  .layer-switch-card {
+    width: 54px;
+    max-width: 54px;
+  }
+
+  .view-toggle--map {
+    width: auto;
+    max-width: calc(100vw - 16px);
+    overflow: visible;
+  }
+
+  .layer-switch-card {
+    contain: none;
+    overflow: visible;
+  }
+
+  .mode-icon-button,
+  .utility-icon-button,
+  .layer-slot__button {
+    transition:
+      background 120ms ease,
+      border-color 120ms ease,
+      color 120ms ease,
+      box-shadow 120ms ease;
+    transform: none;
+  }
+
+  .zoom-buttons button,
+  .timeline-play {
+    transition:
+      background 120ms ease,
+      box-shadow 120ms ease;
+    transform: none;
+  }
+
+  .zoom-buttons button:hover,
+  .zoom-buttons button:active,
+  .timeline-play:hover {
+    transform: none;
+  }
+
+  .mode-icon-button__label,
+  .layer-slot::after {
+    display: none;
+  }
+
+  .model-card {
+    min-width: 0;
+    width: min(320px, calc(100vw - 16px));
+    max-width: calc(100vw - 16px);
+    z-index: 280;
+  }
+
+  .panel-header h1 {
+    font-size: 18px;
+  }
+
+  .timeline-shell {
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 5px;
+  }
+
+  .timeline-play {
+    width: 24px;
+    height: 24px;
+    font-size: 10px;
+  }
+
+  .timeline-bubble {
+    top: -22px;
+    padding: 3px 6px;
+    font-size: 8px;
+  }
+
+  .timeline-day-segment {
+    padding: 2px 4px;
+    font-size: 8px;
+  }
+
+  body.is-dev .mode-icon-button:hover,
+  body.is-dev .mode-icon-button:focus-visible,
+  body.is-dev .utility-icon-button:hover,
+  body.is-dev .utility-icon-button:focus-visible,
+  body.is-dev .layer-slot:hover .layer-slot__button,
+  body.is-dev .layer-slot:focus-visible .layer-slot__button {
+    outline: 1px solid rgba(42, 127, 98, 0.8);
+    outline-offset: 1px;
+  }
+}

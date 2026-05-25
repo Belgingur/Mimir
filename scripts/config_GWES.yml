@@ -1,0 +1,26 @@
+# Example configuration for netcdf2image.py — GWES global wave model
+# Usage: python netcdf2image.py --config config_GWES.yml -i /path/to/forecast.nc
+
+# Required: model identifier
+model: GWES
+
+# Required: root directory for all output files
+out_root: ./output
+
+# Parallel worker processes
+jobs: 3
+
+# Variables to export
+include:
+  - primary_wave_mean_period
+  - primary_wave_direction
+  - significant_wave_height
+
+# Scaling mode (auto derives ranges from data; fixed uses a JSON scale-config)
+scale_mode: auto
+
+# Output image format
+format: WEBP
+
+# Print per-frame progress
+verbose: true

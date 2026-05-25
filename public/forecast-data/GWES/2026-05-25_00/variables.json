@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "model": "GWES",
+  "analysis": "2026-05-25_00",
+  "variables": [
+    {
+      "id": "significant_wave_height",
+      "title": "Significant height of combined wind waves and swell",
+      "unit": "m",
+      "manifest": "significant_wave_height/manifest.json",
+      "defaultLayer": "raster"
+    },
+    {
+      "id": "primary_wave_mean_period",
+      "title": "Primary wave mean period",
+      "unit": "s",
+      "manifest": "primary_wave_mean_period/manifest.json",
+      "defaultLayer": "raster"
+    },
+    {
+      "id": "primary_wave_direction",
+      "title": "Primary wave direction",
+      "unit": "deg",
+      "manifest": "primary_wave_direction/manifest.json",
+      "defaultLayer": "raster"
+    }
+  ]
+}

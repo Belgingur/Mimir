@@ -1,0 +1,23 @@
+.map-overlay {
+  position: absolute;
+  z-index: var(--z-overlay);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.map-overlay--top-left {
+  top: 12px;
+  right: 12px;
+  align-items: flex-end;
+  max-width: min(460px, calc(100vw - 96px));
+}
+
+.map-overlay--top-right {
+  top: 12px;
+  right: 12px;
+  align-items: flex-end;
+  max-width: min(320px, calc(100vw - 24px));
+}

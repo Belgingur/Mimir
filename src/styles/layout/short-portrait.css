@@ -1,0 +1,24 @@
+/* ══════════════════════════════════════════════════════════════════
+   SHORT-PORTRAIT — (max-width: 640px) and (max-height: 700px)
+   Supplementary height constraints for phones with limited vertical
+   space in portrait. Does NOT hide any UI elements — only constrains
+   max-height and enables overflow scrolling for tall content panels.
+   ══════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 640px) and (max-height: 700px) {
+  /* .layer-switch-card: inherits display from mobile.css/mobile-small.css;
+     here only max-height is constrained to prevent overflow */
+  .layer-switch-card {
+    max-height: calc(100vh - 210px);
+    max-height: calc(100dvh - 210px);
+    overflow: visible;
+  }
+
+  /* .model-card: inherits display from JS render state;
+     here only max-height is constrained for short screens */
+  .model-card {
+    max-height: 50vh;
+    max-height: 50dvh;
+    overflow-y: auto;
+  }
+}

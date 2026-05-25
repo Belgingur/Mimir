@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="75px" height="335px">
+  <style>
+    .scale-text {
+    font-family: 'Roboto Condensed',sans-serif;
+    font-size: 14px;
+    }
+  </style>
+  <g class="scale-text">
+    <text y="15" x="20" text-anchor="middle">m/s</text>
+  </g>
+  <rect x="10" y="306.25" width="20" height="18.75" fill="rgb(255, 255, 255)" stroke="rgb(255, 255, 255)">
+  </rect>
+  <rect x="10" y="287.5" width="20" height="18.75" fill="rgb(255, 255, 160)" stroke="rgb(255, 255, 160)">
+  </rect>
+  <rect x="10" y="268.75" width="20" height="18.75" fill="rgb(217, 255, 128)" stroke="rgb(217, 255, 128)">
+  </rect>
+  <rect x="10" y="250" width="20" height="18.75" fill="rgb(187, 234, 128)" stroke="rgb(187, 234, 128)">
+  </rect>
+  <rect x="10" y="231.25" width="20" height="18.75" fill="rgb(157, 213, 128)" stroke="rgb(157, 213, 128)">
+  </rect>
+  <rect x="10" y="212.5" width="20" height="18.75" fill="rgb(128, 192, 128)" stroke="rgb(128, 192, 128)">
+  </rect>
+  <rect x="10" y="193.75" width="20" height="18.75" fill="rgb(230, 230, 255)" stroke="rgb(230, 230, 255)">
+  </rect>
+  <rect x="10" y="175" width="20" height="18.75" fill="rgb(200, 200, 251)" stroke="rgb(200, 200, 251)">
+  </rect>
+  <rect x="10" y="156.25" width="20" height="18.75" fill="rgb(170, 170, 247)" stroke="rgb(170, 170, 247)">
+  </rect>
+  <rect x="10" y="137.5" width="20" height="18.75" fill="rgb(141, 141, 243)" stroke="rgb(141, 141, 243)">
+  </rect>
+  <rect x="10" y="118.75" width="20" height="18.75" fill="rgb(255, 198, 185)" stroke="rgb(255, 198, 185)">
+  </rect>
+  <rect x="10" y="100" width="20" height="18.75" fill="rgb(247, 184, 174)" stroke="rgb(247, 184, 174)">
+  </rect>
+  <rect x="10" y="81.25" width="20" height="18.75" fill="rgb(240, 170, 162)" stroke="rgb(240, 170, 162)">
+  </rect>
+  <rect x="10" y="62.5" width="20" height="18.75" fill="rgb(232, 156, 151)" stroke="rgb(232, 156, 151)">
+  </rect>
+  <rect x="10" y="43.75" width="20" height="18.75" fill="rgb(225, 142, 139)" stroke="rgb(225, 142, 139)">
+  </rect>
+  <path d="M20,25L30,43.75L10,43.75" fill="rgb(217, 128, 128)">
+  </path>
+  <g class="scale-text">
+    <text x="35" y="330">0</text>
+    <text x="35" y="292.5">5</text>
+    <text x="35" y="255">10</text>
+    <text x="35" y="217.5">15</text>
+    <text x="35" y="180">20</text>
+    <text x="35" y="142.5">25</text>
+    <text x="35" y="105">30</text>
+    <text x="35" y="67.5">35</text>
+    <text x="35" y="30">40</text>
+  </g>
+  <path d="M10,43.75L20,25L30,43.75L30,325L10,325Z" style="stroke: black; stroke-width: 1; fill: none;">
+  </path>
+</svg>

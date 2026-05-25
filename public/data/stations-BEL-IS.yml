@@ -1,0 +1,839 @@
+# Outermost zoom level - begin
+- name: Reykjavík
+  lat: 64.135
+  lon: -21.877
+
+- name: Hvanneyri
+  lat: 64.5622
+  lon: -21.7649
+
+- name: Holtavörðuheiði
+  lat: 64.9899
+  lon: -21.0576
+
+- name: Ólafsvík
+  lat: 64.8935
+  lon: -23.7269
+
+- name: Stykkishólmur
+  lat: 65.0727
+  lon: -22.7502
+
+- name: Patreksförður
+  lat: 65.5979
+  lon: -24.0
+
+- name: Ísafjörður
+  lat: 66.075
+  lon: -23.126
+
+- name: Fljótavík
+  lat: 66.43
+  lon: -22.925
+
+- name: Hólmavík
+  lat: 65.6968
+  lon: -21.6866
+
+- name: Blönduós
+  lat: 65.657
+  lon: -20.283
+
+- name: Hveravellir
+  lat: 64.866
+  lon: -19.554
+
+- name: Setur
+  lat: 64.604
+  lon: -19.0186
+
+- name: Akureyri
+  lat: 65.683
+  lon: -18.091
+
+- name: Svartárkot
+  lat: 65.3419
+  lon: -17.2432
+
+- name: Húsavík
+  lat: 66.0441
+  lon: -17.3383
+
+- name: Raufarhöfn
+  lat: 66.45204
+  lon: -15.96275
+
+- name: Grímsstaðir á Fjöllum
+  lat: 65.6423
+  lon: -16.1208
+
+- name: Skjaldþingsstaðir
+  lat: 65.7027
+  lon: -14.8211
+
+- name: Egilsstaðir
+  lat: 65.262
+  lon: -14.397
+
+- name: Kárahnjúkar
+  lat: 64.9284
+  lon: -15.7771
+
+- name: Höfn í Hornafirði
+  lat: 64.250
+  lon: -15.206
+
+- name: Kvísker
+  lat: 63.9596
+  lon: -16.4244
+
+- name: Kirkjubæjarklaustur
+  lat: 63.793
+  lon: -18.0119
+
+- name: Vestmannaeyjar
+  lat: 63.4377
+  lon: -20.2673
+
+- name: Árnes
+  lat: 64.0405
+  lon: -20.2521
+
+# Outermost zoom level - end
+
+- name: Keflavíkurflugvöllur
+  lat: 63.97
+  lon: -22.6
+
+- name: Kjalarnes
+  lat: 64.2106
+  lon: -21.7667
+
+- name: Akrafjall
+  lat: 64.3105
+  lon: -21.966
+
+- name: Hafnarfjall
+  lat: 64.4755
+  lon: -21.9603
+
+- name: Borgarnes
+  lat: 64.540
+  lon: -21.9258
+
+- name: Kleppjárnsreykir
+  lat: 64.6563
+  lon: -21.4125
+
+- name: Fíflholt á Mýrum
+  lat: 64.6943
+  lon: -22.1473
+
+- name: Vegamót
+  lat: 64.849238
+  lon: -22.768521
+
+- name: Hraunsmúli
+  lat: 64.8221
+  lon: -23.1894
+
+- name: Fróðárheiði
+  lat: 64.8479
+  lon: -23.4807
+
+- name: Arnarstapi
+  lat: 64.7671
+  lon: -23.6338
+
+- name: Gufuskálar
+  lat: 64.9041
+  lon: -23.9346
+
+- name: Grundarfjörður
+  lat: 64.9250
+  lon: -23.2718
+
+- name: Brattabrekka
+  lat: 64.8716
+  lon: -21.5154
+
+- name: Laxárdalsheiði
+  lat: 65.2066
+  lon: -21.3277
+
+- name: Búðardalur
+  lat: 65.10872
+  lon: -21.7752
+
+- name: Svínadalur í Dölum
+  lat: 65.3058
+  lon: -21.7396
+
+- name: Þröskuldar
+  lat: 65.5524
+  lon: -21.833
+
+- name: Bjarkalundur
+  lat: 65.5347965
+  lon: -22.136359
+
+- name: Klettsháls
+  lat: 65.655
+  lon: -22.6088
+
+- name: Brjánslækur
+  lat: 65.53015
+  lon: -23.1939
+
+- name: Flókalundur
+  lat: 65.57662
+  lon: -23.1679
+
+- name: Bjargtangar
+  lat: 65.5029
+  lon: -24.5312
+
+- name: Kleifaheiði
+  lat: 65.5172
+  lon: -23.7211
+
+- name: Hálfdán
+  lat: 65.6444
+  lon: -23.7106
+
+- name: Gemlufallsheiði
+  lat: 65.94
+  lon: -23.4364
+
+- name: Ögur
+  lat: 66.0449
+  lon: -22.6817
+
+- name: Straumnesvit
+  lat: 66.433
+  lon: -23.133
+
+- name: Hornbjargsviti
+  lat: 66.4107
+  lon: -22.3789
+
+- name: Steingrímsfjarðarheiði
+  lat: 65.7503
+  lon: -22.129
+
+- name: Gjögurflugvöllur
+  lat: 65.9951
+  lon: -21.3304
+
+- name: Bolungarvík
+  lat: 66.1591
+  lon: -23.2517
+
+- name: Flateyri
+  lat: 66.0506
+  lon: -23.5141
+
+- name: Suðureyri
+  lat: 66.1303
+  lon: -23.5267
+
+- name: Tálknafjörður
+  lat: 65.6267
+  lon: -23.8229
+
+- name: Bíldudalur
+  lat: 65.686
+  lon: -23.5995
+
+- name: Gjögrar
+  lat: 65.5909
+  lon: -24.1248
+
+- name: Ennisháls
+  lat: 65.5724
+  lon: -21.329
+
+- name: Reykir í Hrútafirði
+  lat: 65.2543
+  lon: -21.0978
+
+- name: Vatnsskarð
+  lat: 65.5085
+  lon: -19.6945
+
+- name: Þverárfjall
+  lat: 65.7801
+  lon: -20.0186
+
+- name: Skagatá
+  lat: 66.1192
+  lon: -20.0989
+
+- name: Nautabú
+  lat: 65.4583
+  lon: -19.3691
+
+- name: Hólar í Hjaltadal
+  lat: 65.7334
+  lon: -19.11397
+
+- name: Enni í Viðvíkursveit
+  lat: 65.74
+  lon: -19.334
+
+- name: Öxnadalsheiði
+  lat: 65.4676
+  lon: -18.6987
+
+- name: Víkurskarð
+  lat: 65.813
+  lon: -17.991
+
+- name: Kolka
+  lat: 65.2307
+  lon: -19.7177
+
+- name: Sáta
+  lat: 65.0628
+  lon: -18.8383
+
+- name: Sandbúðir
+  lat: 64.933
+  lon: -17.983
+
+- name: Flatey á Skjálfanda
+  lat: 66.1631
+  lon: -17.8408
+
+- name: Fljótsheiði
+  lat: 65.697
+  lon: -17.5032
+
+- name: Staðarhóll
+  lat: 65.821
+  lon: -17.3446
+
+- name: Mánárbakki
+  lat: 66.1994
+  lon: -17.1028
+
+- name: Ásbyrgi
+  lat: 66.03
+  lon: -16.4833
+
+- name: Kópasker
+  lat: 66.3017266
+  lon: -16.4528
+
+- name: Hálsar
+  lat: 66.2532
+  lon: -15.8161
+
+- name: Þeistareykir
+  lat: 65.911
+  lon: -16.9762
+
+- name: Mývatnsheiði
+  lat: 65.6143
+  lon: -17.2169
+
+- name: Hólasandur
+  lat: 65.7374
+  lon: -17.1057
+
+- name: Mývatn
+  lat: 65.6196
+  lon: -16.9768
+
+- name: Mývatnsöræfi
+  lat: 65.6576
+  lon: -16.5006
+
+- name: Fontur
+  lat: 66.3783
+  lon: -14.5326
+
+- name: Miðfjarðarnes
+  lat: 66.0659
+  lon: -15.0792
+
+- name: Sandvíkurheiði
+  lat: 65.8914
+  lon: -14.8253
+
+- name: Vopnafjarðarheiði
+  lat: 65.5947
+  lon: -15.3158
+
+- name: Jökuldalur
+  lat: 65.3019
+  lon: -15.2237
+
+- name: Brú á Jökuldal
+  lat: 65.1086
+  lon: -15.5297
+
+- name: Vatnsskarð eystra
+  lat: 65.5623
+  lon: -13.9897
+
+- name: Seyðisfjörður
+  lat: 65.2549
+  lon: -14.0064
+
+- name: Dalatangi
+  lat: 65.2682
+  lon: -13.5759
+
+- name: Neskaupstaður
+  lat: 65.1503
+  lon: -13.6694
+
+- name: Eskifjörður
+  lat: 65.0763
+  lon: -14.037
+
+- name: Kollaleira í Reyðarfirði
+  lat: 65.0368
+  lon: -14.2397
+
+- name: Seley
+  lat: 64.9778
+  lon: -13.5192
+
+- name: Breiðdalsheiði
+  lat: 64.9068
+  lon: -14.6034
+
+- name: Hallormsstaður
+  lat: 65.0942
+  lon: -14.7447
+
+- name: Fáskrúðsfjörður Ljósaland
+  lat: 64.9372
+  lon: -14.0407
+
+- name: Vattarnes
+  lat: 64.937
+  lon: -13.6846
+
+- name: Kambanes
+  lat: 64.8012
+  lon: -13.8423
+
+- name: Hvalnes
+  lat: 64.4074
+  lon: -14.5393
+
+- name: Eyjabakkar
+  lat: 64.8151
+  lon: -15.4235
+
+- name: Fagurhólsmýri
+  lat: 63.8791
+  lon: -16.6364
+
+- name: Jökulheimar
+  lat: 64.317
+  lon: -18.217
+
+- name: Vatnsfell
+  lat: 64.1956
+  lon: -19.0467
+
+- name: Skarðfjöruviti
+  lat: 63.5179
+  lon: -17.9785
+
+- name: Þúfuver
+  lat: 64.5819
+  lon: -18.5987
+
+- name: Hágöngur
+  lat: 64.5712
+  lon: -18.1111
+
+- name: Lónakvísl
+  lat: 64.098
+  lon: -18.614
+
+- name: Laufbali
+  lat: 64.0255
+  lon: -18.1196
+
+- name: Mýrdalssandur
+  lat: 63.4661
+  lon: -18.6044
+
+- name: Vatnsskarðshólar
+  lat: 63.4236
+  lon: -19.183
+
+- name: Steinar
+  lat: 63.5429
+  lon: -19.6906
+
+- name: Önundarhorn
+  lat: 63.524
+  lon: -19.636
+
+- name: Drangshlíðardalur
+  lat: 63.53
+  lon: -19.519
+
+- name: Markarfljót
+  lat: 63.6216
+  lon: -20.0285
+
+- name: Sámsstaðir
+  lat: 63.7354
+  lon: -20.1091
+
+- name: Hella
+  lat: 63.8257
+  lon: -20.3654
+
+- name: Hjarðarland
+  lat: 64.2509
+  lon: -20.3312
+
+- name: Þykkvibær
+  lat: 63.7477
+  lon: -20.6182
+
+- name: Gullfoss
+  lat: 64.3077
+  lon: -20.2119
+
+- name: Skálholt
+  lat: 64.1323
+  lon: -20.5308
+
+- name: Eyrarbakki
+  lat: 63.8692
+  lon: -21.1602
+
+- name: Surtsey
+  lat: 63.2993
+  lon: -20.5995
+
+- name: Mosfellsheiði
+  lat: 64.214
+  lon: -21.3448
+
+- name: Þrengsli
+  lat: 63.9876
+  lon: -21.4633
+
+- name: Hólmsheiði
+  lat: 64.1085
+  lon: -21.6864
+
+- name: Upptyppingar
+  lat: 65.0607
+  lon: -16.2104
+
+- name: Öxi
+  lat: 64.8257
+  lon: -14.6573
+
+- name: Búrfell
+  lat: 64.1168
+  lon: -19.7449
+
+- name: Seltjarnarnes
+  lat: 64.1545
+  lon: -22.0325
+
+- name: Sandskeið
+  lat: 64.0621
+  lon: -21.5593
+
+- name: Grímsey
+  lat: 66.5438
+  lon: -18.0167
+
+- name: Korpa
+  lat: 64.1505
+  lon: -21.7511
+
+- name: Straumsvík
+  lat: 64.0438
+  lon: -22.0404
+
+- name: Akranes
+  lat: 64.31578
+  lon: -22.078
+
+- name: Grindavík
+  lat: 63.844
+  lon: -22.417
+
+- name: Siglufjörður
+  lat: 66.160
+  lon: -18.900
+
+- name: Vík í Mýrdal
+  lat: 63.419061
+  lon: -19.0152528
+
+- name: Djúpivogur
+  lat: 64.6563
+  lon: -14.29
+
+- name: Vopnafjörður
+  lat: 65.7564
+  lon: -14.8391
+
+- name: Dalvík
+  lat: 65.97297
+  lon: -18.54681
+
+- name: Sauðárkrókur
+  lat: 65.7407
+  lon: -19.64
+
+- name: Ólafsfjörður
+  lat: 66.0696
+  lon: -18.6524
+
+- name: Hofsós
+  lat: 65.8966
+  lon: -19.4150
+
+- name: Hveragerði
+  lat: 63.9993
+  lon: -21.180
+
+- name: Selfoss
+  lat: 63.9327
+  lon: -21.0
+
+- name: Flúðir
+  lat: 64.1329
+  lon: -20.3232
+
+- name: Stórhöfði
+  lat: 63.3996
+  lon: -20.2882
+
+- name: Þorlákshöfn
+  lat: 63.8553
+  lon: -21.3873
+
+- name: Hrafntinnusker
+  lat: 63.937
+  lon: -19.197
+
+- name: Húsafell
+  lat: 64.699
+  lon: -20.872
+
+- name: Skaftafell - Þjóðgarður
+  lat: 64.106934
+  lon: -17.74364
+
+- name: Kerlingarfjöll
+  lat: 64.685
+  lon: -19.302
+
+- name: Dreki
+  lat: 65.042
+  lon: -16.597
+
+- name: Kverkfjöll
+  lat: 64.652
+  lon: -16.723
+
+- name: Grímsvötn
+  lat: 64.396
+  lon: -17.283
+
+- name: Landmannalaugar
+  lat: 63.99
+  lon: -19.06
+
+- name: Þórsmörk
+  lat: 63.681
+  lon: -19.483
+
+- name: Tindfjallasel FBSR
+  lat: 63.7570
+  lon: -19.6982
+
+- name: Hlöðuvík
+  lat: 66.412
+  lon: -22.651
+
+- name: Miðhúsaskógur
+  lat: 64.2709
+  lon: -20.5012
+
+- name: Hnappavellir
+  lat: 63.9062
+  lon: -16.5939
+
+- name: Hellissandur
+  lat: 64.9160
+  lon: -23.8895
+
+- name: Hólahólar
+  lat: 64.7846
+  lon: -23.91
+
+- name: Hellnar
+  lat: 64.7458
+  lon: -23.6846
+
+- name: Búðir
+  lat: 64.8218
+  lon: -23.3867
+
+- name: Staðastaður
+  lat: 64.8177
+  lon: -23.0057
+
+- name: Gauksmýri
+  lat: 65.3444
+  lon: -20.804
+
+- name: Brúsastaðir
+  lat: 65.3784
+  lon: -20.2473
+
+- name: Hellisheiði
+  lat: 64.0188
+  lon: -21.3424
+
+- name: Lyngdalsheiði
+  lat: 64.2018
+  lon: -20.8062
+
+- name: Vatnaleið
+  lat: 64.9095
+  lon: -22.8649
+
+- name: Botnsheiði
+  lat: 64.4529
+  lon: -21.4034
+
+- name: Skaftafell
+  lat: 64.0157
+  lon: -16.9667
+
+- name: Fagradalsfjall
+  lat: 63.8889
+  lon: -22.2617
+
+- name: Skálafell
+  lat: 64.2405
+  lon: -21.4633
+
+- name: Bláfjallaskáli
+  lat: 63.9831
+  lon: -21.6497
+
+- name: Hólmsheiði
+  lat: 64.1085
+  lon: -21.6864
+
+- name: Brennholt
+  lat: 64.172088
+  lon: -21.596461
+
+- name: Markalækur
+  lat: 64.077
+  lon: -20.9842
+# Locations of various mountain cabins in Iceland
+
+- name: Álftavatn
+  lat: 63.8578
+  lon: -19.2273
+
+- name: Hvanngil
+  lat: 63.8338
+  lon: -19.2085
+
+- name: Emstrur
+  lat: 63.7663
+  lon: -19.3742
+
+- name: Langidalur
+  lat: 63.6827
+  lon: -19.5148
+
+- name: Baldvinsskáli
+  lat: 63.6104
+  lon: -19.4413
+
+- name: Hvítárnes
+  lat: 64.6168
+  lon: -19.7566
+
+- name: Nýidalur
+  lat: 64.7355
+  lon: -18.0725
+
+- name: Þjófadalir
+  lat: 64.8150
+  lon: -19.708
+
+- name: Þverbrekknamúli
+  lat: 64.7183
+  lon: -19.6143
+
+- name: Hlöðuvellir
+  lat: 64.3985
+  lon: -20.5565
+
+- name: Hagavatn
+  lat: 64.4527
+  lon: -20.2450
+
+- name: Dreki
+  lat: 65.0420
+  lon: -16.5953
+
+- name: Bræðrafell
+  lat: 65.1881
+  lon: -16.5381
+
+- name: Laugafell
+  lat: 65.0273
+  lon: -18.3324
+
+- name: Herðubreiðarlindir - Þorsteinsskáli
+  lat: 65.1929
+  lon: -16.2230
+
+- name: Sigurðarskáli í Kverkfjöllum
+  lat: 64.7475
+  lon: -16.6315
+
+- name: Breiðá
+  lat: 64.0388
+  lon: -16.3086
+
+- name: Esjufjöll
+  lat: 64.2033
+  lon: -16.4244
+
+- name: Kirkjuból - Fjallkirkja
+  lat: 64.7313
+  lon: -19.8942
+
+- name: Goðahnjúkar
+  lat: 64.5914
+  lon: -15.4813
+
+- name: Gæsavatnaskáli
+  lat: 64.7787
+  lon: -17.5132
+
+- name: Hafrahlíð
+  lat: 65.52
+  lon: -22.072
+
+- name: Breiðavík
+  lat: 65.55
+  lon: -24.37

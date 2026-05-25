@@ -1,0 +1,17 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  font-family:
+    "IBM Plex Sans", "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  color: var(--text);
+}
+
+body {
+  overflow: hidden;
+}

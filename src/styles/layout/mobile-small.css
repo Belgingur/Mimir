@@ -1,0 +1,166 @@
+/* ══════════════════════════════════════════════════════════════════
+   MOBILE-SMALL — portrait phones <=480px
+   Cascade position: after mobile.css, before landscape.css.
+   landscape.css at (max-height: 500px) and (orientation: landscape)
+   overrides the display:none !important rules below for .utility-toggle
+   and .layer-switch-card when in landscape mode.
+   ══════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 480px) {
+  :root {
+    --layer-edge-hit-extension: 18px;
+    --view-edge-hit-extension: 18px;
+    --view-edge-hit-extension-left: 24px;
+    --view-edge-hit-extension-top: 0px;
+    --view-edge-hit-extension-y: 0px;
+    --utility-edge-hit-extension: 18px;
+  }
+
+  /* ── Always-visible elements: explicit restoration guarantees ── */
+  /* These must be visible in portrait mobile-small. Explicit display rules
+     prevent cascade surprises after orientation transitions. */
+
+  .zoom-buttons {
+    display: flex;
+    visibility: visible;
+  }
+
+  .view-toggle--map {
+    display: inline-flex;
+    visibility: visible;
+  }
+
+  .bottom-bar {
+    display: flex;
+    visibility: visible;
+  }
+
+  .legend-stack-card {
+    display: block;
+    visibility: visible;
+  }
+
+  .info-button {
+    display: flex;
+    visibility: visible;
+  }
+
+  /* ── 1. Layer card: compact on small screens ───── */
+
+  /* ── 2. View toggle: keep visible, compact ──────────────── */
+
+  /* Disable the edge-hit proxy button in portrait: the view-toggle is
+     right-aligned and sits directly above the layer-switch-card, so the
+     extended tap area steals taps from the layer slots below.
+     The 38px icon buttons (--icon-button-sm) meet the minimum touch-target
+     requirement on their own. */
+  .view-toggle__edge-hit {
+    pointer-events: none;
+  }
+
+  .view-toggle--map {
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .mode-icon-button {
+    width: var(--icon-button-sm);
+    height: var(--icon-button-sm);
+  }
+
+  /* ── 3. Model card: capped height, above timeline ───────── */
+
+  .model-card {
+    right: 8px;
+    left: auto;
+    bottom: calc(var(--bottom-bar-height) + 4px);
+    width: min(280px, calc(100vw - 16px));
+    max-height: 50vh;
+    max-height: 50dvh;
+    overflow-y: auto;
+    border-radius: 12px;
+    z-index: 280;
+  }
+
+  .model-card #inhouse-warning {
+    max-width: calc(100vw - 16px);
+  }
+
+  .model-panel {
+    max-height: 40vh;
+    max-height: 40dvh;
+    overflow-y: auto;
+    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  }
+
+  /* ── 4. Timeline ────────────────────────────────────────── */
+
+  /* ── 5. Legend: don't overlap model card ─────────────────── */
+
+  .legend-stack-card {
+    right: 8px;
+    left: auto;
+    bottom: calc(var(--bottom-bar-height) + 56px);
+    width: fit-content;
+    max-width: calc(100vw - 16px);
+    max-height: 35vh;
+    overflow-y: auto;
+  }
+
+  /* ── 6. Zoom buttons: top-left, out of the way ──────────── */
+
+  .zoom-buttons {
+    top: 8px;
+    left: 8px;
+  }
+
+  .zoom-buttons button {
+    width: 30px;
+    height: 30px;
+    font-size: 14px;
+  }
+
+  /* ── 7. Info button: inherits from base (already positioned above bar) ── */
+
+  /* ── 8. Map overlays ──────────────────────────────────── */
+
+  .map-overlay--top-left {
+    right: 8px;
+    left: auto;
+    width: auto;
+    max-width: calc(100vw - 16px);
+  }
+
+  .map-overlay--top-right {
+    right: 8px;
+    left: auto;
+    width: auto;
+    max-width: calc(100vw - 16px);
+    align-items: flex-end;
+  }
+
+  /* ── 9. Labels: hide on very small screens ──────────────── */
+
+  .mode-icon-button__label,
+  .layer-slot::after {
+    display: none !important;
+  }
+
+  /* ── 10. Smaller button sizes ──────────────────────────── */
+
+  .layer-toggle-trigger {
+    width: var(--icon-button-sm);
+    height: var(--icon-button-sm);
+  }
+
+  .layer-slot__button {
+    width: var(--icon-button-sm);
+    height: var(--icon-button-sm);
+    border-radius: 12px;
+  }
+
+  .zoom-buttons__grid {
+    width: var(--icon-button-sm);
+    height: var(--icon-button-sm);
+  }
+}

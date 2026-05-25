@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mímir by Belgingur</title>
+    <link rel="preconnect" href="https://api.maptiler.com" crossorigin />
+    <!-- Prevent FOUC: hide app until stylesheet loads and overrides opacity -->
+    <style>
+      #app {
+        opacity: 0;
+      }
+      .chart-modal {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="loading-bar" class="loading-bar"></div>
+    <div id="app">
+      <div class="map-wrap">
+        <div id="map"></div>
+        <div id="grid-labels" class="grid-labels"></div>
+        <div class="zoom-buttons">
+          <button
+            id="zoom-in"
+            type="button"
+            aria-label="Zoom in"
+            data-i18n="map.zoomIn"
+            data-i18n-attr="aria-label"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+            >
+              <path d="M12 5v14" />
+              <path d="M5 12h14" />
+            </svg>
+          </button>
+          <button
+            id="zoom-out"
+            type="button"
+            aria-label="Zoom out"
+            data-i18n="map.zoomOut"
+            data-i18n-attr="aria-label"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+            >
+              <path d="M5 12h14" />
+            </svg>
+          </button>
+          <button
+            id="grid-toggle-button"
+            type="button"
+            class="zoom-buttons__grid forecast-only"
+            aria-label="Grid"
+            aria-pressed="false"
+            data-i18n="map.grid"
+            data-i18n-attr="aria-label"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="3" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="14" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" />
+            </svg>
+            <span class="zoom-buttons__grid-label" data-i18n="map.grid"
+              >Grid</span
+            >
+          </button>
+        </div>
+        <div id="tooltip-host" class="tooltip-host"></div>
+        <div
+          id="inhouse-tooltip"
+          class="inhouse-tooltip"
+          aria-hidden="true"
+        ></div>
+        <button
+          id="info-button"
+          class="info-button"
+          type="button"
+          aria-label="Map info"
+          data-i18n="map.info"
+          data-i18n-attr="aria-label"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 16v-4" />
+            <path d="M12 8h.01" />
+          </svg>
+        </button>
+        <div id="info-panel" class="info-panel" aria-hidden="true">
+          © MapTiler © OpenStreetMap contributors
+        </div>
+
+        <div
+          class="map-overlay map-overlay--top-left"
+          aria-label="Map controls"
+        >
+          <div
+            class="map-control-card control view-toggle view-toggle--map"
+            aria-label="View mode"
+          >
+            <button
+              id="view-forecast"
+              type="button"
+              class="mode-icon-button is-active"
+              aria-label="Forecast"
+              aria-pressed="true"
+              title="Forecast"
+              data-i18n="nav.forecast"
+              data-i18n-attr="aria-label,title"
+            >
+              <span class="mode-icon-button__icon" aria-hidden="true">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="m10.065 12.493-6.18 1.318a.934.934 0 0 1-1.108-.702l-.537-2.15a1.07 1.07 0 0 1 .691-1.265l13.504-4.44"
+                  />
+                  <path d="m13.56 11.747 4.332-.924" />
+                  <path d="m16 21-3.105-6.21" />
+                  <path
+                    d="M16.485 5.94a2 2 0 0 1 1.455-2.425l1.09-.272a1 1 0 0 1 1.212.727l1.515 6.06a1 1 0 0 1-.727 1.213l-1.09.272a2 2 0 0 1-2.425-1.455z"
+                  />
+                  <path d="m6.158 8.633 1.114 4.456" />
+                  <path d="m8 21 3.105-6.21" />
+                  <circle cx="12" cy="13" r="2" />
+                </svg>
+              </span>
+              <span class="mode-icon-button__label" data-i18n="nav.forecast"
+                >Forecast</span
+              >
+            </button>
+            <button
+              id="view-iconography"
+              type="button"
+              class="mode-icon-button"
+              aria-label="Iconography"
+              aria-pressed="false"
+              title="Forecast icons"
+              data-i18n="nav.forecastIcons"
+              data-i18n-attr="title"
+            >
+              <span class="mode-icon-button__icon" aria-hidden="true">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"
+                  />
+                  <path d="M12 19v3" />
+                  <path d="M9 22h6" />
+                </svg>
+              </span>
+              <span class="mode-icon-button__label" data-i18n="nav.icons"
+                >Icons</span
+              >
+            </button>
+            <button
+              id="icon-style-classic"
+              type="button"
+              class="icon-style-btn is-active"
+              aria-pressed="true"
+              title="Classic widget (yr.no icon + wind + temperature)"
+              hidden
+              data-i18n="iconStyle.classic"
+            >
+              Classic
+            </button>
+            <button
+              id="icon-style-compact"
+              type="button"
+              class="icon-style-btn"
+              aria-pressed="false"
+              title="Compact text (temperature and wind speed/direction as text)"
+              hidden
+              data-i18n="iconStyle.compact"
+            >
+              Compact
+            </button>
+            <button
+              id="locale-switcher"
+              type="button"
+              class="locale-switcher"
+              aria-label="Switch language"
+            >
+              EN
+            </button>
+          </div>
+          <!-- Grid toggle moved to .zoom-buttons group -->
+
+          <div
+            class="map-control-card control forecast-only layer-switch-card"
+            aria-label="Layer controls"
+          >
+            <button
+              class="layer-toggle-trigger"
+              id="layer-toggle-trigger"
+              type="button"
+              aria-label="Toggle layers"
+              aria-expanded="false"
+              data-i18n-attr="aria-label"
+              data-i18n="map.toggleLayers"
+            >
+              <span
+                class="layer-toggle-trigger__label"
+                data-i18n="map.variables"
+                >Variables</span
+              >
+              <span
+                class="layer-toggle-trigger__icon layer-toggle-trigger__icon--layers"
+                aria-hidden="true"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                  <path d="M2 17l10 5 10-5" />
+                  <path d="M2 12l10 5 10-5" />
+                </svg>
+              </span>
+              <span
+                class="layer-toggle-trigger__icon layer-toggle-trigger__icon--collapse"
+                aria-hidden="true"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M18 15l-6-6-6 6" />
+                </svg>
+              </span>
+            </button>
+            <div id="layer-group-list" class="layer-group-list" hidden></div>
+          </div>
+        </div>
+
+        <div class="legacy-hidden" aria-hidden="true">
+          <label class="toggle">
+            <input id="layer-toggle" type="checkbox" checked />
+            <span>Layer visible</span>
+          </label>
+          <label class="toggle">
+            <input id="grid-toggle" type="checkbox" />
+            <span>Lat/Lon grid</span>
+          </label>
+          <label for="opacity">Opacity</label>
+          <input
+            id="opacity"
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value="1"
+          />
+          <div class="value" id="opacity-value">1.00</div>
+        </div>
+
+        <!-- Legend card — position: absolute within .map-wrap; bottom-right, just above the bottom bar -->
+        <div
+          class="map-control-card control forecast-only legend-stack-card"
+          aria-label="Map legend"
+        >
+          <div id="legend-control" class="legend-host"></div>
+          <div id="wave-legend-control" class="legend-host"></div>
+          <div id="wind-legend-control" class="legend-host"></div>
+          <div id="precip-legend-control" class="legend-host"></div>
+          <div id="cloud-legend-control" class="legend-host"></div>
+          <div id="snow-depth-legend-control" class="legend-host"></div>
+        </div>
+
+        <div class="bottom-bar forecast-only">
+          <div id="timeline-control" class="timeline-host forecast-only"></div>
+
+          <div class="bottom-bar__sep"></div>
+
+          <div class="model-pill-wrap">
+            <button
+              class="model-pill"
+              aria-expanded="false"
+              aria-controls="model-popover"
+            >
+              <span class="model-pill__name"></span>
+              <span class="model-pill__meta"></span>
+              <span class="model-pill__chevron">&#9650;</span>
+            </button>
+            <div class="model-popover" id="model-popover"></div>
+          </div>
+
+          <div
+            class="map-control-card control forecast-only model-card inhouse-controls"
+            data-render-state="staging"
+            style="visibility: hidden; opacity: 0; pointer-events: none"
+          >
+            <div id="model-bar" class="model-bar"></div>
+            <div id="model-panel" class="model-panel" hidden></div>
+            <div class="legacy-hidden">
+              <label class="debug-label" for="inhouse-model">Model</label>
+              <select id="inhouse-model" class="debug-select"></select>
+            </div>
+            <div id="inhouse-warning" class="debug-status"></div>
+            <div class="legacy-hidden">
+              <label class="debug-label" for="inhouse-analysis">Analysis</label>
+              <select id="inhouse-analysis" class="debug-select"></select>
+              <label class="debug-label" for="inhouse-variable">Variable</label>
+              <select id="inhouse-variable" class="debug-select"></select>
+              <button id="inhouse-add-layer" type="button">Add layer</button>
+            </div>
+          </div>
+        </div>
+        <div id="wavegram-modal" class="chart-modal" aria-hidden="true">
+          <div
+            class="chart-modal__card"
+            role="dialog"
+            aria-label="Spread wavegram"
+          >
+            <div class="chart-modal__header">
+              <div>
+                <div class="chart-modal__title" data-i18n="modal.wavegram">
+                  Spread wavegram
+                </div>
+                <div id="wavegram-subtitle" class="chart-modal__subtitle"></div>
+              </div>
+              <div class="wavegram-actions">
+                <button
+                  id="wavegram-download"
+                  type="button"
+                  data-i18n="wavegram.downloadPng"
+                >
+                  Download PNG
+                </button>
+                <button
+                  id="wavegram-print"
+                  type="button"
+                  data-i18n="wavegram.print"
+                >
+                  Print
+                </button>
+              </div>
+              <button
+                id="wavegram-close"
+                class="chart-modal__close"
+                type="button"
+                aria-label="Close"
+                data-i18n="map.close"
+                data-i18n-attr="aria-label"
+              >
+                ×
+              </button>
+            </div>
+            <div class="chart-modal__status" id="wavegram-status"></div>
+            <div class="chart-modal__host">
+              <div class="wavegram-controls">
+                <label for="wavegram-duration" data-i18n="wavegram.duration"
+                  >Duration</label
+                >
+                <select id="wavegram-duration">
+                  <option
+                    value="24"
+                    data-i18n="wavegram.hours"
+                    data-i18n-n="24"
+                  >
+                    24 hours
+                  </option>
+                  <option
+                    value="48"
+                    data-i18n="wavegram.hours"
+                    data-i18n-n="48"
+                  >
+                    48 hours
+                  </option>
+                  <option
+                    value="72"
+                    data-i18n="wavegram.hours"
+                    data-i18n-n="72"
+                  >
+                    72 hours
+                  </option>
+                  <option
+                    value="120"
+                    data-i18n="wavegram.hours"
+                    data-i18n-n="120"
+                    selected
+                  >
+                    120 hours
+                  </option>
+                </select>
+                <label class="wavegram-tech-toggle">
+                  <input id="wavegram-tech-toggle" type="checkbox" checked />
+                  <span data-i18n="wavegram.showTech"
+                    >Show technical details</span
+                  >
+                </label>
+              </div>
+              <div class="wavegram-caption">
+                Analysis time: see tech block on plot.
+              </div>
+              <img
+                id="wavegram-image"
+                class="wavegram-image"
+                alt="Spread wavegram"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="legacy-hidden" aria-hidden="true">
+          <div id="wind-style-warning" class="debug-status"></div>
+          <div id="wind-particles-advanced" class="dev-only">
+            <label class="debug-label" for="wind-particles-count"
+              >Particles</label
+            >
+            <input
+              id="wind-particles-count"
+              type="range"
+              min="100"
+              max="2000"
+              step="50"
+              value="900"
+            />
+            <div id="wind-particles-count-value" class="value">900</div>
+            <label class="debug-label" for="wind-particles-age"
+              >Particle age</label
+            >
+            <input
+              id="wind-particles-age"
+              type="range"
+              min="5"
+              max="30"
+              step="1"
+              value="10"
+            />
+            <div id="wind-particles-age-value" class="value">10</div>
+            <label class="debug-label" for="wind-particles-speed"
+              >Speed factor</label
+            >
+            <input
+              id="wind-particles-speed"
+              type="range"
+              min="0.1"
+              max="20"
+              step="0.1"
+              value="20"
+            />
+            <div id="wind-particles-speed-value" class="value">20.0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
