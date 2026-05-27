@@ -32,7 +32,7 @@ This project depends on [WeatherLayers GL](https://weatherlayers.com/), which is
 
 ## Requirements
 
-- Node.js 22
+- Node.js 26
 - npm
 - A [MapTiler](https://www.maptiler.com/) API key for the Positron basemap
 - A WeatherLayers GL license
