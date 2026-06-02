@@ -3,6 +3,7 @@ numpy
 Pillow
 PyYAML
 xarray
+netcdf4
 
 # Optional: regridding curvilinear/projected grids (requires ESMF)
 # Install via conda-forge: conda install -c conda-forge xesmf
