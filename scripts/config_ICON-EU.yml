@@ -1,0 +1,50 @@
+# Example configuration for netcdf2image.py
+
+# Model and output
+model: ICON-EU
+out_root: ./
+
+# Processing
+#export_all: true
+jobs: 9
+# history_interval is intentionally omitted: ICON-EU files carry a WRF-style
+# 'Times' variable from which the (non-uniform) timesteps are decoded directly.
+# Specifying a fixed interval here would be misleading and is no longer needed.
+
+# Paths
+weights_dir: ./weights
+scaling_policy_yml: ./manifest_scaling_v2.yml
+
+# Variable selection
+include: 
+ - air_temperature_at_2m_agl
+ - wind_from_direction_at_10m_agl
+ - wind_speed_at_10m_agl
+ - lwe_precipitation_rate
+ - lwe_snowfall_rate
+ - snow_fraction # this is a derived variable
+# - air_pressure_at_sea_level
+ - cloud_area_fraction
+ - U_true_at_10m_agl
+ - V_true_at_10m_agl
+# - relative_humidity_at_2m_agl
+# - lwe_snow_depth
+# - visibility_in_air_at_2m_agl
+# - wind_speed_of_gust_at_10m_agl
+#exclude: []
+
+# Output format
+format: WEBP
+
+# Regridding
+no_regrid: false
+target_bounds: null
+#target_res_deg: 0.02
+target_shape: null
+#regrid_method: bilinear
+regrid_method: nearest
+detail_scale: 1.0
+
+# Debugging / logging
+debug: false
+verbose: true
