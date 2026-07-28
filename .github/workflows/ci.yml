@@ -24,6 +24,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check vendored bel-meteogram matches its pinned release
+        run: npm run meteogram:check
+
       - name: Type-check
         run: npx tsc -b
 

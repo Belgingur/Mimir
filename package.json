@@ -11,7 +11,9 @@
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "preview": "vite preview",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "meteogram:sync": "node scripts/vendor-meteogram.mjs sync",
+    "meteogram:check": "node scripts/vendor-meteogram.mjs check"
   },
   "dependencies": {
     "@deck.gl/core": "9.3.2",
