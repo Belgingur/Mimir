@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
+    "lint": "eslint .",
     "preview": "vite preview",
     "postinstall": "patch-package",
     "meteogram:sync": "node scripts/vendor-meteogram.mjs sync",
