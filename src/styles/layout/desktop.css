@@ -14,7 +14,7 @@
 
   .legend-stack-card {
     right: 12px;
-    bottom: calc(var(--bottom-bar-height) + 8px);
+    bottom: calc(var(--bottom-bar-height) + var(--safe-area-bottom) + 8px);
     width: fit-content;
     max-width: calc(100vw - 24px);
   }

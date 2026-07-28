@@ -12,6 +12,18 @@ body,
   color: var(--text);
 }
 
+html,
+body {
+  /* Stop the page itself from rubber-banding / chaining scroll on touch, which
+     otherwise competes with MapLibre's pan and the browser's pinch. */
+  overscroll-behavior: none;
+}
+
 body {
   overflow: hidden;
+  /* The app is a single fixed surface; the map canvas and scrollable panels set
+     their own touch-action, so blocking gestures on <body> only kills stray
+     page-level pan/zoom without affecting real controls. (touch-action is not
+     inherited, so children are unaffected.) */
+  touch-action: none;
 }

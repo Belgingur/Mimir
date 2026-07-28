@@ -42,7 +42,12 @@ body.is-loading .loading-bar {
 #app {
   position: relative;
   background: radial-gradient(circle at 20% 20%, #f2f5f7, #e6ecef 60%, #dde4e8);
+  /* 100dvh tracks the *visible* viewport: the layout shrinks/grows as the
+     mobile URL bar hides/shows, instead of being locked to the large viewport
+     (100vh) where the bar permanently steals space. vh is the fallback for
+     browsers without dvh support. */
   height: 100vh;
+  height: 100dvh;
   opacity: 1;
   transition: opacity 0.15s ease;
 }
@@ -184,10 +189,14 @@ input[type="range"] {
   left: 0;
   right: 0;
   bottom: 0;
-  height: var(--bottom-bar-height);
+  /* Grow upward by the device safe-area so the controls clear the iOS home
+     indicator / Android gesture bar instead of sitting under it. The left/right
+     insets keep the timeline clear of the notch when landscape + cover. */
+  height: calc(var(--bottom-bar-height) + var(--safe-area-bottom));
   align-items: center;
   z-index: 280;
-  padding: 0 10px;
+  padding: 0 calc(10px + var(--safe-area-right)) var(--safe-area-bottom)
+    calc(10px + var(--safe-area-left));
   border-radius: 10px 10px 0 0;
   background: linear-gradient(
     180deg,
@@ -264,6 +273,15 @@ input[type="range"] {
   backdrop-filter: blur(14px);
   box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.3);
   min-width: 140px;
+  /* Cap the list to the space above the bottom bar and scroll the overflow, so
+     a long model list is never clipped off the top of the screen — most visible
+     in landscape, where the viewport is short. */
+  max-height: calc(
+    100dvh - var(--bottom-bar-height) - var(--safe-area-bottom) -
+      var(--safe-area-top) - 24px
+  );
+  overflow-y: auto;
+  overscroll-behavior: contain;
   z-index: 10;
   opacity: 0;
   transform: translateY(4px);
@@ -351,4 +369,15 @@ input[type="range"] {
 #wind-particles-advanced {
   display: grid;
   gap: 8px;
+}
+
+/* "Use my location" map control button (task A1). */
+.mimir-locate-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text, #14202b);
+}
+.mimir-locate-btn svg {
+  display: block;
 }

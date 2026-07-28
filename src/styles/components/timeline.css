@@ -115,6 +115,9 @@
   position: absolute;
   top: -24px;
   transform: translateX(-50%);
+  /* Anchor the scale to the arrow tip so the bubble grows up/out on hover
+     without the pointer drifting off the rail position it marks. */
+  transform-origin: bottom center;
   border: 0;
   border-radius: var(--radius-pill);
   padding: 3px 7px;
@@ -126,7 +129,30 @@
   white-space: nowrap;
   cursor: grab;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
-  transition: left 80ms ease;
+  transition:
+    left 80ms ease,
+    transform 140ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 140ms ease;
+}
+
+/* Desktop: the tab blows up when the mouse hovers or it takes keyboard focus. */
+.timeline-bubble:hover,
+.timeline-bubble:focus-visible {
+  transform: translateX(-50%) scale(1.55);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.28);
+}
+
+.timeline-bubble:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.6);
+  outline-offset: 2px;
+}
+
+/* Touch screens have no hover, so the tab blows up while it is being dragged
+   instead — the `is-scrubbing` class is toggled on pointerdown/up. This also
+   gives mouse users feedback while scrubbing. */
+.timeline-bubble.is-scrubbing {
+  transform: translateX(-50%) scale(1.7);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.28);
 }
 
 .timeline-bubble::after {
@@ -176,4 +202,56 @@
 
 .timeline-day-segment.is-muted-label {
   color: rgba(244, 247, 250, 0.55);
+}
+
+/* ── Draggable forecast-time bubble on the map ─────────────────────────────
+   Mirrors the timeline tab's timestamp; positioned absolute inside .map-wrap
+   and draggable with the same helper as the legend card (setupLegendDrag). */
+.map-time-bubble {
+  position: absolute;
+  /* Top-centre: the map's corners are taken (zoom top-left, menu/view-toggle
+     top-right, info bottom-left, legend bottom-right, timeline along the
+     bottom). setupLegendDrag clears this transform on drag so px positioning
+     stays exact. */
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-chrome);
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  background: #d97433;
+  color: #fffaf4;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+}
+
+.map-time-bubble[hidden] {
+  display: none;
+}
+
+.map-time-bubble.is-dragging {
+  cursor: grabbing;
+}
+
+/* The bubble describes the forecast raster, which isn't shown in iconography
+   view — hide it there, matching the legend card. */
+body.view-iconography .map-time-bubble {
+  display: none !important;
+}
+
+/* Touch devices: informational only. Let touches fall through to the map so
+   pan/pinch keep working over the bubble (dragging is a mouse/pen affordance). */
+@media (hover: none) and (pointer: coarse) {
+  .map-time-bubble {
+    pointer-events: none;
+    touch-action: auto;
+  }
 }

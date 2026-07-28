@@ -78,6 +78,8 @@ export class TimelineController {
   private loadedIndex: number | null = null;
   private lastLoadError: string | null = null;
   private _timelineHostEl: HTMLDivElement | null = null;
+  private mapTimeBubbleEl: HTMLElement | null = null;
+  private mapTimeBubbleTextEl: HTMLElement | null = null;
 
   constructor(deps: TimelineDeps) {
     this.deps = deps;
@@ -167,6 +169,16 @@ export class TimelineController {
     if (options.loadingEl !== undefined)
       this.timelineLoadingEl = options.loadingEl;
     if (options.debugEl !== undefined) this.timelineDebugEl = options.debugEl;
+  }
+
+  /** Wire the draggable on-map forecast-time readout (repeats the tab label). */
+  setMapTimeBubble(
+    bubbleEl: HTMLElement | null,
+    textEl: HTMLElement | null,
+  ): void {
+    this.mapTimeBubbleEl = bubbleEl;
+    this.mapTimeBubbleTextEl = textEl;
+    this.renderCustomTimeline();
   }
 
   setTimelineContainerState(
@@ -267,9 +279,14 @@ export class TimelineController {
     const selectedIndex = this.getActiveTimelineIndex();
     const ratio =
       datetimes.length > 1 ? selectedIndex / (datetimes.length - 1) : 0;
-    this.timelineBubbleTextEl.textContent = formatTimelineBubbleLabel(
-      datetimes[selectedIndex],
-    );
+    const bubbleLabel = formatTimelineBubbleLabel(datetimes[selectedIndex]);
+    this.timelineBubbleTextEl.textContent = bubbleLabel;
+    if (this.mapTimeBubbleTextEl) {
+      this.mapTimeBubbleTextEl.textContent = bubbleLabel;
+    }
+    if (this.mapTimeBubbleEl) {
+      this.mapTimeBubbleEl.hidden = false;
+    }
     this.timelineBubbleEl.style.left = `${ratio * 100}%`;
     this.timelineProgressEl.style.width = `${ratio * 100}%`;
     this.timelineMarkerEl.style.left = `${ratio * 100}%`;
@@ -369,15 +386,33 @@ export class TimelineController {
     ) as HTMLDivElement;
 
     const startScrub = (event: PointerEvent) => {
+      // Grabbing the timeline hands control to the user: stop playback so its
+      // loop doesn't keep advancing in the background and snap the marker back
+      // to where it was when the pointer is released.
+      if (
+        this._playbackState === "playing" ||
+        this._playbackState === "waitingForFrame"
+      ) {
+        this.stopPlayback("paused");
+        if (this.timelinePlayingClass && this._timelineContainerEl) {
+          this._timelineContainerEl.classList.remove(this.timelinePlayingClass);
+        }
+      }
+      // Blow the tab up for the duration of the drag — the CSS hover state
+      // covers desktop, but touch screens only get feedback via this class.
+      this.timelineBubbleEl?.classList.add("is-scrubbing");
       this.applyTimelineIndexFromPointer(event.clientX);
       const onMove = (moveEvent: PointerEvent) =>
         this.applyTimelineIndexFromPointer(moveEvent.clientX);
       const onUp = () => {
+        this.timelineBubbleEl?.classList.remove("is-scrubbing");
         window.removeEventListener("pointermove", onMove);
         window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onUp);
       };
       window.addEventListener("pointermove", onMove);
       window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onUp);
     };
 
     this.timelinePlayBtnEl.addEventListener("click", () => {

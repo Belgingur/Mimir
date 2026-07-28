@@ -40,8 +40,11 @@ export const pl: Record<string, string> = {
   "map.toggleLayers": "Przełącz warstwy",
   "map.infoControls": "Sterowanie informacjami",
   "map.close": "Zamknij",
+  "map.myLocation": "Użyj mojej lokalizacji",
+  "map.locationUnavailable": "Nie udało się ustalić Twojej lokalizacji.",
   "map.variable": "Zmienna",
   "map.variables": "Zmienne",
+  "map.menu": "Menu",
 
   // ── Layer groups ─────────────────────────────────────────────────────
   "layer.temperature": "Temperatura",
@@ -122,13 +125,18 @@ export const pl: Record<string, string> = {
   // ── Loading / status ─────────────────────────────────────────────────
   "status.loadingFrame": "Wczytywanie klatki…",
   "status.loadingModel": "Wczytywanie modelu…",
+  "status.loadingDataset": "Wczytywanie {{model}}…",
+  "status.datasetFailed": "Nie udało się wczytać {{model}}. Może teraz nie mieć danych.",
+  "action.backToModel": "Powrót do {{model}}",
   "status.loadingWavegram": "Wczytywanie wykresu falowania…",
+  "status.loadingMeteogram": "Wczytywanie meteogramu…",
   "status.noData": "Brak dostępnych danych.",
   "status.noNumericData":
     "Brak danych liczbowych dla tej zmiennej/zakresu czasu.",
 
   // ── Modal titles ─────────────────────────────────────────────────────
   "modal.wavegram": "Wykres falowania",
+  "modal.meteogram": "Meteogram",
 
   // ── Wavegram controls ────────────────────────────────────────────────
   "wavegram.duration": "Czas trwania",
@@ -137,6 +145,9 @@ export const pl: Record<string, string> = {
   "wavegram.print": "Drukuj",
   "wavegram.showTech": "Pokaż szczegóły techniczne",
   "wavegram.failed": "Nie udało się wczytać wykresu falowania.",
+  "meteogram.loadFailed": "Nie udało się wczytać meteogramu dla {{model}} — punkt może znajdować się poza obszarem prognozy modelu. Wybierz inny model lub lokalizację. ({{message}})",
+  "meteogram.outsideDomain": "Ta lokalizacja może znajdować się poza obszarem prognozy modelu {{model}}.",
+  "meteogram.openAtCenter": "Pokaż meteogram dla zaznaczonego punktu",
   "wavegram.unconfigured":
     "Usługa wykresu falowania nie jest skonfigurowana. Ustaw VITE_BELGINGUR_BASE_URL, aby ją włączyć.",
   "wavegram.downloadFail":

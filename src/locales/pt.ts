@@ -23,8 +23,11 @@ export const pt: Record<string, string> = {
   "map.toggleLayers": "Alternar camadas",
   "map.infoControls": "Controles de informações do mapa",
   "map.close": "Fechar",
+  "map.myLocation": "Usar a minha localização",
+  "map.locationUnavailable": "Não foi possível obter a sua localização.",
   "map.variable": "Variável",
   "map.variables": "Variáveis",
+  "map.menu": "Menu",
   // ── Layer groups ─────────────────────────────────────────────────────
   "layer.temperature": "Temperatura",
   "layer.wind": "Vento",
@@ -95,12 +98,17 @@ export const pt: Record<string, string> = {
   // ── Loading / status ─────────────────────────────────────────────────
   "status.loadingFrame": "Carregando quadro…",
   "status.loadingModel": "Carregando modelo…",
+  "status.loadingDataset": "Carregando {{model}}…",
+  "status.datasetFailed": "Não foi possível carregar {{model}}. Pode não ter dados agora.",
+  "action.backToModel": "Voltar para {{model}}",
   "status.loadingWavegram": "Carregando ondograma…",
+  "status.loadingMeteogram": "Carregando meteograma…",
   "status.noData": "Nenhum dado disponível.",
   "status.noNumericData":
     "Nenhum dado numérico para esta variável/intervalo de tempo.",
   // ── Modal titles ─────────────────────────────────────────────────────
   "modal.wavegram": "Ondograma de dispersão",
+  "modal.meteogram": "Meteograma",
   // ── Wavegram controls ────────────────────────────────────────────────
   "wavegram.duration": "Duração",
   "wavegram.hours": "{{n}} horas",
@@ -108,6 +116,9 @@ export const pt: Record<string, string> = {
   "wavegram.print": "Imprimir",
   "wavegram.showTech": "Exibir detalhes técnicos",
   "wavegram.failed": "Falha ao carregar ondograma.",
+  "meteogram.loadFailed": "Não foi possível carregar o meteograma de {{model}} — este ponto pode estar fora da área de previsão do modelo. Tente outro modelo ou local. ({{message}})",
+  "meteogram.outsideDomain": "Este local pode estar fora da área de previsão de {{model}}.",
+  "meteogram.openAtCenter": "Mostrar meteograma para o ponto marcado",
   "wavegram.unconfigured":
     "O serviço de ondograma não está configurado. Defina VITE_BELGINGUR_BASE_URL para ativá-lo.",
   "wavegram.downloadFail":

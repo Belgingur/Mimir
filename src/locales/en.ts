@@ -31,8 +31,11 @@ export const en: Record<string, string> = {
   "map.toggleLayers": "Toggle layers",
   "map.infoControls": "Map info controls",
   "map.close": "Close",
+  "map.myLocation": "Use my location",
+  "map.locationUnavailable": "Couldn't get your location.",
   "map.variable": "Variable",
   "map.variables": "Variables",
+  "map.menu": "Menu",
 
   // ── Layer groups ─────────────────────────────────────────────────────
   "layer.temperature": "Temperature",
@@ -111,12 +114,17 @@ export const en: Record<string, string> = {
   // ── Loading / status ─────────────────────────────────────────────────
   "status.loadingFrame": "Loading frame…",
   "status.loadingModel": "Loading model...",
+  "status.loadingDataset": "Loading {{model}}…",
+  "status.datasetFailed": "Couldn't load {{model}}. It may have no data right now.",
+  "action.backToModel": "Back to {{model}}",
   "status.loadingWavegram": "Loading wavegram…",
+  "status.loadingMeteogram": "Loading meteogram…",
   "status.noData": "No data available.",
   "status.noNumericData": "No numeric data for this variable/time range.",
 
   // ── Modal titles ─────────────────────────────────────────────────────
   "modal.wavegram": "Spread wavegram",
+  "modal.meteogram": "Meteogram",
 
   // ── Wavegram controls ────────────────────────────────────────────────
   "wavegram.duration": "Duration",
@@ -125,6 +133,9 @@ export const en: Record<string, string> = {
   "wavegram.print": "Print",
   "wavegram.showTech": "Show technical details",
   "wavegram.failed": "Failed to load wavegram.",
+  "meteogram.loadFailed": "Couldn't load the meteogram for {{model}} — this location may be outside the model's forecast area. Try another model or location. ({{message}})",
+  "meteogram.outsideDomain": "This location may be outside {{model}}'s forecast area.",
+  "meteogram.openAtCenter": "Show meteogram for the marked point",
   "wavegram.unconfigured":
     "Wavegram service is not configured. Set VITE_BELGINGUR_BASE_URL to enable it.",
   "wavegram.downloadFail": "Download failed. Open image in new tab to save.",

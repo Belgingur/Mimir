@@ -1,0 +1,78 @@
+/* Model/analysis switch loading + error overlay (task B2). */
+.dataset-loader {
+  position: absolute;
+  inset: 0;
+  /* Above the forecast frame / grid (z 90) but below the edge controls (z 200)
+     so the previous frame dims while zoom + timeline controls stay usable. */
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Let pans/clicks fall through to the map; only the card is interactive. */
+  pointer-events: none;
+  background: rgba(233, 238, 241, 0.45);
+  backdrop-filter: saturate(0.85);
+}
+.dataset-loader[hidden] {
+  display: none;
+}
+
+.dataset-loader__card {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 22px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 6px 24px rgba(20, 32, 43, 0.18);
+  color: var(--text, #14202b);
+  max-width: min(360px, 80%);
+  text-align: center;
+}
+
+.dataset-loader__spinner {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 3px solid rgba(20, 32, 43, 0.15);
+  border-top-color: var(--accent-orange, #d97433);
+  animation: dataset-loader-spin 0.9s linear infinite;
+}
+
+@keyframes dataset-loader-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.dataset-loader__text {
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.dataset-loader--error .dataset-loader__card {
+  border: 1px solid rgba(200, 29, 37, 0.35);
+}
+
+.dataset-loader__back {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-light, rgba(20, 32, 43, 0.2));
+  background: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+  color: var(--text, #14202b);
+  cursor: pointer;
+}
+.dataset-loader__back:hover {
+  background: var(--accent-orange, #d97433);
+  color: #fff;
+  border-color: transparent;
+}
+
+/* Busy indication on the dataset selectors while a switch is loading. */
+.inhouse-controls select[aria-busy="true"] {
+  opacity: 0.6;
+  cursor: progress;
+}

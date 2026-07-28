@@ -30,6 +30,40 @@ export type ProviderFrame = {
   imageType: WeatherLayers.ImageType;
 };
 
+/** Geographic bounding box of a model domain (WGS84 lon/lat degrees). */
+export type ModelBBox = {
+  west: number;
+  south: number;
+  east: number;
+  north: number;
+};
+
+/**
+ * Per-model coverage metadata used for automatic, location-based model
+ * selection (task A2/A3). Populated from `models.json`; every field except
+ * `id`/`available` is optional so pre-existing catalogs keep working.
+ */
+export type ModelCoverage = {
+  id: string;
+  title?: string;
+  /** Model domain bbox (cheap first containment check). */
+  bbox?: ModelBBox;
+  /**
+   * Optional precise domain as GeoJSON Polygon ring(s): `[[ [lon,lat], … ]]`.
+   * Used for non-rectangular (rotated/curvilinear) domains after the bbox check.
+   */
+  domainPolygon?: number[][][];
+  /** Grid resolution in km; lower = finer. Used to rank candidates. */
+  resolutionKm?: number;
+  /** Shrink the usable area inward by this many km to avoid domain-edge effects. */
+  marginKm?: number;
+  /**
+   * Health flag: `false` when ops mark the model as having no data, so
+   * selection skips it. Defaults to `true`.
+   */
+  available: boolean;
+};
+
 export type InhouseManifest = {
   bounds: [number, number, number, number];
   shape: { width: number; height: number } | [number, number];
@@ -41,7 +75,12 @@ export type InhouseManifest = {
   fileTemplate: string;
   count: number;
   times?: string[];
+  /** Model run label, e.g. "2026-07-16_00". */
   analysisTime: string;
+  /** Model run / analysis time as ISO 8601 UTC, e.g. "2026-07-16T00:00:00Z". */
+  analysisTimeISO?: string;
+  /** When this manifest/dataset was produced, ISO 8601 UTC. */
+  generatedAt?: string;
   historyIntervalMinutes?: number;
   encoding?: { kind?: string; dtype?: string };
   rendering?: { resolutionMeters?: number; [key: string]: unknown };

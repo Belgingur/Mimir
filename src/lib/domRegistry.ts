@@ -37,6 +37,8 @@ export interface AppDom {
   cloudLegendHost: HTMLDivElement;
   snowDepthLegendHost: HTMLDivElement;
   legendStackCardEl: HTMLDivElement | null;
+  mapTimeBubbleEl: HTMLDivElement | null;
+  mapTimeBubbleTextEl: HTMLSpanElement | null;
 
   // -- layer group / grid --
   layerGroupList: HTMLDivElement;
@@ -143,6 +145,10 @@ export function queryDom(): AppDom {
     cloudLegendHost: byId<HTMLDivElement>("cloud-legend-control"),
     snowDepthLegendHost: byId<HTMLDivElement>("snow-depth-legend-control"),
     legendStackCardEl: bySelectorOrNull<HTMLDivElement>(".legend-stack-card"),
+    mapTimeBubbleEl: bySelectorOrNull<HTMLDivElement>(".map-time-bubble"),
+    mapTimeBubbleTextEl: bySelectorOrNull<HTMLSpanElement>(
+      ".map-time-bubble__text",
+    ),
 
     // layer group / grid
     layerGroupList: byId<HTMLDivElement>("layer-group-list"),

@@ -1,6 +1,107 @@
 import type { LayerMode } from "./viewerTypes";
+import type { ModelBBox, ModelCoverage } from "./inhouseTypes";
 
 export const GWES_MODEL_ID = "GWES";
+
+const parseBBox = (raw: unknown): ModelBBox | undefined => {
+  if (!raw || typeof raw !== "object") return undefined;
+  const b = raw as Record<string, unknown>;
+  const { west, south, east, north } = b;
+  if (
+    typeof west === "number" &&
+    typeof south === "number" &&
+    typeof east === "number" &&
+    typeof north === "number"
+  ) {
+    return { west, south, east, north };
+  }
+  return undefined;
+};
+
+/**
+ * Accept a GeoJSON Polygon as either bare coordinates (`[[ [lon,lat], … ]]`)
+ * or a `{ type, coordinates }` geometry object. Returns undefined for anything
+ * that isn't a well-formed ring array of numeric [lon,lat] pairs.
+ */
+const parseDomainPolygon = (raw: unknown): number[][][] | undefined => {
+  if (!raw) return undefined;
+  let coords: unknown = raw;
+  if (typeof raw === "object" && !Array.isArray(raw)) {
+    coords = (raw as Record<string, unknown>).coordinates;
+  }
+  if (!Array.isArray(coords)) return undefined;
+  const out: number[][][] = [];
+  for (const ring of coords as unknown[]) {
+    if (!Array.isArray(ring)) return undefined;
+    const pts: number[][] = [];
+    for (const pt of ring as unknown[]) {
+      if (
+        !Array.isArray(pt) ||
+        typeof pt[0] !== "number" ||
+        typeof pt[1] !== "number"
+      ) {
+        return undefined;
+      }
+      pts.push([pt[0], pt[1]]);
+    }
+    out.push(pts);
+  }
+  return out.length ? out : undefined;
+};
+
+/**
+ * Normalize `models.json` into ids + default + per-model coverage metadata
+ * (bbox / resolution / domain polygon / health flag). Unlike normalizeIdList,
+ * this preserves the extra selection fields (task A2). Mirrors the shape of
+ * normalizeVariableList. Accepts a bare id array, an object with a `models`
+ * array of ids, or an object with a `models` array of entry objects.
+ */
+export const normalizeModelList = (
+  data: unknown,
+): { ids: string[]; defaultId: string; meta: Record<string, ModelCoverage> } => {
+  const meta: Record<string, ModelCoverage> = {};
+  const ids: string[] = [];
+  let defaultId = "";
+
+  const list: unknown[] = Array.isArray(data)
+    ? data
+    : data && typeof data === "object" && Array.isArray((data as Record<string, unknown>).models)
+      ? ((data as Record<string, unknown>).models as unknown[])
+      : [];
+
+  for (const item of list) {
+    if (typeof item === "string" || typeof item === "number") {
+      const id = String(item);
+      if (!id) continue;
+      ids.push(id);
+      meta[id] = { id, available: true };
+      continue;
+    }
+    if (item && typeof item === "object") {
+      const entry = item as Record<string, unknown>;
+      const id = entry.id ? String(entry.id) : "";
+      if (!id) continue;
+      ids.push(id);
+      meta[id] = {
+        id,
+        title: entry.title ? String(entry.title) : undefined,
+        bbox: parseBBox(entry.bbox),
+        domainPolygon: parseDomainPolygon(entry.domain_polygon),
+        resolutionKm:
+          typeof entry.resolution_km === "number"
+            ? entry.resolution_km
+            : undefined,
+        marginKm:
+          typeof entry.margin_km === "number" ? entry.margin_km : undefined,
+        // Healthy unless explicitly disabled by ops.
+        available: !(entry.available === false || entry.disabled === true),
+      };
+      if (entry.default) defaultId = id;
+    }
+  }
+
+  return { ids, defaultId, meta };
+};
 
 export type InhouseGroupId = LayerMode;
 

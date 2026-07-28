@@ -104,6 +104,15 @@
   display: none;
 }
 
+/* Mobile uses the fixed centre readout — hide cursor-following popups. */
+@media (max-width: 640px), (hover: none) and (pointer: coarse) {
+  .inhouse-tooltip,
+  .weatherlayers-tooltip-control {
+    display: none !important;
+    visibility: hidden !important;
+  }
+}
+
 /* Compass needle used inside .inhouse-tooltip for wave direction.
    Matches the icon used by the WeatherLayers GL tooltip control. */
 .inhouse-tooltip-direction-icon {

@@ -34,10 +34,20 @@ try {
   map = new maplibregl.Map({
     container: "map",
     style: `https://api.maptiler.com/maps/positron/style.json?key=${mapTilerKey}`,
-    center: [-20, 55],
-    zoom: 3.2,
+    // Iceland overview as the initial paint (the app is Iceland-centric); on a
+    // first visit applyInitialCamera() then refines this to the user's location
+    // or the Reykjavík fallback once the map loads (task A1).
+    center: [-19, 65],
+    zoom: 5.5,
     pitch: 0,
     bearing: 0,
+    // Lock the map to a flat, north-up 2D view: no rotation, no tilt.
+    // dragRotate/pitchWithRotate/touchPitch kill the mouse + two-finger
+    // gestures; maxPitch: 0 prevents any tilt from any source.
+    dragRotate: false,
+    pitchWithRotate: false,
+    touchPitch: false,
+    maxPitch: 0,
     canvasContextAttributes: { contextType: "webgl2" },
   });
 } catch (err) {
@@ -52,6 +62,19 @@ try {
       </div>`;
   }
   throw err;
+}
+
+// Keep two-finger pinch-zoom but strip the rotation it would otherwise apply,
+// so the map stays north-up while zooming on touch.
+map.touchZoomRotate.disableRotation();
+
+// iOS Safari ignores `user-scalable=no` and pinch-zooms the whole page, which
+// steals the two-finger gesture from the map. Suppressing the proprietary
+// `gesture*` events lets MapLibre own the pinch so it zooms the map instead of
+// the document. Harmless on browsers that never fire these events.
+const preventNativeGesture = (event: Event) => event.preventDefault();
+for (const type of ["gesturestart", "gesturechange", "gestureend"]) {
+  document.addEventListener(type, preventNativeGesture, { passive: false });
 }
 
 const persistedState = loadPersistedState();

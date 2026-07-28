@@ -71,6 +71,7 @@ import {
   getWindStreamlineStyle,
 } from "../lib/zoomSteps";
 import { getVisibleViewportRect } from "../lib/visibleViewport";
+import { isCenterReadoutViewport } from "../lib/centerReadoutViewport";
 import {
   ARROW_HEAD_ICON,
   ARROW_ICON,
@@ -834,6 +835,15 @@ export class LayerComposer {
           },
           onHover: (info) => {
             const infoAny = info as any;
+            // Mobile: centre readout replaces cursor-following tap/hover popups.
+            if (isCenterReadoutViewport()) {
+              tooltipController.clearAllAddons();
+              tooltipController.updatePickingInfo(null);
+              this.deps.getMapCanvas().style.cursor = "";
+              this.deps.dom.inhouseTooltip.setAttribute("aria-hidden", "true");
+              this.deps.dom.inhouseTooltip.style.visibility = "hidden";
+              return;
+            }
             if (this.shouldSuppressForecastHover(infoAny?.x, infoAny?.y)) {
               tooltipController.clearAllAddons();
               this.deps.getMapCanvas().style.cursor = "";

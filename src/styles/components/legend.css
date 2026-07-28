@@ -17,7 +17,7 @@
      any containment that MapLibre or backdrop-filter might impose on fixed. */
   position: absolute;
   right: 12px;
-  bottom: calc(var(--bottom-bar-height) + 8px);
+  bottom: calc(var(--bottom-bar-height) + var(--safe-area-bottom) + 8px);
   width: fit-content;
   max-width: calc(100vw - 24px);
   gap: 10px;
@@ -36,6 +36,25 @@
 
 .legend-stack-card.is-dragging {
   cursor: grabbing;
+}
+
+/* The colour scale describes the forecast raster, which isn't shown in
+   iconography view — hide it there. */
+body.view-iconography .legend-stack-card {
+  display: none !important;
+}
+
+/* On touch devices the legend is purely informational — there is nothing to
+   tap inside it. Letting it intercept pointers meant a touch starting on (or
+   near) the colour ramp dragged the legend instead of panning the map.
+   pointer-events: none passes every touch straight through to the map, so
+   pan/pinch work everywhere, including over the legend. Mouse dragging is
+   preserved on hover-capable (desktop) devices, which don't match this query. */
+@media (hover: none) and (pointer: coarse) {
+  .legend-stack-card {
+    pointer-events: none;
+    touch-action: auto;
+  }
 }
 
 .legend-stack-card .legend-host {

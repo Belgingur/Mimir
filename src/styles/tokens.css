@@ -37,23 +37,31 @@
   --shadow-button: 0 8px 16px rgba(0, 0, 0, 0.12);
 
   /* ── Z-index scale ────────────────────── */
-  --z-map: 1;
-  --z-deck: 10;
-  --z-labels: 40;
-  --z-grid: 90;
-  --z-controls: 200;
-  --z-overlay: 240;
-  --z-chrome: 245;
-  --z-tooltip: 260;
-  --z-popup: 270;
-  --z-modal: 1000;
-  --z-debug: 5000;
+  --z-map: 1; /* @kind other */
+  --z-deck: 10; /* @kind other */
+  --z-labels: 40; /* @kind other */
+  --z-grid: 90; /* @kind other */
+  --z-controls: 200; /* @kind other */
+  --z-overlay: 240; /* @kind other */
+  --z-chrome: 245; /* @kind other */
+  --z-tooltip: 260; /* @kind other */
+  --z-popup: 270; /* @kind other */
+  --z-modal: 1000; /* @kind other */
+  --z-debug: 5000; /* @kind other */
 
   /* ── Sizing ───────────────────────────── */
   --icon-button-size: 42px;
   --icon-button-sm: 38px;
-  --icon-button-xs: 34px;
   --bottom-bar-height: 34px;
+  /* Insets reported by the device (iOS notch / camera housing, home indicator,
+     Android gesture bar). 0px everywhere they do not apply, so the calc()s below
+     are inert on desktop and only reserve space where the platform needs it.
+     With viewport-fit=cover the page fills the screen edge-to-edge; these keep
+     edge-anchored controls out from under the notch and indicator. */
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
 
   /* ── Breakpoints (for reference/JS) ───── */
   --bp-mobile: 640px;
