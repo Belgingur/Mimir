@@ -226,7 +226,7 @@ npm run test:coverage  # with coverage report
 npm run test:watch     # watch mode
 ```
 
-The test suite uses Vitest and jsdom. GitHub Actions runs type-checking and tests on pushes and pull requests to `main`. A separate gitleaks workflow handles secret scanning.
+The test suite uses Vitest and jsdom. GitHub Actions runs type-checking, linting and tests on every push and pull request to `main`, and verifies that the vendored meteogram bundle matches its pinned release (`npm run meteogram:check`).
 
 ## Build Notes
 
