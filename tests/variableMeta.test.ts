@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { VARIABLE_META, VARIABLE_META_KEYS } from "../src/lib/variableMeta";
 
+type VariableMetaEntry = { label: string; unit: string };
+
 describe("VARIABLE_META proxy", () => {
   it("returns label and unit for a known variable", () => {
     const meta = VARIABLE_META.air_temperature;
@@ -12,7 +14,14 @@ describe("VARIABLE_META proxy", () => {
   });
 
   it("returns undefined for an unknown variable key", () => {
-    expect((VARIABLE_META as any).unknown_variable).toBeUndefined();
+    expect(
+      (
+        VARIABLE_META as unknown as Record<
+          string,
+          VariableMetaEntry | undefined
+        >
+      ).unknown_variable,
+    ).toBeUndefined();
   });
 
   it("'in' operator (has trap) returns true for known keys", () => {
@@ -46,7 +55,9 @@ describe("VARIABLE_META proxy", () => {
 
   it("all known variables have non-empty label and unit", () => {
     for (const key of Object.keys(VARIABLE_META_KEYS)) {
-      const meta = (VARIABLE_META as any)[key];
+      const meta = (VARIABLE_META as unknown as Record<string, VariableMetaEntry>)[
+        key
+      ];
       expect(meta).toBeDefined();
       expect(meta.label.length).toBeGreaterThan(0);
       expect(meta.unit.length).toBeGreaterThan(0);

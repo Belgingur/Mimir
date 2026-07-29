@@ -142,7 +142,7 @@ describe("WavegramController", () => {
     it("clears loading on image load", () => {
       controller.open([10, 65]);
       expect(controller.isLoading).toBe(true);
-      deps.dom.image.onload?.(new Event("load") as any);
+      deps.dom.image.onload?.(new Event("load"));
       expect(controller.isLoading).toBe(false);
       expect(deps.dom.download.disabled).toBe(false);
       expect(deps.dom.print.disabled).toBe(false);
@@ -150,7 +150,7 @@ describe("WavegramController", () => {
 
     it("sets error on image error", () => {
       controller.open([10, 65]);
-      deps.dom.image.onerror?.(new Event("error") as any);
+      deps.dom.image.onerror?.(new Event("error"));
       expect(controller.isLoading).toBe(false);
       expect(deps.dom.status.textContent).toContain("Failed to load wavegram");
     });
@@ -167,7 +167,7 @@ describe("WavegramController", () => {
       controller.open([10, 65]);
       const staleOnerror = deps.dom.image.onerror;
       controller.open([11, 66]);
-      staleOnerror?.(new Event("error") as any);
+      staleOnerror?.(new Event("error"));
       expect(controller.isLoading).toBe(true);
     });
   });
@@ -189,7 +189,7 @@ describe("WavegramController", () => {
 
     it("disables download and print", () => {
       controller.open([10, 65]);
-      deps.dom.image.onload?.(new Event("load") as any);
+      deps.dom.image.onload?.(new Event("load"));
       controller.close();
       expect(deps.dom.download.disabled).toBe(true);
       expect(deps.dom.print.disabled).toBe(true);

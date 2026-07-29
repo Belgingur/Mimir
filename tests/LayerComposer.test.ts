@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FeatureCollection } from "geojson";
+import type { InhouseLayer } from "../src/lib/inhouseTypes";
+
+/** Minimal raster-point feature shape returned by the getRasterPoints mock. */
+type MockRasterPointFeature = {
+  geometry?: { coordinates: number[] };
+  properties: { value?: number; direction?: number };
+};
 
 const {
   mockRasterLayer,
@@ -42,7 +49,9 @@ const {
       setConfig: vi.fn(),
     });
   }),
-  mockGetRasterPoints: vi.fn(() => ({ features: [] as Array<any> })),
+  mockGetRasterPoints: vi.fn(() => ({
+    features: [] as Array<MockRasterPointFeature>,
+  })),
   mockGeoJsonLayer: vi.fn(function (
     this: Record<string, unknown>,
     props: Record<string, unknown>,
@@ -195,7 +204,7 @@ function makeDom() {
 
 function makeMockCatalogController() {
   return {
-    inhouseLayers: [] as Array<any>,
+    inhouseLayers: [] as Array<InhouseLayer>,
     inhouseTimeIndex: 0,
     contourCache: new Map<
       string,
@@ -1286,7 +1295,7 @@ describe("LayerComposer", () => {
           },
           visible: true,
           renderMode: "raster",
-        },
+        } as unknown as InhouseLayer,
       ];
       const deps = makeDeps({
         getCatalogController: (() =>
@@ -1353,7 +1362,7 @@ describe("LayerComposer", () => {
 
     it("setLastStableView updates lastStableView", () => {
       const composer = new LayerComposer(makeDeps());
-      const view = { center: [-20, 55], zoom: 4, bearing: 0, pitch: 0 };
+      const view = { center: [-20, 55] as [number, number], zoom: 4, bearing: 0, pitch: 0 };
       composer.setLastStableView(view);
       expect(
         getPrivate<Record<string, unknown>>(composer, "lastStableView"),

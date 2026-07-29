@@ -7,7 +7,8 @@ import {
   getInhouseLayerBounds,
   ensureScalar,
 } from "../src/lib/inhouseLayerHelpers";
-import type { InhouseLayer } from "../src/lib/inhouseTypes";
+import type * as WeatherLayers from "weatherlayers-gl";
+import type { InhouseLayer, InhouseManifest } from "../src/lib/inhouseTypes";
 
 const makeLayer = (overrides: Partial<InhouseLayer> = {}): InhouseLayer =>
   ({
@@ -73,7 +74,7 @@ describe("getInhouseLayerUnscale", () => {
         imageUnscale: undefined,
         srcMin: -5,
         srcMax: 45,
-      } as any,
+      } as unknown as InhouseManifest,
     });
     expect(getInhouseLayerUnscale(layer)).toEqual([-5, 45]);
   });
@@ -87,7 +88,7 @@ describe("getInhouseLayerUnscale", () => {
         imageUnscale: [223.15, 313.15],
         srcMin: 223.15,
         srcMax: 313.15,
-      } as any,
+      } as unknown as InhouseManifest,
     });
     const result = getInhouseLayerUnscale(layer);
     expect(result[0]).toBeCloseTo(-50, 2);
@@ -103,7 +104,7 @@ describe("getInhouseLayerUnscale", () => {
         imageUnscale: [-30, 40],
         srcMin: -30,
         srcMax: 40,
-      } as any,
+      } as unknown as InhouseManifest,
     });
     expect(getInhouseLayerUnscale(layer)).toEqual([-30, 40]);
   });
@@ -122,14 +123,17 @@ describe("getInhouseLayerBounds", () => {
 
   it("expands bounds when image is wider than source (padding)", () => {
     const layer = makeLayer({
-      image: { width: 104, widthMeta: 100 } as any,
+      image: {
+        width: 104,
+        widthMeta: 100,
+      } as unknown as WeatherLayers.TextureData,
       manifest: {
         bounds: [0, 0, 99, 10] as [number, number, number, number],
         shape: { width: 100, height: 80 },
         imageUnscale: [0, 30],
         srcMin: 0,
         srcMax: 30,
-      } as any,
+      } as unknown as InhouseManifest,
     });
     const result = getInhouseLayerBounds(layer);
     expect(result[0]).toBe(0);
@@ -142,11 +146,11 @@ describe("getInhouseLayerBounds", () => {
     const layer = makeLayer({
       manifest: {
         bounds: [-180, -90, 180, 90] as [number, number, number, number],
-        shape: [360, 180] as any,
+        shape: [360, 180] as [number, number],
         imageUnscale: [0, 30],
         srcMin: 0,
         srcMax: 30,
-      } as any,
+      } as unknown as InhouseManifest,
     });
     expect(getInhouseLayerBounds(layer)).toEqual([-180, -90, 180, 90]);
   });
@@ -159,7 +163,7 @@ describe("ensureScalar", () => {
       width: 3,
       height: 1,
     };
-    const layer = makeLayer({ scalar: existingScalar } as any);
+    const layer = makeLayer({ scalar: existingScalar });
     ensureScalar(layer);
     expect(layer.scalar).toBe(existingScalar);
   });
@@ -171,7 +175,9 @@ describe("ensureScalar", () => {
   });
 
   it("does nothing if image is a Promise", () => {
-    const layer = makeLayer({ image: Promise.resolve({}) } as any);
+    const layer = makeLayer({
+      image: Promise.resolve({}) as unknown as WeatherLayers.TextureData,
+    });
     ensureScalar(layer);
     expect(layer.scalar).toBeNull();
   });
@@ -185,14 +191,14 @@ describe("ensureScalar", () => {
       ]),
     };
     const layer = makeLayer({
-      image: fakeImage as any,
+      image: fakeImage,
       manifest: {
         bounds: [0, 0, 10, 10] as [number, number, number, number],
         shape: { width: 2, height: 2 },
         imageUnscale: [0, 30] as [number, number],
         srcMin: 0,
         srcMax: 30,
-      } as any,
+      } as unknown as InhouseManifest,
     });
     ensureScalar(layer);
     expect(layer.scalar).not.toBeNull();
@@ -209,15 +215,15 @@ describe("ensureScalar", () => {
     };
     const domainMask = new Uint8Array([1, 0, 1, 0]);
     const layer = makeLayer({
-      image: fakeImage as any,
-      domainMask: domainMask as any,
+      image: fakeImage,
+      domainMask,
       manifest: {
         bounds: [0, 0, 10, 10] as [number, number, number, number],
         shape: { width: 2, height: 2 },
         imageUnscale: [0, 30] as [number, number],
         srcMin: 0,
         srcMax: 30,
-      } as any,
+      } as unknown as InhouseManifest,
     });
     ensureScalar(layer);
     expect(layer.scalar).not.toBeNull();
@@ -228,29 +234,34 @@ describe("ensureScalar", () => {
 
   it("handles shape as array format in getInhouseLayerBounds", () => {
     const layer = makeLayer({
-      image: { width: 100, widthMeta: 100 } as any,
+      image: {
+        width: 100,
+        widthMeta: 100,
+      } as unknown as WeatherLayers.TextureData,
       manifest: {
         bounds: [-180, -90, 180, 90] as [number, number, number, number],
-        shape: [100, 50] as any,
+        shape: [100, 50] as [number, number],
         imageUnscale: [0, 30],
         srcMin: 0,
         srcMax: 30,
-      } as any,
+      } as unknown as InhouseManifest,
     });
     expect(getInhouseLayerBounds(layer)).toEqual([-180, -90, 180, 90]);
   });
 
   it("falls back to rasterScalar widthMeta when image widthMeta is missing", () => {
     const layer = makeLayer({
-      image: { width: 104 } as any,
-      rasterScalar: { widthMeta: 100 } as any,
+      image: { width: 104 } as unknown as WeatherLayers.TextureData,
+      rasterScalar: {
+        widthMeta: 100,
+      } as unknown as InhouseLayer["rasterScalar"],
       manifest: {
         bounds: [0, 0, 99, 10] as [number, number, number, number],
         shape: { width: 100, height: 80 },
         imageUnscale: [0, 30],
         srcMin: 0,
         srcMax: 30,
-      } as any,
+      } as unknown as InhouseManifest,
     });
     const result = getInhouseLayerBounds(layer);
     expect(result[2]).toBeGreaterThan(99);

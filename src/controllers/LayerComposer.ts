@@ -1,4 +1,4 @@
-import type { LayersList } from "@deck.gl/core";
+import type { LayersList, PickingInfo } from "@deck.gl/core";
 import {
   GeoJsonLayer,
   IconLayer,
@@ -92,6 +92,25 @@ type MapBoundsLike = {
   getNorth(): number;
 };
 
+/** A map centre accepted by MapLibre's camera methods (LngLatLike subset). */
+type MapCenter = [number, number] | { lng: number; lat: number };
+
+/** Camera state used for jumpTo-style restores. */
+type MapView = {
+  center: MapCenter;
+  zoom: number;
+  bearing: number;
+  pitch: number;
+};
+
+/**
+ * deck.gl picking info extended with the optional raster sample that
+ * WeatherLayers GL attaches to RasterLayer hover/click events.
+ */
+type RasterPickingInfo = PickingInfo & {
+  raster?: WeatherLayers.RasterPointProperties;
+};
+
 export interface LayerComposerDeps {
   dom: {
     inhouseTooltip: HTMLDivElement;
@@ -115,8 +134,14 @@ export interface LayerComposerDeps {
   getMapCanvas: () => HTMLCanvasElement;
   getMapContainer: () => HTMLElement;
   resizeMap: () => void;
-  jumpToMap: (view: any) => void;
-  easeToMap: (options: any) => void;
+  jumpToMap: (view: MapView) => void;
+  easeToMap: (options: {
+    center?: MapCenter;
+    zoom?: number;
+    bearing?: number;
+    pitch?: number;
+    duration?: number;
+  }) => void;
   setOverlayProps: (props: { layers: LayersList }) => void;
   getUiState: () => UiState;
   isMapReady: () => boolean;
@@ -381,12 +406,7 @@ export class LayerComposer {
 
   private gridLabelsDirty = true;
   private labelsFrameHandle: number | null = null;
-  private lastStableView: {
-    center: any;
-    zoom: number;
-    bearing: number;
-    pitch: number;
-  } | null = null;
+  private lastStableView: MapView | null = null;
 
   private windDatasetId = "gfs/wind_10m_above_ground";
   private precipDatasetId = "gfs/precipitation_3h_accumulation_surface";
@@ -441,9 +461,7 @@ export class LayerComposer {
     this.isZooming = value;
   }
 
-  setLastStableView(
-    view: { center: any; zoom: number; bearing: number; pitch: number } | null,
-  ): void {
+  setLastStableView(view: MapView | null): void {
     this.lastStableView = view;
   }
 
@@ -819,14 +837,13 @@ export class LayerComposer {
           parameters: { depthTest: false },
           onClick: (info) => {
             if (uiState.layerMode !== "waves" || !isWaveHeight) return;
-            const infoAny = info as any;
-            let coord = infoAny?.coordinate as [number, number] | undefined;
+            let coord = info.coordinate as [number, number] | undefined;
             if (
               !coord &&
-              typeof infoAny?.x === "number" &&
-              typeof infoAny?.y === "number"
+              typeof info.x === "number" &&
+              typeof info.y === "number"
             ) {
-              const point = this.deps.unprojectMap([infoAny.x, infoAny.y]);
+              const point = this.deps.unprojectMap([info.x, info.y]);
               coord = [point.lng, point.lat];
             }
             if (coord) {
@@ -834,7 +851,7 @@ export class LayerComposer {
             }
           },
           onHover: (info) => {
-            const infoAny = info as any;
+            const infoAny = info as RasterPickingInfo;
             // Mobile: centre readout replaces cursor-following tap/hover popups.
             if (isCenterReadoutViewport()) {
               tooltipController.clearAllAddons();
@@ -917,7 +934,7 @@ export class LayerComposer {
             // by decodeScalarGrid) so log1p-encoded images yield correct physical values
             // rather than the linearly-decoded value WeatherLayers GL would produce.
             if (isSnowDepth) {
-              const coordinate = (info as any)?.coordinate as
+              const coordinate = info.coordinate as
                 | [number, number]
                 | undefined;
               value = undefined;
@@ -947,7 +964,7 @@ export class LayerComposer {
               (typeof value !== "number" || !Number.isFinite(value)) &&
               layer.scalar
             ) {
-              const coordinate = (info as any)?.coordinate as
+              const coordinate = info.coordinate as
                 | [number, number]
                 | undefined;
               if (coordinate) {
@@ -981,7 +998,7 @@ export class LayerComposer {
             // pixels (raw=0 → decoded 0 m/s from the WeatherLayers GL pick buffer)
             // don't produce false "0.0 m/s" tooltip readings outside the model domain.
             if (isWindSpeed) {
-              const wsCoord = (info as any)?.coordinate as
+              const wsCoord = info.coordinate as
                 | [number, number]
                 | undefined;
               if (wsCoord) {
@@ -1008,7 +1025,7 @@ export class LayerComposer {
               }
             }
             if (uiState.layerMode === "wind" && isWindSpeed) {
-              const coord = (info as any)?.coordinate as
+              const coord = info.coordinate as
                 | [number, number]
                 | undefined;
               const vectorLayer = coord
@@ -1035,20 +1052,20 @@ export class LayerComposer {
                   : null);
               if (typeof value === "number" && Number.isFinite(value)) {
                 tooltipController.updatePickingInfo({
-                  ...(info as any),
+                  ...info,
                   raster: {
                     value,
                     direction:
                       tooltipController.finiteDirectionOrUndefined(direction),
                   },
-                } as any);
+                });
                 tooltipController.updateTooltipValueOverride(
                   `${value.toFixed(1)} m/s`,
                 );
                 tooltipController.updateTooltipWindSpeed(null);
                 tooltipController.updateWindDirectionDebug(direction);
               } else {
-                tooltipController.updatePickingInfo(info as any);
+                tooltipController.updatePickingInfo(info);
                 tooltipController.updateTooltipValueOverride(null);
                 tooltipController.updateTooltipWindSpeed(null);
                 tooltipController.updateWindDirectionDebug(null);
@@ -1058,7 +1075,7 @@ export class LayerComposer {
               return;
             }
             if (uiState.layerMode === "precip" && isPrecip) {
-              const infoAny = info as any;
+              const infoAny = info as RasterPickingInfo;
               let coord = infoAny?.coordinate as [number, number] | undefined;
               if (
                 !coord &&
@@ -1161,13 +1178,13 @@ export class LayerComposer {
               }
               if (typeof value === "number" && Number.isFinite(value)) {
                 tooltipController.updatePickingInfo({
-                  ...(infoAny as any),
+                  ...infoAny,
                   raster: {
                     value,
                     direction:
                       tooltipController.finiteDirectionOrUndefined(windDir),
                   },
-                } as any);
+                });
                 const rawUnit =
                   layer.manifest.unit ?? resolveInhouseUnit(layer.variable);
                 const unit = rawUnit === "mm hr-1" ? "mm/hr" : rawUnit;
@@ -1182,7 +1199,7 @@ export class LayerComposer {
                 tooltipController.updateWindDirectionDebug(windDir);
                 tooltipController.recenterBubble();
               } else {
-                tooltipController.updatePickingInfo(info as any);
+                tooltipController.updatePickingInfo(info);
                 tooltipController.updateTooltipValueOverride(null);
                 tooltipController.updateTooltipWindSpeedBeforeDirection(null);
                 tooltipController.updateWindDirectionDebug(null);
@@ -1204,8 +1221,8 @@ export class LayerComposer {
                 { value: displayValue.toFixed(0) },
               );
               this.deps.dom.inhouseTooltip.setAttribute("aria-hidden", "false");
-              const x = (info as any).x ?? 0;
-              const y = (info as any).y ?? 0;
+              const x = info.x ?? 0;
+              const y = info.y ?? 0;
               this.deps.dom.inhouseTooltip.style.left = `${x}px`;
               this.deps.dom.inhouseTooltip.style.top = `${y}px`;
               this.deps.dom.inhouseTooltip.style.visibility = "visible";
@@ -1227,7 +1244,7 @@ export class LayerComposer {
                   catalogController.findInhouseLayerByCandidates(
                     INHOUSE_GROUP_VARIABLES.waves.windDir,
                   );
-                const coord = (info as any)?.coordinate as
+                const coord = info.coordinate as
                   | [number, number]
                   | undefined;
                 if (coord && wavePeriodLayer && waveDirLayer) {
@@ -1275,8 +1292,8 @@ export class LayerComposer {
                     "aria-hidden",
                     "false",
                   );
-                  const x = (info as any).x ?? 0;
-                  const y = (info as any).y ?? 0;
+                  const x = info.x ?? 0;
+                  const y = info.y ?? 0;
                   this.deps.dom.inhouseTooltip.style.left = `${x}px`;
                   this.deps.dom.inhouseTooltip.style.top = `${y}px`;
                   this.deps.dom.inhouseTooltip.style.visibility = "visible";
@@ -1285,8 +1302,8 @@ export class LayerComposer {
               }
               this.deps.dom.inhouseTooltip.textContent = `${formatted}${unit ? ` ${unit}` : ""}`;
               this.deps.dom.inhouseTooltip.setAttribute("aria-hidden", "false");
-              const x = (info as any).x ?? 0;
-              const y = (info as any).y ?? 0;
+              const x = info.x ?? 0;
+              const y = info.y ?? 0;
               this.deps.dom.inhouseTooltip.style.left = `${x}px`;
               this.deps.dom.inhouseTooltip.style.top = `${y}px`;
               this.deps.dom.inhouseTooltip.style.visibility = "visible";
@@ -3002,10 +3019,11 @@ export class LayerComposer {
     );
     this.precipCache.set(datetime, data);
     this.precipData = data;
-    if (this.deps.getUiState().layerMode === "precip" && this.lastStableView) {
+    const stableView = this.lastStableView;
+    if (this.deps.getUiState().layerMode === "precip" && stableView) {
       window.requestAnimationFrame(() => {
         this.deps.resizeMap();
-        this.deps.jumpToMap(this.lastStableView);
+        this.deps.jumpToMap(stableView);
       });
     }
   }
