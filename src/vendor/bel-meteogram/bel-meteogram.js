@@ -1,3 +1,12 @@
+/*!
+ * bel-meteogram — Belgingur meteogram web component
+ * Copyright (c) 2026 Belgingur. Licensed under the MIT License.
+ *
+ * Bundled weather symbols: Yr weather symbols (c) 2015 Yr/NRK, modified
+ * (re-exported, recoloured and renamed to numeric symbol codes).
+ * Licensed under CC BY 4.0 — https://creativecommons.org/licenses/by/4.0/
+ * Originals: https://github.com/nrkno/yr-weather-symbols
+ */
 function U2(e) {
   return e.apiUrl ? e.apiUrl : `${new URL(import.meta.url).origin}/api/v2/widget/meteo/config/${e.clientName}`;
 }
