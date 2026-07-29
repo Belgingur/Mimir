@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "models": [
+    {
+      "id": "ECMWF-IS",
+      "title": "ECMWF-IS",
+      "default": false,
+      "available": false,
+      "resolution_km": 10,
+      "bbox": { "west": -30, "south": 60, "east": -8, "north": 69 }
+    },
+    {
+      "id": "UWC-DINI",
+      "title": "UWC-DINI",
+      "default": false,
+      "resolution_km": 2,
+      "bbox": { "west": -15, "south": 47, "east": 15, "north": 63 }
+    },
+    {
+      "id": "RAP",
+      "title": "RAP",
+      "default": false,
+      "resolution_km": 13,
+      "bbox": { "west": -180, "south": -10.574, "east": 180, "north": 89.992 }
+    },
+    {
+      "id": "ICON-EU",
+      "title": "ICON-EU",
+      "default": false,
+      "resolution_km": 7,
+      "bbox": { "west": -23.5, "south": 29.5, "east": 62.5, "north": 70.5 }
+    },
+    {
+      "id": "GFS",
+      "title": "GFS",
+      "default": true,
+      "resolution_km": 25,
+      "bbox": { "west": -180, "south": -90, "east": 180, "north": 90 }
+    },
+    {
+      "id": "BEL-FO",
+      "title": "BEL-FO",
+      "default": false,
+      "resolution_km": 3,
+      "bbox": { "west": -9.5, "south": 60.5, "east": -4, "north": 63.5 }
+    },
+    {
+      "id": "UWC-IG",
+      "title": "UWC-IG",
+      "default": false,
+      "resolution_km": 2,
+      "bbox": { "west": -58, "south": 58, "east": -12, "north": 80 }
+    },
+    {
+      "id": "GWES",
+      "title": "GWES",
+      "default": false,
+      "resolution_km": 25,
+      "bbox": { "west": -180, "south": -90, "east": 180, "north": 90 }
+    },
+    {
+      "id": "BEL-IS",
+      "title": "BEL-IS",
+      "default": false,
+      "resolution_km": 2,
+      "margin_km": 20,
+      "bbox": { "west": -25.6, "south": 62.9, "east": -12.4, "north": 67.3 }
+    },
+    {
+      "id": "ECMWF",
+      "title": "ECMWF",
+      "default": false,
+      "resolution_km": 25,
+      "bbox": { "west": -180, "south": -90, "east": 180, "north": 90 }
+    },
+    {
+      "id": "BEL-BR",
+      "title": "BEL-BR",
+      "default": false,
+      "available": false,
+      "resolution_km": 3.2,
+      "bbox": { "west": -59.347, "south": -32.787, "east": -31.666, "north": -0.411 }
+    }
+  ]
+}

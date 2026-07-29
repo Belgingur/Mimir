@@ -1,0 +1,271 @@
+/* Feature-only styles for the meteogram modal + mobile trigger. The modal
+   itself reuses the shared `.chart-modal` classes; the rules below cover the
+   widget host, the mobile/landscape layout, and the centre-crosshair trigger
+   button. Bundled into the meteogram chunk (imported by setup.ts), so it
+   ships only when the feature is enabled. */
+
+/* ── Frameless modal: the widget IS the popup ────────────────────────────────
+   The full-mode widget renders its own location header, ✕ (closable) and
+   rounded glass surface, so the shared white .chart-modal__card chrome is
+   stripped for this modal: transparent card sized to the widget's 430px
+   column, header hidden, and the widget themed as a translucent panel that
+   blurs the map behind it. */
+
+#meteogram-modal .chart-modal__card {
+  width: 100%;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 24px;
+}
+
+#meteogram-modal .chart-modal__header {
+  display: none;
+}
+
+/* The status line only exists for errors now — float it as a small glass
+   chip above the widget instead of a white bar. */
+#meteogram-modal .chart-modal__status {
+  padding: 0;
+}
+#meteogram-modal .chart-modal__status:not(:empty) {
+  margin: 0 0 8px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.85);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border-radius: 14px;
+  color: #16324a;
+  font-weight: 600;
+}
+
+/* ── Widget host ─────────────────────────────────────────────────────────── */
+
+.meteogram-host {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0;
+  border-radius: 24px;
+}
+
+.meteogram-host bel-meteogram {
+  display: block;
+  width: 100%;
+  /* Rounded glass sheet over the map (mobile). Desktop overrides below. */
+  --bel-meteogram-bg: rgba(231, 239, 247, 0.82);
+  --bel-meteogram-radius: 24px;
+  --bel-meteogram-backdrop: blur(16px) saturate(1.3);
+}
+
+/* ── Desktop (≥900px): map-panel 2a — full-bleed host, draggable widget ────
+   The forecast panel floats over the map (positioned inside the widget's
+   shadow DOM). Mimir provides a full-size, pointer-transparent overlay so
+   the map stays pan/zoom-interactive; only the draggable panel captures
+   clicks. A subtle edge scrim keeps white panel text off bright map colors. */
+@media (min-width: 900px) {
+  #meteogram-modal.chart-modal.is-open {
+    background: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    pointer-events: none; /* map stays interactive behind the panel */
+  }
+  /* Edge scrim — only darkens the right ~45%, never eats clicks. */
+  #meteogram-modal.chart-modal.is-open::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      90deg,
+      rgba(13, 30, 45, 0) 55%,
+      rgba(13, 30, 45, 0.1) 100%
+    );
+  }
+  #meteogram-modal .chart-modal__card {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    transform: none;
+    pointer-events: none; /* host is transparent; widget panel re-enables */
+    display: flex;
+    flex-direction: column;
+  }
+  .meteogram-host {
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .meteogram-host bel-meteogram {
+    height: 100%;
+    width: 100%;
+    /* Clicks pass through to the map; the panel re-enables them in shadow DOM. */
+    pointer-events: none;
+    --bel-meteogram-panel-width: 440px;
+    --bel-meteogram-bg: rgba(255, 255, 255, 0.95);
+    --bel-meteogram-radius: 22px;
+    --bel-meteogram-backdrop: blur(10px);
+  }
+}
+
+/* ── Selected-point pin (a maplibre Marker anchored at the clicked point) ──── */
+.meteogram-pin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: default;
+  filter: drop-shadow(0 4px 8px rgba(13, 30, 45, 0.35));
+  /* The marker is a DOM sibling of the map canvas inside .maplibregl-map. deck.gl
+     runs interleaved, so the weather raster is drawn into that same canvas, which
+     carries z-index:var(--z-map) (=1). A positioned element with an explicit
+     z-index paints above a sibling with z-index:auto, so without this the pin
+     renders *behind* the map/weather layer. Lift it above the canvas (it stays
+     below the map controls, which sit in their own higher-z container). */
+  z-index: 3;
+}
+.meteogram-pin__label {
+  background: #fff;
+  border-radius: 12px;
+  padding: 5px 11px;
+  font: 900 14px/1 Nunito, system-ui, sans-serif;
+  color: #14202b;
+  white-space: nowrap;
+}
+.meteogram-pin__stalk {
+  width: 2px;
+  height: 14px;
+  background: #fff;
+}
+.meteogram-pin__dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #14202b;
+  border: 3px solid #fff;
+  margin-top: -2px;
+}
+
+/* ── Small screens (portrait): keep the floating-panel look, tighter margins ──
+   Capped at <900px so it never fights the ≥900px desktop full-bleed rule on a
+   large touch device (an iPad in portrait renders the widget's wide floating
+   panel, which needs the full-bleed host — not this 430px card). */
+
+@media (max-width: 640px),
+  (hover: none) and (pointer: coarse) and (max-width: 899px) {
+  #meteogram-modal .chart-modal__card {
+    /* Continuous gutter instead of a fixed 12px: the widget has a hard ~360px
+       internal minimum, so on narrow phones (≤400px) the gutter shrinks toward
+       2px per side to keep the sheet above that floor, and grows toward 24px
+       per side where there's room (the 430px cap usually wins first). */
+    --meteogram-gutter: clamp(2px, (100vw - 380px) / 12, 24px);
+    width: calc(100vw - 2 * var(--meteogram-gutter));
+    max-width: 430px;
+    pointer-events: auto;
+    /* Clear the notch and the home indicator (the app runs edge-to-edge
+       with viewport-fit=cover). */
+    max-height: calc(
+      100% - 12px - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+    );
+  }
+  .meteogram-host {
+    pointer-events: auto;
+  }
+}
+
+/* ── Mobile landscape (priority): the widget fills the screen edge-to-edge ────
+   A phone/tablet held horizontally gets the widget's full-screen graph-led
+   layout (matching its `orientation: landscape` + coarse-pointer switch). This
+   block is intentionally last so it overrides both the desktop full-bleed and
+   the portrait sheet rules for any landscape touch device, at any width. */
+@media (hover: none) and (pointer: coarse) and (orientation: landscape) {
+  #meteogram-modal.chart-modal.is-open {
+    background: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    pointer-events: auto;
+  }
+  /* Drop the desktop edge scrim — the opaque full-screen card covers the map. */
+  #meteogram-modal.chart-modal.is-open::after {
+    content: none;
+  }
+  #meteogram-modal .chart-modal__card {
+    /* The modal is absolute inset:0 inside `.map-wrap`, which is 100% of the
+       100dvh app root — i.e. already the VISIBLE viewport (not the taller iOS
+       layout viewport). So filling it with inset:0 is edge-to-edge and correct;
+       no fixed/svh gymnastics needed. */
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    transform: none;
+    border: none;
+    border-radius: 0;
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    /* Keep content clear of the notch (which sits on a side in landscape) and
+       the home indicator. */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right)
+      env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  .meteogram-host {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+    /* The widget fills this and manages its own scroll (table column / graph
+       fit), so keep overflow hidden — but the settings overlay is position:fixed
+       and escapes it, so its station list still scrolls. */
+    overflow: hidden;
+    border-radius: 0;
+    pointer-events: auto;
+  }
+  .meteogram-host bel-meteogram {
+    height: 100%;
+    width: 100%;
+    pointer-events: auto;
+    /* Opaque frost sheet over the map — no radius, no blur (it fills the view). */
+    --bel-meteogram-bg: rgba(233, 238, 241, 0.98);
+    --bel-meteogram-radius: 0;
+    --bel-meteogram-backdrop: none;
+  }
+}
+
+/* ── Mobile meteogram button (lives in the .zoom-buttons +/-/grid stack) ──── */
+
+/* Inherits the .zoom-buttons button glass styling; we only add the divider. */
+.zoom-buttons__meteogram {
+  position: relative;
+  margin-top: 2px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.zoom-buttons__meteogram svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Hidden by default — including on desktop, where the meteogram is opened by
+   clicking the map, not a button. The `button.zoom-buttons__meteogram` selector
+   is deliberately more specific than the base `.zoom-buttons button` rule, which
+   would otherwise force the button visible. */
+.zoom-buttons button.zoom-buttons__meteogram {
+  display: none;
+}
+
+/* Offer it only where there is no hover pointer (touch / small screens), in
+   forecast view, and only when a click would actually resolve to a meteogram
+   (is-available is toggled by the trigger's refresh() — hidden on GWES/waves). */
+@media (max-width: 640px), (hover: none) and (pointer: coarse) {
+  body:not(.view-iconography)
+    .zoom-buttons
+    button.zoom-buttons__meteogram.is-available {
+    display: inline-flex;
+  }
+}

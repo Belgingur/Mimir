@@ -1,0 +1,79 @@
+/* ══════════════════════════════════════════════════════════════════
+   MENU — hamburger-driven control stack (all screens except short landscape)
+   ──────────────────────────────────────────────────────────────────
+   The "Menu" button (#layer-toggle-trigger) reveals/hides the whole control
+   stack. Everything lives in the right-anchored .map-overlay--top-left column
+   and reads top → bottom as:
+
+       [ Menu ]        ← always visible
+       [ modes ]       ← Forecast / Icons / language (view-toggle--map)
+       [ variables ]   ← layer picker (layer-switch-card)
+
+   Modes come before variables because the variable picker disappears in
+   iconography view, so the more permanent controls sit closest to the button.
+
+   Scope: `not all and (short landscape)` — i.e. this applies to desktop,
+   portrait phones/tablets, and tall landscape, but NOT short landscape phones,
+   which get a dedicated horizontal variant in landscape.css. Because the two
+   ranges are disjoint, import order relative to landscape.css doesn't matter.
+   ══════════════════════════════════════════════════════════════════ */
+
+@media not all and (max-height: 500px) and (orientation: landscape) {
+  .map-overlay--top-left {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+  }
+
+  /* The mode bar flows in the flex column now, so neutralise the inline `right`
+     that UtilityToggleViewportController keeps writing onto it (a leftover from
+     when the bar was fixed-positioned) — otherwise it drifts left of the Menu
+     button and the stack looks misaligned. Author !important beats the plain
+     inline value the controller sets. Lay the modes out as a vertical column so
+     they align with the variable icons below. */
+  .view-toggle--map {
+    right: auto !important;
+    flex-direction: column;
+    align-items: center;
+    width: auto;
+    gap: 6px;
+    padding: 6px;
+  }
+
+  /* Collapsed: only the Menu button shows. */
+  body:not(.chrome-open) .view-toggle--map,
+  body:not(.chrome-open) .layer-switch-card {
+    display: none !important;
+  }
+
+  /* Open: reveal modes, then variables, beneath the Menu button. */
+  body.chrome-open .view-toggle--map {
+    display: inline-flex !important;
+  }
+
+  body.chrome-open .layer-switch-card {
+    display: flex !important;
+    flex-direction: column;
+    width: auto;
+    max-width: none;
+  }
+
+  /* Subtle reveal so the stack expands rather than popping into place. */
+  @media (prefers-reduced-motion: no-preference) {
+    body.chrome-open .view-toggle--map,
+    body.chrome-open .layer-switch-card {
+      animation: chrome-reveal 140ms ease;
+    }
+  }
+}
+
+@keyframes chrome-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

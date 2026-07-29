@@ -1,6 +1,10 @@
-/* ── Layer toggle trigger — same style as mode-icon-button ──── */
+/* ── Menu button (hamburger) — same style as mode-icon-button ──── */
+/* It is a direct child of the pointer-events:none .map-overlay, so it must
+   opt back into pointer events itself (it no longer inherits them from the
+   layer-switch-card, which it used to live inside). */
 .layer-toggle-trigger {
   position: relative;
+  pointer-events: auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -86,6 +90,15 @@
   box-shadow: 0 8px 18px var(--accent-orange-glow);
 }
 
+/* ── Menu card ────────────────────────────────────────────────── */
+/* Wraps the Menu button in the same glass panel as the mode/variable cards so
+   it shares their backing (no washed-out translucency over the map) and its
+   6px padding insets the button to the exact same right edge as the icons that
+   appear below it when the menu opens. */
+.menu-card {
+  padding: 6px;
+}
+
 /* ── Layer switch card ────────────────────────────────────────── */
 .layer-switch-card {
   position: relative;
@@ -101,13 +114,14 @@
   overflow: visible;
 }
 
-.layer-switch-card .layer-toggle-trigger {
-  margin-bottom: 6px;
-}
-
-.layer-switch-card .layer-toggle-trigger:last-child,
-.layer-switch-card .layer-toggle-trigger:not(.is-open) {
-  margin-bottom: 0;
+/* In iconography view there is no variable picker — hide the whole card. The
+   Menu button lives outside the card, so it stays reachable to switch back to
+   forecast. The .chrome-open compound selector beats body.chrome-open rules in
+   chrome-collapse.css / landscape.css that would otherwise force display:flex
+   while the menu stays open after switching to Icons. */
+body.view-iconography .layer-switch-card,
+body.view-iconography.chrome-open .layer-switch-card {
+  display: none !important;
 }
 
 .layer-group-list {

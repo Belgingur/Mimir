@@ -110,7 +110,7 @@
 .info-button {
   position: absolute;
   left: 8px;
-  bottom: calc(var(--bottom-bar-height) + 6px);
+  bottom: calc(var(--bottom-bar-height) + var(--safe-area-bottom) + 6px);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -149,7 +149,7 @@
 .info-panel {
   position: absolute;
   left: 8px;
-  bottom: calc(var(--bottom-bar-height) + 36px);
+  bottom: calc(var(--bottom-bar-height) + var(--safe-area-bottom) + 36px);
   background: rgba(255, 255, 255, 0.95);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);

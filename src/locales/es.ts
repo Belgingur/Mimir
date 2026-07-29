@@ -33,8 +33,11 @@ export const es: Record<string, string> = {
   "map.toggleLayers": "Activar o desactivar capas",
   "map.infoControls": "Controles de información del mapa",
   "map.close": "Cerrar",
+  "map.myLocation": "Usar mi ubicación",
+  "map.locationUnavailable": "No se pudo obtener tu ubicación.",
   "map.variable": "Variable",
   "map.variables": "Variables",
+  "map.menu": "Menú",
 
   // ── Layer groups ─────────────────────────────────────────────────────
   "layer.temperature": "Temperatura",
@@ -115,13 +118,18 @@ export const es: Record<string, string> = {
   // ── Loading / status ─────────────────────────────────────────────────
   "status.loadingFrame": "Cargando vista…",
   "status.loadingModel": "Cargando modelo…",
+  "status.loadingDataset": "Cargando {{model}}…",
+  "status.datasetFailed": "No se pudo cargar {{model}}. Puede que no tenga datos ahora.",
+  "action.backToModel": "Volver a {{model}}",
   "status.loadingWavegram": "Cargando gráfico de oleaje…",
+  "status.loadingMeteogram": "Cargando meteograma…",
   "status.noData": "No hay datos disponibles.",
   "status.noNumericData":
     "No hay datos numéricos para esta variable o rango temporal.",
 
   // ── Modal titles ─────────────────────────────────────────────────────
   "modal.wavegram": "Gráfico de oleaje ampliado",
+  "modal.meteogram": "Meteograma",
 
   // ── Wavegram controls ────────────────────────────────────────────────
   "wavegram.duration": "Duración",
@@ -130,6 +138,9 @@ export const es: Record<string, string> = {
   "wavegram.print": "Imprimir",
   "wavegram.showTech": "Mostrar detalles técnicos",
   "wavegram.failed": "No se pudo cargar el gráfico de oleaje.",
+  "meteogram.loadFailed": "No se pudo cargar el meteograma de {{model}} — este punto puede estar fuera del área de pronóstico del modelo. Prueba con otro modelo o ubicación. ({{message}})",
+  "meteogram.outsideDomain": "Esta ubicación puede estar fuera del área de pronóstico de {{model}}.",
+  "meteogram.openAtCenter": "Mostrar meteograma para el punto marcado",
   "wavegram.unconfigured":
     "El servicio de gráfico de oleaje no está configurado. Define VITE_BELGINGUR_BASE_URL para activarlo.",
   "wavegram.downloadFail":

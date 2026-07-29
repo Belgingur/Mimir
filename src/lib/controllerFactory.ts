@@ -22,10 +22,22 @@ import { LayerGroupController } from "../controllers/LayerGroupController";
 import { LayerComposer } from "../controllers/LayerComposer";
 import { IconographyController } from "../controllers/IconographyController";
 import { attachMapEventHandlers } from "./mapEventHandlers";
+import { resolveMapClickTarget } from "./mapClickRouting";
 import { setupLegendDrag } from "./legendDrag";
 import { initMobileDrawer } from "./mobileDrawer";
-import { getLocale, onLocaleChange } from "./i18n";
+import { initCenterReadout } from "./centerReadout";
+import { getLocale, onLocaleChange, t } from "./i18n";
+import {
+  readStoredLocation,
+  requestBrowserLocation,
+  createLocateControl,
+  REYKJAVIK_VIEW,
+  LOCATED_ZOOM,
+} from "./initialCamera";
+import { createDatasetLoadingOverlay } from "./datasetLoadingOverlay";
 import { LanguageSwitcherController } from "../controllers/LanguageSwitcherController";
+import { isMeteogramEnabled } from "../features/meteogram/enabled";
+import type { MeteogramController } from "../features/meteogram/MeteogramController";
 
 export interface ControllerFactoryConfig {
   map: maplibregl.Map;
@@ -40,10 +52,25 @@ export function createControllers(config: ControllerFactoryConfig) {
 
   // --- Shared mutable state ---
   let mapReady = false;
+  // Populated asynchronously (and only when the feature is enabled) by the
+  // guarded dynamic import below; stays null in the default public build.
+  let meteogramController: MeteogramController | null = null;
   let timelineController: TimelineController | undefined;
   let timelineCurrentDatetime = "";
   let timelineLastFrameLoadHadErrors = false;
   let restoringFromPersisted = !!persistedState?.mapCamera;
+  // First visit (no persisted camera) AND a cached user location: the located
+  // view owns the camera, so the model's domain auto-centre is suppressed until
+  // the user explicitly switches models. Armed here (before any async catalog
+  // centering can race) and cleared in handleModelChange. With no cached
+  // location we let the model domain centre normally (Iceland overview fallback).
+  // Returning users (persisted camera) are unaffected. See applyInitialCamera (A1).
+  const storedUserLocation = readStoredLocation();
+  let suppressInitialAutoCenter =
+    !persistedState?.mapCamera && !!storedUserLocation;
+  // Forward reference to the programmatic model switcher (defined once all
+  // controllers exist); used by the empty-model safety net and locate button.
+  let switchModelFn: (model: string) => void = () => {};
   let pendingTimeIndex: number | null =
     persistedState?.mapCamera && Number.isFinite(persistedState.timeIndex)
       ? persistedState.timeIndex
@@ -65,6 +92,14 @@ export function createControllers(config: ControllerFactoryConfig) {
 
   // --- Shared callbacks ---
   function scheduleUpdateLayers() {
+    // Keep the mobile meteogram trigger's availability in sync — this fires on
+    // every model/layer-mode/analysis change (and map moves), which is exactly
+    // when the click target may flip between meteogram / wavegram / none.
+    meteogramController?.refreshMobileTrigger();
+    // ...and reconcile an already-open meteogram with the new state: close it
+    // when the selection no longer targets a meteogram (icons view, waves,
+    // GWES), or reload it when the bottom model selector picked another model.
+    meteogramController?.syncOpenState();
     if (!layerComposer) return;
     layerComposer.scheduleUpdateLayers();
   }
@@ -304,6 +339,19 @@ export function createControllers(config: ControllerFactoryConfig) {
     setRestoringFromPersisted: (v) => {
       restoringFromPersisted = v;
     },
+    isInitialAutoCenterSuppressed: () => suppressInitialAutoCenter,
+    clearInitialAutoCenterSuppression: () => {
+      suppressInitialAutoCenter = false;
+    },
+    // Coverage-aware selection uses the cached location, else the Reykjavík
+    // fallback (finest healthy model for Iceland — fixes landing on an empty
+    // default model). See selectModel / task A1/A3.
+    getAutoSelectLocation: () =>
+      readStoredLocation() ?? {
+        lat: REYKJAVIK_VIEW.center[1],
+        lon: REYKJAVIK_VIEW.center[0],
+      },
+    switchToModel: (model: string) => switchModelFn(model),
     getPendingTimeIndex: () => pendingTimeIndex,
     setPendingTimeIndex: (v) => {
       pendingTimeIndex = v;
@@ -464,8 +512,26 @@ export function createControllers(config: ControllerFactoryConfig) {
   });
 
   // --- DOM event handlers ---
-  dom.inhouseModelSelect.addEventListener("change", () => {
-    void catalogController.handleModelChange(dom.inhouseModelSelect.value, {
+  // Loading/error overlay shown while switching model or analysis (task B2).
+  const datasetLoader = createDatasetLoadingOverlay(dom.mapWrap);
+  const setSelectorsBusy = (busy: boolean) => {
+    dom.inhouseModelSelect.setAttribute("aria-busy", String(busy));
+    dom.inhouseAnalysisSelect.setAttribute("aria-busy", String(busy));
+  };
+
+  // Programmatic model switch, running the exact same flow as the model
+  // `<select>`. Reused by the empty-model safety net and the locate button.
+  // Shows the loader immediately, then an explicit error (with a way back) if
+  // the target model has no compatible layers — never a silent frozen state.
+  const changeModel = async (nextModel: string): Promise<void> => {
+    const prevModel = catalogController.inhouseSelectedModel;
+    if (dom.inhouseModelSelect.value !== nextModel) {
+      dom.inhouseModelSelect.value = nextModel;
+    }
+    datasetLoader.begin(t("status.loadingDataset", { model: nextModel }));
+    setSelectorsBusy(true);
+    try {
+      await catalogController.handleModelChange(nextModel, {
       setLayerMode: (mode: LayerMode) => {
         uiState.layerMode = mode;
       },
@@ -487,19 +553,83 @@ export function createControllers(config: ControllerFactoryConfig) {
         scheduleUpdateLayers();
       },
       schedulePersistState,
-    });
+      });
+    } finally {
+      setSelectorsBusy(false);
+    }
+    // Outcome: an empty layer list means the model has no compatible data —
+    // show an explicit error with a way back instead of a silent frozen map.
+    if (catalogController.inhouseLayers.length === 0) {
+      const canGoBack = !!prevModel && prevModel !== nextModel;
+      datasetLoader.fail({
+        message: t("status.datasetFailed", { model: nextModel }),
+        backLabel: canGoBack
+          ? t("action.backToModel", { model: prevModel })
+          : undefined,
+        onBack: canGoBack ? () => void changeModel(prevModel) : undefined,
+      });
+    } else {
+      datasetLoader.end();
+    }
+  };
+  // Bind the forward reference so the catalog controller's safety net can switch.
+  switchModelFn = (model: string) => void changeModel(model);
+  dom.inhouseModelSelect.addEventListener("change", () => {
+    void changeModel(dom.inhouseModelSelect.value);
   });
 
+  // "Use my location" control (task A1): the ONLY entry point to the browser
+  // Geolocation prompt. On success it re-selects the covering model (if any)
+  // and centres on the user's point; failures are surfaced as a transient warning.
+  map.addControl(
+    createLocateControl({
+      label: t("map.myLocation"),
+      onClick: () => {
+        requestBrowserLocation({
+          onLocated: (loc) => {
+            const next = catalogController.selectModelForLocation(
+              loc.lat,
+              loc.lon,
+            );
+            const switched =
+              next && next !== catalogController.inhouseSelectedModel
+                ? changeModel(next)
+                : Promise.resolve();
+            void switched.then(() => {
+              map.easeTo({
+                center: [loc.lon, loc.lat],
+                zoom: LOCATED_ZOOM,
+                duration: 800,
+              });
+            });
+          },
+          onError: () => {
+            catalogController.setInhouseWarning(t("map.locationUnavailable"));
+          },
+        });
+      },
+    }),
+    "top-right",
+  );
+
   dom.inhouseAnalysisSelect.addEventListener("change", async () => {
-    await catalogController.handleAnalysisChange(
-      dom.inhouseAnalysisSelect.value,
+    const mode = uiState.layerMode === "waves" ? "waves" : uiState.layerMode;
+    datasetLoader.begin(
+      t("status.loadingDataset", {
+        model: catalogController.inhouseSelectedModel,
+      }),
     );
-    void catalogController.ensureInhouseGroupLayers(
-      uiState.layerMode === "waves" ? "waves" : uiState.layerMode,
-    );
-    timelineController?.updateTimelineControlForMode(
-      uiState.layerMode === "waves" ? "waves" : uiState.layerMode,
-    );
+    setSelectorsBusy(true);
+    try {
+      await catalogController.handleAnalysisChange(
+        dom.inhouseAnalysisSelect.value,
+      );
+      await catalogController.ensureInhouseGroupLayers(mode);
+    } finally {
+      setSelectorsBusy(false);
+      datasetLoader.end();
+    }
+    timelineController?.updateTimelineControlForMode(mode);
     schedulePersistState();
   });
 
@@ -561,6 +691,17 @@ export function createControllers(config: ControllerFactoryConfig) {
         },
       });
       timelineController = result.timelineController;
+      // Wire the on-map forecast-time bubble to the freshly-created controller.
+      // doInitWeather builds a NEW TimelineController on every (re)load, so this
+      // must happen here — not at factory-construction time, when the controller
+      // doesn't exist yet — or the controller never gets the bubble reference and
+      // it stays hidden forever.
+      if (dom.mapTimeBubbleEl) {
+        timelineController.setMapTimeBubble(
+          dom.mapTimeBubbleEl,
+          dom.mapTimeBubbleTextEl,
+        );
+      }
     } catch (error) {
       console.error(error);
     }
@@ -601,6 +742,88 @@ export function createControllers(config: ControllerFactoryConfig) {
     schedulePersistState();
   });
 
+  // --- Optional meteogram feature (opt-in via WOD credentials) ---
+  // The guard uses the raw `import.meta.env.*` expressions (not the
+  // isMeteogramEnabled() helper) on purpose: Vite inlines them to string
+  // literals at build time, so when the credentials are absent this whole
+  // branch folds to `if (false)` and the dynamically-imported meteogram chunk
+  // (code + CSS + modal DOM) is dead-code-eliminated from the build entirely.
+  // isMeteogramEnabled() below is the runtime equivalent, used for wiring.
+  if (import.meta.env.VITE_WOD_API_USER && import.meta.env.VITE_WOD_API_PASSWORD) {
+    void import("../features/meteogram/setup")
+      .then(({ setupMeteogram }) => {
+        // Selected-point pin for the docked-panel layout. A maplibre Marker
+        // tracks the map on pan/zoom on its own; we just add/remove it.
+        let meteogramPin: maplibregl.Marker | null = null;
+        const removePin = (): void => {
+          meteogramPin?.remove();
+          meteogramPin = null;
+        };
+        const showPin = (lng: number, lat: number, label: string): void => {
+          removePin();
+          const el = document.createElement("div");
+          el.className = "meteogram-pin";
+          const labelEl = document.createElement("div");
+          labelEl.className = "meteogram-pin__label";
+          labelEl.textContent = label;
+          const stalk = document.createElement("div");
+          stalk.className = "meteogram-pin__stalk";
+          const dot = document.createElement("div");
+          dot.className = "meteogram-pin__dot";
+          el.append(labelEl, stalk, dot);
+          meteogramPin = new maplibregl.Marker({ element: el, anchor: "bottom" })
+            .setLngLat([lng, lat])
+            .addTo(map);
+        };
+        meteogramController = setupMeteogram({
+          mapWrap: dom.mapWrap,
+          getSelectedModel: () => catalogController.inhouseSelectedModel,
+          getLayerMode: () => uiState.layerMode,
+          getLocale,
+          getMapCenter: () => {
+            const c = map.getCenter();
+            return { lng: c.lng, lat: c.lat };
+          },
+          isMeteogramTarget: () =>
+            resolveMapClickTarget({
+              selectedModel: catalogController.inhouseSelectedModel,
+              layerMode: uiState.layerMode,
+              viewMode: layerGroupController.viewMode,
+              meteogramEnabled: true,
+            }) === "meteogram",
+          getModelBounds: () =>
+            catalogController.inhouseLayers[0]?.manifest.bounds ?? null,
+          getAnalysisInfo: () => {
+            const manifest = catalogController.inhouseLayers[0]?.manifest;
+            return manifest
+              ? {
+                  analysisTimeISO: manifest.analysisTimeISO,
+                  generatedAt: manifest.generatedAt,
+                }
+              : null;
+          },
+          showPin,
+          removePin,
+          isDev,
+        });
+        // State may have loaded while the chunk was fetching — sync once now.
+        meteogramController.refreshMobileTrigger();
+        // Restore the persisted point only once the map has restored its own
+        // camera (the "load" handler above jumps to persisted.mapCamera). If we
+        // dropped the pin first, the subsequent camera jump would make it appear
+        // to slide across the map on reload. When the map is already loaded (the
+        // chunk resolved late), restore immediately.
+        const restorePoint = (): void => {
+          void meteogramController?.restorePersistedPoint();
+        };
+        if (map.loaded()) restorePoint();
+        else map.once("load", restorePoint);
+      })
+      .catch((error) => {
+        console.error("Failed to initialise meteogram feature", error);
+      });
+  }
+
   attachMapEventHandlers(map, {
     getOverlay: () => overlay,
     getLayerComposer: () => layerComposer,
@@ -609,8 +832,13 @@ export function createControllers(config: ControllerFactoryConfig) {
     getTooltipController: () => tooltipController,
     getIconographyController: () => iconographyController,
     getWavegramController: () => wavegramController,
+    getMeteogramController: () => meteogramController,
+    meteogramEnabled: isMeteogramEnabled(),
     getUiState: () => uiState,
     getPersistedState: () => persistedState,
+    suppressNextAutoCenter: () => {
+      suppressInitialAutoCenter = true;
+    },
     setMapReady: (ready) => {
       mapReady = ready;
     },
@@ -622,7 +850,22 @@ export function createControllers(config: ControllerFactoryConfig) {
   if (dom.legendStackCardEl) {
     setupLegendDrag(dom.legendStackCardEl, dom.mapWrap);
   }
+  if (dom.mapTimeBubbleEl) {
+    // Drag wiring lives on the element, so it only needs doing once. The
+    // controller wiring (setMapTimeBubble) happens in doInitWeather instead,
+    // because the TimelineController doesn't exist yet at this point.
+    setupLegendDrag(dom.mapTimeBubbleEl, dom.mapWrap);
+  }
   initMobileDrawer();
+
+  initCenterReadout({
+    map,
+    getCatalogController: () => catalogController,
+    getViewMode: () => layerGroupController.viewMode,
+    getUiState: () => uiState,
+    formatCardinalDirection: (direction) =>
+      tooltipController.formatCardinalDirection(direction),
+  });
 
   // ── Language switcher ────────────────────────────────────────────────────
   if (localeIsUrlDriven && dom.localeSwitcherBtn) {
@@ -643,5 +886,9 @@ export function createControllers(config: ControllerFactoryConfig) {
     // hidden legends pick up the new locale before the user switches to them.
     layerComposer.refreshLegends(uiState.layerMode);
     timelineController?.renderCustomTimeline();
+    // Re-render the meteogram widget's strings in the new locale (data-i18n
+    // chrome is already retranslated by setLocale). The widget repaints in
+    // place — no refetch, no view reset.
+    meteogramController?.applyLocale();
   });
 }

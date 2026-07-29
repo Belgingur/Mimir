@@ -1,0 +1,79 @@
+/* ══════════════════════════════════════════════════════════════════
+   CENTER READOUT — fixed crosshair + value at the middle of the map.
+   Touch / small screens only, forecast view only. The crosshair sits exactly
+   on the map centre (map.getCenter()); the value pill floats just above it.
+   ══════════════════════════════════════════════════════════════════ */
+
+.center-readout {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  z-index: 260;
+  pointer-events: none;
+  display: none;
+}
+
+/* Show on touch devices / narrow viewports, but never in iconography view
+   (there is no scalar raster to read there). */
+@media (max-width: 640px), (hover: none) and (pointer: coarse) {
+  body:not(.view-iconography) .center-readout {
+    display: block;
+  }
+}
+
+/* Soft target ring with a bright centre dot; the shadows keep it legible over
+   both light and dark map areas without drawing too much attention. */
+.center-readout__cross {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 26px;
+  height: 26px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.22),
+    0 1px 5px rgba(0, 0, 0, 0.3);
+}
+
+.center-readout__cross::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 3px;
+  height: 3px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.65);
+}
+
+.center-readout__value {
+  position: absolute;
+  left: 0;
+  top: -26px;
+  transform: translate(-50%, -50%);
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  background: rgba(11, 15, 19, 0.82);
+  color: #f7f9fb;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  max-width: min(280px, calc(100vw - 32px));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.center-readout.has-value .center-readout__value {
+  opacity: 1;
+}

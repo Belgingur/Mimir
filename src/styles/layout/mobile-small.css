@@ -63,7 +63,10 @@
     padding: 4px;
   }
 
-  .mode-icon-button {
+  /* Keep the language switcher the same box size as the mode icons so the
+     top-left control column reads as one consistent set of buttons. */
+  .mode-icon-button,
+  .locale-switcher {
     width: var(--icon-button-sm);
     height: var(--icon-button-sm);
   }
@@ -73,7 +76,7 @@
   .model-card {
     right: 8px;
     left: auto;
-    bottom: calc(var(--bottom-bar-height) + 4px);
+    bottom: calc(var(--bottom-bar-height) + var(--safe-area-bottom) + 4px);
     width: min(280px, calc(100vw - 16px));
     max-height: 50vh;
     max-height: 50dvh;
@@ -100,7 +103,7 @@
   .legend-stack-card {
     right: 8px;
     left: auto;
-    bottom: calc(var(--bottom-bar-height) + 56px);
+    bottom: calc(var(--bottom-bar-height) + var(--safe-area-bottom) + 56px);
     width: fit-content;
     max-width: calc(100vw - 16px);
     max-height: 35vh;
@@ -142,6 +145,7 @@
   /* ── 9. Labels: hide on very small screens ──────────────── */
 
   .mode-icon-button__label,
+  .layer-toggle-trigger__label,
   .layer-slot::after {
     display: none !important;
   }
@@ -159,8 +163,9 @@
     border-radius: 12px;
   }
 
+  /* Match the zoom +/- buttons (30px) so the whole zoom column is uniform. */
   .zoom-buttons__grid {
-    width: var(--icon-button-sm);
-    height: var(--icon-button-sm);
+    width: 30px;
+    height: 30px;
   }
 }

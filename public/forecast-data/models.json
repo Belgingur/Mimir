@@ -4,12 +4,16 @@
     {
       "id": "GFS",
       "title": "GFS",
-      "default": true
+      "default": true,
+      "resolution_km": 25,
+      "bbox": { "west": -180, "south": -90, "east": 180, "north": 90 }
     },
     {
       "id": "GWES",
       "title": "GWES",
-      "default": false
+      "default": false,
+      "resolution_km": 25,
+      "bbox": { "west": -180, "south": -90, "east": 180, "north": 90 }
     }
   ]
 }

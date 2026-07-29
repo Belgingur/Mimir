@@ -58,6 +58,9 @@ Environment variables are read by Vite and must use the `VITE_` prefix. Copy `.e
 | `VITE_MAPTILER_KEY`       |      Yes | MapTiler key for the Positron basemap style.                                                                                      |
 | `VITE_INHOUSE_ROOT`       |       No | Origin prefix for forecast data requests. Defaults to same-origin. Set to a CDN or API origin without appending `/forecast-data`. |
 | `VITE_BELGINGUR_BASE_URL` |       No | Base URL for wavegram PNG endpoints. Defaults to `https://wod.belgingur.is`. Set to empty to disable outbound wavegram calls.     |
+| `VITE_WOD_API_USER`       |       No | Enables the optional [meteogram](#meteogram) feature (needs `VITE_WOD_API_PASSWORD` too). WOD deployment username.                |
+| `VITE_WOD_API_PASSWORD`   |       No | Enables the optional [meteogram](#meteogram) feature (needs `VITE_WOD_API_USER` too). WOD deployment password.                    |
+| `VITE_METEOGRAM_API_BASE` |       No | Origin of the WOD API the bundled meteogram widget talks to. Defaults to `https://wod-odinn.belgingur.is` (a legacy `VITE_METEOGRAM_EMBED_URL` is honoured via its origin). |
 
 ## Scripts
 
@@ -165,6 +168,14 @@ Scalar variables use RGBA image frames with `A == 0` as nodata. Log-scaled varia
 
 GWES wave layers support spread wavegram popups. By default the app requests PNGs from `https://wod.belgingur.is` (Belgingur Trellis). Set `VITE_BELGINGUR_BASE_URL` to point at another compatible service, or set it to empty to show a configuration message instead of calling out.
 
+### Meteogram
+
+An **optional, opt-in** feature: clicking the map on a non-wave forecast opens a forecast panel for that point, rendered by the `<bel-meteogram>` web component. On desktop (≥900px) this is the **map-panel** layout: a draggable floating panel with a yr-style meteogram, fullscreen mode, and state restored from `localStorage` (`mimirMapPanelState`). On mobile it falls back to the full-screen sheet. The widget is vendored into the app (see [`src/vendor/bel-meteogram/`](src/vendor/bel-meteogram/)) — nothing is loaded from a remote widget host at runtime.
+
+It is a self-contained module under [`src/features/meteogram/`](src/features/meteogram/) and is **disabled by default**. It turns on only when a build supplies **both** `VITE_WOD_API_USER` and `VITE_WOD_API_PASSWORD` — these mark the build as an authorised Belgingur deployment. Because Vite inlines env vars at build time, a build without them ships with none of the meteogram code, CSS, or DOM (the module is behind a guarded dynamic import that is dead-code-eliminated).
+
+The credentials are passed to the widget (as its `api-user`/`api-password` attributes) so it can authenticate its forecast-data requests with HTTP Basic auth — without them the chart fails to load on any client that has no existing WOD session (e.g. a phone). The widget's config/data requests go to `VITE_METEOGRAM_API_BASE` (default `https://wod-odinn.belgingur.is`). GWES models keep routing map clicks to the wavegram, so the two features never collide.
+
 ## Data Preparation
 
 The [`scripts/`](scripts/) directory contains tools for building forecast datasets from NetCDF model output:
@@ -215,7 +226,7 @@ npm run test:coverage  # with coverage report
 npm run test:watch     # watch mode
 ```
 
-The test suite uses Vitest and jsdom. GitHub Actions runs type-checking and tests on pushes and pull requests to `main`. A separate gitleaks workflow handles secret scanning.
+The test suite uses Vitest and jsdom. GitHub Actions runs type-checking, linting and tests on every push and pull request to `main`, and verifies that the vendored meteogram bundle matches its pinned release (`npm run meteogram:check`).
 
 ## Build Notes
 

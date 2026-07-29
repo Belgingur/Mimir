@@ -3,15 +3,18 @@ import type { MapboxOverlay } from "@deck.gl/mapbox";
 import type { PersistedStateV1 } from "./viewerTypes";
 import type { UiState } from "./inhouseTypes";
 import { resolveMapClickTarget } from "./mapClickRouting";
+import { applyInitialCamera } from "./initialCamera";
 import { t } from "./i18n";
 import { sampleInhouseScalarAtCoord } from "./gridSampling";
 import { INHOUSE_GROUP_VARIABLES } from "./inhouseTypes";
+import { isCenterReadoutViewport } from "./centerReadoutViewport";
 import type { LayerComposer } from "../controllers/LayerComposer";
 import type { InhouseCatalogController } from "../controllers/InhouseCatalogController";
 import type { LayerGroupController } from "../controllers/LayerGroupController";
 import type { TooltipController } from "../controllers/TooltipController";
 import type { IconographyController } from "../controllers/IconographyController";
 import type { WavegramController } from "../controllers/WavegramController";
+import type { MeteogramController } from "../features/meteogram/MeteogramController";
 
 export interface MapEventDeps {
   getOverlay: () => MapboxOverlay;
@@ -21,8 +24,14 @@ export interface MapEventDeps {
   getTooltipController: () => TooltipController;
   getIconographyController: () => IconographyController | undefined;
   getWavegramController: () => WavegramController;
+  /** Optional: only present when the meteogram feature is enabled for this build. */
+  getMeteogramController?: () => MeteogramController | null;
+  meteogramEnabled?: boolean;
   getUiState: () => UiState;
   getPersistedState: () => PersistedStateV1 | null;
+  /** Suppress the next model domain auto-centre so it doesn't clobber the
+   *  first-visit geolocation camera (see applyInitialCamera). */
+  suppressNextAutoCenter?: () => void;
   setMapReady: (ready: boolean) => void;
   initWeather: () => Promise<void>;
   scheduleUpdateLayers: () => void;
@@ -51,6 +60,13 @@ export function attachMapEventHandlers(
     const persisted = deps.getPersistedState();
     if (persisted?.mapCamera) {
       map.jumpTo(persisted.mapCamera);
+    } else {
+      // First visit (no saved camera): centre on a cached location if we have
+      // one (no permission prompt); otherwise stay put and let the coverage-aware
+      // model picker centre on its domain (Iceland overview fallback). Task A1.
+      applyInitialCamera(map, {
+        suppressAutoCenter: deps.suppressNextAutoCenter,
+      });
     }
     map.addControl(deps.getOverlay());
     void deps.initWeather();
@@ -59,18 +75,37 @@ export function attachMapEventHandlers(
   });
 
   map.on("click", (event: maplibregl.MapMouseEvent) => {
+    // A pending single-click open is cancelled the moment a new click arrives;
+    // a genuine double-click (map zoom) then leaves nothing queued.
+    deps.getMeteogramController?.()?.cancelPendingClick();
     const clickTarget = resolveMapClickTarget({
       selectedModel: deps.getCatalogController().inhouseSelectedModel,
       layerMode: deps.getUiState().layerMode,
+      viewMode: deps.getLayerGroupController().viewMode,
+      meteogramEnabled: deps.meteogramEnabled,
     });
     if (clickTarget === "wavegram") {
       deps.getWavegramController().open([event.lngLat.lng, event.lngLat.lat]);
       return;
     }
+    if (clickTarget === "meteogram") {
+      // On touch / small screens the meteogram is opened via the centre-crosshair
+      // button (see meteogramTrigger) so it never competes with pan/zoom taps.
+      if (!isCenterReadoutViewport()) {
+        deps.getMeteogramController?.()?.handleMapClick(event.lngLat);
+      }
+      return;
+    }
+  });
+
+  map.on("dblclick", () => {
+    deps.getMeteogramController?.()?.cancelPendingClick();
   });
 
   map.on("mousemove", (event: maplibregl.MapMouseEvent) => {
     if (deps.getLayerGroupController().viewMode !== "forecast") return;
+    // Mobile uses the fixed centre readout instead of cursor-following tooltips.
+    if (isCenterReadoutViewport()) return;
 
     const catalogController = deps.getCatalogController();
     const contourLayer = catalogController.getActiveInhouseContourLayer();

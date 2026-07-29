@@ -7,11 +7,14 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          maplibre: ["maplibre-gl"],
-          deckgl: ["@deck.gl/core", "@deck.gl/layers", "@deck.gl/mapbox"],
-          luma: ["@luma.gl/core", "@luma.gl/engine", "@luma.gl/webgl"],
-          weatherlayers: ["weatherlayers-gl"],
+        // Vite 8 (rolldown) requires the function form of manualChunks; the
+        // former object form silently broke on the v7→v8 bump.
+        manualChunks(id: string) {
+          if (id.includes("node_modules/maplibre-gl")) return "maplibre";
+          if (id.includes("node_modules/@deck.gl/")) return "deckgl";
+          if (id.includes("node_modules/@luma.gl/")) return "luma";
+          if (id.includes("node_modules/weatherlayers-gl")) return "weatherlayers";
+          return undefined;
         },
       },
     },

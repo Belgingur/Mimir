@@ -1,12 +1,33 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import type * as WeatherLayers from "weatherlayers-gl";
 import {
   InhouseCatalogController,
   CANONICAL_VARIABLES,
   VARIABLE_SUBSTITUTIONS,
   type InhouseCatalogDom,
   type InhouseCatalogDeps,
+  type VariableMeta,
 } from "../src/controllers/InhouseCatalogController";
-import type { InhouseManifest, InhouseLayer } from "../src/lib/inhouseTypes";
+import type {
+  InhouseManifest,
+  InhouseLayer,
+  InhouseGroupId,
+} from "../src/lib/inhouseTypes";
+
+/**
+ * Typed view over the private catalog-state fields the tests set up directly.
+ * Field types mirror the real private members on InhouseCatalogController, so
+ * poking them stays precise instead of going through `any`.
+ */
+interface InhouseInternals {
+  _inhouseModels: string[];
+  _inhouseAnalyses: string[];
+  _inhouseVariables: string[];
+  _inhouseSelectedModel: string;
+  _inhouseSelectedAnalysis: string;
+  _inhouseSelectedVariable: string;
+  _inhouseVariableMeta: Record<string, VariableMeta>;
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -464,7 +485,7 @@ describe("InhouseCatalogController", () => {
     it("returns null when a raster layer is visible", () => {
       const layers = ctrl.inhouseLayers;
       layers.push(
-        makeLayer({ renderMode: "raster", visible: true, image: {} as any }),
+        makeLayer({ renderMode: "raster", visible: true, image: { data: new Uint8Array(0), width: 0, height: 0 } }),
       );
       expect(ctrl.getActiveInhouseContourLayer()).toBeNull();
     });
@@ -474,7 +495,7 @@ describe("InhouseCatalogController", () => {
       const contourLayer = makeLayer({
         renderMode: "contour",
         visible: true,
-        image: {} as any,
+        image: { data: new Uint8Array(0), width: 0, height: 0 },
       });
       layers.push(contourLayer);
       expect(ctrl.getActiveInhouseContourLayer()).toBe(contourLayer);
@@ -486,13 +507,13 @@ describe("InhouseCatalogController", () => {
         id: "a",
         renderMode: "contour",
         visible: true,
-        image: {} as any,
+        image: { data: new Uint8Array(0), width: 0, height: 0 },
       });
       const layer2 = makeLayer({
         id: "b",
         renderMode: "contour",
         visible: true,
-        image: {} as any,
+        image: { data: new Uint8Array(0), width: 0, height: 0 },
       });
       layers.push(layer1, layer2);
       expect(ctrl.getActiveInhouseContourLayer()).toBe(layer2);
@@ -942,15 +963,15 @@ describe("InhouseCatalogController", () => {
   describe("refreshInhouseSelectors", () => {
     it("populates select elements with model/analysis/variable lists", () => {
       // Manually set state via loadInhouseCatalog mock
-      (ctrl as any)._inhouseModels = ["gfs-1", "GWES"];
-      (ctrl as any)._inhouseAnalyses = ["2026-03-04_00"];
-      (ctrl as any)._inhouseVariables = [
+      (ctrl as unknown as InhouseInternals)._inhouseModels = ["gfs-1", "GWES"];
+      (ctrl as unknown as InhouseInternals)._inhouseAnalyses = ["2026-03-04_00"];
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = [
         "air_temperature_at_2m_agl",
         "wind_speed",
       ];
-      (ctrl as any)._inhouseSelectedModel = "gfs-1";
-      (ctrl as any)._inhouseSelectedAnalysis = "2026-03-04_00";
-      (ctrl as any)._inhouseSelectedVariable = "air_temperature_at_2m_agl";
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedModel = "gfs-1";
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedAnalysis = "2026-03-04_00";
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedVariable = "air_temperature_at_2m_agl";
 
       ctrl.refreshInhouseSelectors();
 
@@ -971,8 +992,8 @@ describe("InhouseCatalogController", () => {
     });
 
     it("auto-selects first model if none selected", () => {
-      (ctrl as any)._inhouseModels = ["gfs-1"];
-      (ctrl as any)._inhouseSelectedModel = "";
+      (ctrl as unknown as InhouseInternals)._inhouseModels = ["gfs-1"];
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedModel = "";
       ctrl.refreshInhouseSelectors();
       expect(ctrl.inhouseSelectedModel).toBe("gfs-1");
     });
@@ -1082,7 +1103,7 @@ describe("InhouseCatalogController", () => {
 
   describe("pickFirstAvailableVariable", () => {
     it("picks first matching candidate", () => {
-      (ctrl as any)._inhouseVariables = [
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = [
         "wind_speed",
         "air_temperature_at_2m_agl",
       ];
@@ -1095,14 +1116,14 @@ describe("InhouseCatalogController", () => {
     });
 
     it("returns empty string when no match", () => {
-      (ctrl as any)._inhouseVariables = ["wind_speed"];
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = ["wind_speed"];
       expect(ctrl.pickFirstAvailableVariable(["nope"])).toBe("");
     });
   });
 
   describe("findVariableBySubstring", () => {
     it("finds variable by substring", () => {
-      (ctrl as any)._inhouseVariables = [
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = [
         "air_temperature_at_2m_agl",
         "wind_speed",
       ];
@@ -1112,14 +1133,14 @@ describe("InhouseCatalogController", () => {
     });
 
     it("returns empty string when no match", () => {
-      (ctrl as any)._inhouseVariables = ["wind_speed"];
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = ["wind_speed"];
       expect(ctrl.findVariableBySubstring(["precip"])).toBe("");
     });
   });
 
   describe("getAvailablePrecipCandidates", () => {
     it("returns precip variables available in current model", () => {
-      (ctrl as any)._inhouseVariables = [
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = [
         "lwe_precipitation_rate",
         "wind_speed",
         "precipitation_rate",
@@ -1133,7 +1154,7 @@ describe("InhouseCatalogController", () => {
 
   describe("isGroupAvailableForModel", () => {
     it("returns true when primary variable exists", () => {
-      (ctrl as any)._inhouseVariables = [
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = [
         "air_temperature_at_2m_agl",
         "wind_speed",
       ];
@@ -1141,16 +1162,20 @@ describe("InhouseCatalogController", () => {
     });
 
     it("returns false when no matching variables", () => {
-      (ctrl as any)._inhouseVariables = ["wind_speed"];
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = ["wind_speed"];
       expect(ctrl.isGroupAvailableForModel("waves")).toBe(false);
     });
 
     it("returns false for unknown group", () => {
-      expect(ctrl.isGroupAvailableForModel("nonexistent" as any)).toBe(false);
+      expect(
+        ctrl.isGroupAvailableForModel(
+          "nonexistent" as unknown as InhouseGroupId,
+        ),
+      ).toBe(false);
     });
 
     it("uses precip candidate logic for precip group", () => {
-      (ctrl as any)._inhouseVariables = ["lwe_precipitation_rate"];
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = ["lwe_precipitation_rate"];
       expect(ctrl.isGroupAvailableForModel("precip")).toBe(true);
     });
   });
@@ -1161,12 +1186,12 @@ describe("InhouseCatalogController", () => {
     });
 
     it("returns first available group by preference order", () => {
-      (ctrl as any)._inhouseVariables = ["wind_speed"];
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = ["wind_speed"];
       expect(ctrl.pickValidGroupForModel("gfs-1")).toBe("wind");
     });
 
     it("returns null when no group is available", () => {
-      (ctrl as any)._inhouseVariables = [];
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = [];
       expect(ctrl.pickValidGroupForModel("gfs-1")).toBeNull();
     });
   });
@@ -1194,9 +1219,9 @@ describe("InhouseCatalogController", () => {
     });
 
     it("loads layers for temperature group", async () => {
-      (ctrl as any)._inhouseSelectedModel = "gfs-1";
-      (ctrl as any)._inhouseSelectedAnalysis = "2026-03-04_00";
-      (ctrl as any)._inhouseVariables = ["air_temperature_at_2m_agl"];
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedModel = "gfs-1";
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedAnalysis = "2026-03-04_00";
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = ["air_temperature_at_2m_agl"];
 
       const manifest = makeManifest();
       stubFetch({ "manifest.json": manifest });
@@ -1212,9 +1237,9 @@ describe("InhouseCatalogController", () => {
     });
 
     it("loads wind layers with vector + speed + direction", async () => {
-      (ctrl as any)._inhouseSelectedModel = "gfs-1";
-      (ctrl as any)._inhouseSelectedAnalysis = "2026-03-04_00";
-      (ctrl as any)._inhouseVariables = [
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedModel = "gfs-1";
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedAnalysis = "2026-03-04_00";
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = [
         "wind_speed",
         "wind_uv_10m",
         "wind_from_direction",
@@ -1232,9 +1257,9 @@ describe("InhouseCatalogController", () => {
     });
 
     it("clears layers when no primary variable found", async () => {
-      (ctrl as any)._inhouseSelectedModel = "gfs-1";
-      (ctrl as any)._inhouseSelectedAnalysis = "2026-03-04_00";
-      (ctrl as any)._inhouseVariables = [];
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedModel = "gfs-1";
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedAnalysis = "2026-03-04_00";
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = [];
 
       await ctrl.ensureInhouseGroupLayers("temperature");
       expect(ctrl.inhouseLayers.length).toBe(0);
@@ -1244,9 +1269,9 @@ describe("InhouseCatalogController", () => {
     });
 
     it("reuses existing layer instances", async () => {
-      (ctrl as any)._inhouseSelectedModel = "gfs-1";
-      (ctrl as any)._inhouseSelectedAnalysis = "2026-03-04_00";
-      (ctrl as any)._inhouseVariables = ["air_temperature_at_2m_agl"];
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedModel = "gfs-1";
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedAnalysis = "2026-03-04_00";
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = ["air_temperature_at_2m_agl"];
 
       const manifest = makeManifest();
       stubFetch({ "manifest.json": manifest });
@@ -1281,27 +1306,27 @@ describe("InhouseCatalogController", () => {
 
   describe("hasInhouseVariable", () => {
     it("returns true when variable exists in current catalog", () => {
-      (ctrl as any)._inhouseSelectedModel = "gfs-1";
-      (ctrl as any)._inhouseSelectedAnalysis = "2026-03-04_00";
-      (ctrl as any)._inhouseVariables = ["air_temperature_at_2m_agl"];
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedModel = "gfs-1";
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedAnalysis = "2026-03-04_00";
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = ["air_temperature_at_2m_agl"];
       expect(
         ctrl.hasInhouseVariable("air_temperature", "gfs-1", "2026-03-04_00"),
       ).toBe(true);
     });
 
     it("returns false when model mismatch", () => {
-      (ctrl as any)._inhouseSelectedModel = "gfs-1";
-      (ctrl as any)._inhouseSelectedAnalysis = "2026-03-04_00";
-      (ctrl as any)._inhouseVariables = ["air_temperature_at_2m_agl"];
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedModel = "gfs-1";
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedAnalysis = "2026-03-04_00";
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = ["air_temperature_at_2m_agl"];
       expect(
         ctrl.hasInhouseVariable("air_temperature", "GWES", "2026-03-04_00"),
       ).toBe(false);
     });
 
     it("returns false when variable not in catalog", () => {
-      (ctrl as any)._inhouseSelectedModel = "gfs-1";
-      (ctrl as any)._inhouseSelectedAnalysis = "2026-03-04_00";
-      (ctrl as any)._inhouseVariables = ["wind_speed"];
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedModel = "gfs-1";
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedAnalysis = "2026-03-04_00";
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = ["wind_speed"];
       expect(
         ctrl.hasInhouseVariable("air_temperature", "gfs-1", "2026-03-04_00"),
       ).toBe(false);
@@ -1310,9 +1335,9 @@ describe("InhouseCatalogController", () => {
 
   describe("resolveProviderForCanonical", () => {
     it("returns inhouse when variable is available", () => {
-      (ctrl as any)._inhouseSelectedModel = "gfs-1";
-      (ctrl as any)._inhouseSelectedAnalysis = "2026-03-04_00";
-      (ctrl as any)._inhouseVariables = ["air_temperature_at_2m_agl"];
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedModel = "gfs-1";
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedAnalysis = "2026-03-04_00";
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = ["air_temperature_at_2m_agl"];
       expect(
         ctrl.resolveProviderForCanonical(
           "air_temperature",
@@ -1323,9 +1348,9 @@ describe("InhouseCatalogController", () => {
     });
 
     it("returns cloud when not available", () => {
-      (ctrl as any)._inhouseSelectedModel = "gfs-1";
-      (ctrl as any)._inhouseSelectedAnalysis = "2026-03-04_00";
-      (ctrl as any)._inhouseVariables = [];
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedModel = "gfs-1";
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedAnalysis = "2026-03-04_00";
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = [];
       expect(
         ctrl.resolveProviderForCanonical(
           "air_temperature",
@@ -1338,9 +1363,9 @@ describe("InhouseCatalogController", () => {
 
   describe("resolveProviderForPreset", () => {
     it("returns inhouse when all variables available", () => {
-      (ctrl as any)._inhouseSelectedModel = "gfs-1";
-      (ctrl as any)._inhouseSelectedAnalysis = "2026-03-04_00";
-      (ctrl as any)._inhouseVariables = [
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedModel = "gfs-1";
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedAnalysis = "2026-03-04_00";
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = [
         "air_temperature_at_2m_agl",
         "wind_speed",
       ];
@@ -1354,9 +1379,9 @@ describe("InhouseCatalogController", () => {
     });
 
     it("returns cloud when any variable missing", () => {
-      (ctrl as any)._inhouseSelectedModel = "gfs-1";
-      (ctrl as any)._inhouseSelectedAnalysis = "2026-03-04_00";
-      (ctrl as any)._inhouseVariables = ["air_temperature_at_2m_agl"];
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedModel = "gfs-1";
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedAnalysis = "2026-03-04_00";
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = ["air_temperature_at_2m_agl"];
       expect(
         ctrl.resolveProviderForPreset(
           ["air_temperature", "wind_speed"],
@@ -1369,7 +1394,7 @@ describe("InhouseCatalogController", () => {
 
   describe("resolveInhouseRenderMode", () => {
     it("returns contour when variable meta says contour", () => {
-      (ctrl as any)._inhouseVariableMeta = {
+      (ctrl as unknown as InhouseInternals)._inhouseVariableMeta = {
         pressure_msl: { id: "pressure_msl", defaultLayer: "contour" },
       };
       expect(ctrl.resolveInhouseRenderMode("pressure_msl")).toBe("contour");
@@ -1382,7 +1407,7 @@ describe("InhouseCatalogController", () => {
     });
 
     it("returns raster when meta has no defaultLayer", () => {
-      (ctrl as any)._inhouseVariableMeta = {
+      (ctrl as unknown as InhouseInternals)._inhouseVariableMeta = {
         wind_speed: { id: "wind_speed" },
       };
       expect(ctrl.resolveInhouseRenderMode("wind_speed")).toBe("raster");
@@ -1438,7 +1463,7 @@ describe("InhouseCatalogController", () => {
         data: new Uint8Array(4),
         width: 1,
         height: 1,
-      } as any);
+      });
       const provider = ctrl.createInhouseProvider(
         "gfs-1",
         "2026-03-04_00",
@@ -1456,24 +1481,24 @@ describe("InhouseCatalogController", () => {
 
   describe("resolveTemperatureProviderId", () => {
     it("returns inhouse when air_temperature is available", () => {
-      (ctrl as any)._inhouseSelectedModel = "gfs-1";
-      (ctrl as any)._inhouseSelectedAnalysis = "2026-03-04_00";
-      (ctrl as any)._inhouseVariables = ["air_temperature_at_2m_agl"];
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedModel = "gfs-1";
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedAnalysis = "2026-03-04_00";
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = ["air_temperature_at_2m_agl"];
       expect(ctrl.resolveTemperatureProviderId()).toBe("inhouse");
     });
 
     it("returns cloud otherwise", () => {
-      (ctrl as any)._inhouseSelectedModel = "gfs-1";
-      (ctrl as any)._inhouseSelectedAnalysis = "2026-03-04_00";
-      (ctrl as any)._inhouseVariables = [];
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedModel = "gfs-1";
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedAnalysis = "2026-03-04_00";
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = [];
       expect(ctrl.resolveTemperatureProviderId()).toBe("cloud");
     });
   });
 
   describe("getInhouseTemperatureMapping", () => {
     it("returns mapping when all set", () => {
-      (ctrl as any)._inhouseSelectedModel = "gfs-1";
-      (ctrl as any)._inhouseSelectedAnalysis = "2026-03-04_00";
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedModel = "gfs-1";
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedAnalysis = "2026-03-04_00";
       const mapping = ctrl.getInhouseTemperatureMapping();
       expect(mapping).toEqual({
         model: "gfs-1",
@@ -1489,17 +1514,17 @@ describe("InhouseCatalogController", () => {
 
   describe("getTemperatureProvider", () => {
     it("returns inhouse provider when available", () => {
-      (ctrl as any)._inhouseSelectedModel = "gfs-1";
-      (ctrl as any)._inhouseSelectedAnalysis = "2026-03-04_00";
-      (ctrl as any)._inhouseVariables = ["air_temperature_at_2m_agl"];
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedModel = "gfs-1";
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedAnalysis = "2026-03-04_00";
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = ["air_temperature_at_2m_agl"];
       const provider = ctrl.getTemperatureProvider();
       expect(provider.id).toBe("inhouse");
     });
 
     it("falls back to cloud provider", () => {
-      (ctrl as any)._inhouseSelectedModel = "gfs-1";
-      (ctrl as any)._inhouseSelectedAnalysis = "2026-03-04_00";
-      (ctrl as any)._inhouseVariables = [];
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedModel = "gfs-1";
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedAnalysis = "2026-03-04_00";
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = [];
       const provider = ctrl.getTemperatureProvider();
       expect(provider.id).toBe("cloud");
       expect(deps.createCloudProvider).toHaveBeenCalledWith(
@@ -1517,7 +1542,7 @@ describe("InhouseCatalogController", () => {
       const spy = vi.spyOn(console, "log");
       const devDeps = makeDeps({ dom, isDev: true });
       const c = new InhouseCatalogController(devDeps);
-      const layer = makeLayer({ variable: "wind_speed", image: {} as any });
+      const layer = makeLayer({ variable: "wind_speed", image: { data: new Uint8Array(0), width: 0, height: 0 } });
       c.logWindParticleTextureDebug(layer, 0);
       expect(spy).not.toHaveBeenCalledWith(
         expect.stringContaining("[wind particles]"),
@@ -1541,7 +1566,7 @@ describe("InhouseCatalogController", () => {
   describe("getParticleTextureData", () => {
     it("returns a copy of the texture data", () => {
       const original = new Uint8Array([1, 2, 3, 4]);
-      const texture = { data: original, width: 1, height: 1 } as any;
+      const texture = { data: original, width: 1, height: 1 };
       const result = ctrl.getParticleTextureData(texture);
       expect(result.data).not.toBe(original);
       expect(Array.from(result.data)).toEqual([1, 2, 3, 4]);
@@ -1553,7 +1578,7 @@ describe("InhouseCatalogController", () => {
   describe("sampleInhouseVectorAtCoord", () => {
     it("delegates to deps.sampleVectorAtPosition", () => {
       const layer = makeLayer({
-        image: { data: new Uint8Array(4), width: 1, height: 1 } as any,
+        image: { data: new Uint8Array(4), width: 1, height: 1 },
       });
       const result = ctrl.sampleInhouseVectorAtCoord(
         layer,
@@ -1767,9 +1792,9 @@ describe("InhouseCatalogController", () => {
     });
 
     it("preset select change with valid preset triggers layer build", async () => {
-      (ctrl as any)._inhouseSelectedModel = "gfs-1";
-      (ctrl as any)._inhouseSelectedAnalysis = "2026-03-04_00";
-      (ctrl as any)._inhouseVariables = [
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedModel = "gfs-1";
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedAnalysis = "2026-03-04_00";
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = [
         "air_temperature_at_2m_agl",
         "wind_speed",
       ];
@@ -1789,9 +1814,9 @@ describe("InhouseCatalogController", () => {
     });
 
     it("preset select warns when provider is not inhouse", () => {
-      (ctrl as any)._inhouseSelectedModel = "gfs-1";
-      (ctrl as any)._inhouseSelectedAnalysis = "2026-03-04_00";
-      (ctrl as any)._inhouseVariables = []; // No variables → cloud fallback
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedModel = "gfs-1";
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedAnalysis = "2026-03-04_00";
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = []; // No variables → cloud fallback
 
       dom.inhousePresetSelect!.innerHTML =
         '<option value="Wind + MSLP">Wind + MSLP</option>';
@@ -1802,9 +1827,9 @@ describe("InhouseCatalogController", () => {
     });
 
     it("add layer button dispatches layer creation", async () => {
-      (ctrl as any)._inhouseSelectedModel = "gfs-1";
-      (ctrl as any)._inhouseSelectedAnalysis = "2026-03-04_00";
-      (ctrl as any)._inhouseSelectedVariable = "wind_speed";
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedModel = "gfs-1";
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedAnalysis = "2026-03-04_00";
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedVariable = "wind_speed";
 
       const manifest = makeManifest();
       stubFetch({ "manifest.json": manifest });
@@ -1838,11 +1863,11 @@ describe("InhouseCatalogController", () => {
       ctrl.inhouseLayers.push(layer);
       ctrl.inhouseTimeIndex = 0;
 
-      const mockTexture = {
+      const mockTexture: WeatherLayers.TextureData = {
         data: new Uint8Array(400 * 4),
         width: 100,
         height: 4,
-      } as any;
+      };
       vi.spyOn(ctrl, "loadInhouseTexture").mockResolvedValue(mockTexture);
 
       await ctrl.loadInhouseFrameSet();
@@ -1853,17 +1878,19 @@ describe("InhouseCatalogController", () => {
       const layer = makeLayer();
       ctrl.inhouseLayers.push(layer);
 
-      let resolveFirst!: (v: any) => void;
-      const firstPromise = new Promise((r) => {
-        resolveFirst = r;
-      });
+      let resolveFirst!: (v: WeatherLayers.TextureData | null) => void;
+      const firstPromise = new Promise<WeatherLayers.TextureData | null>(
+        (r) => {
+          resolveFirst = r;
+        },
+      );
       vi.spyOn(ctrl, "loadInhouseTexture")
-        .mockImplementationOnce(() => firstPromise as any)
+        .mockImplementationOnce(() => firstPromise)
         .mockResolvedValue({
           data: new Uint8Array(4),
           width: 1,
           height: 1,
-        } as any);
+        });
 
       const first = ctrl.loadInhouseFrameSet();
       const second = ctrl.loadInhouseFrameSet();

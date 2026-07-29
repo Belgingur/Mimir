@@ -32,8 +32,11 @@ export const fo: Record<string, string> = {
   "map.toggleLayers": "Víxla lögum",
   "map.infoControls": "Upplýsingastýringar",
   "map.close": "Loka",
+  "map.myLocation": "Brúka mína staðseting",
+  "map.locationUnavailable": "Kundi ikki finna staðseting tína.",
   "map.variable": "Breyta",
   "map.variables": "Breytur",
+  "map.menu": "Valmynd",
 
   // ── Layer groups ─────────────────────────────────────────────────────
   "layer.temperature": "Hiti",
@@ -111,12 +114,17 @@ export const fo: Record<string, string> = {
   // ── Loading / status ─────────────────────────────────────────────────
   "status.loadingFrame": "Sæki ramma…",
   "status.loadingModel": "Sæki líkan…",
+  "status.loadingDataset": "Sæki {{model}}…",
+  "status.datasetFailed": "Kundi ikki sótt {{model}}. Tað kann vera uttan dáta nú.",
+  "action.backToModel": "Aftur til {{model}}",
   "status.loadingWavegram": "Hleð bylgjurit…",
+  "status.loadingMeteogram": "Hleð veðurriti…",
   "status.noData": "Vantar gögn.",
   "status.noNumericData": "Vantar gögn fyrir þessa breytu/tímabil.",
 
   // ── Modal titles ─────────────────────────────────────────────────────
   "modal.wavegram": "Öldurit",
+  "modal.meteogram": "Veðurrit",
 
   // ── Wavegram controls ────────────────────────────────────────────────
   "wavegram.duration": "Tímalengd",
@@ -125,6 +133,9 @@ export const fo: Record<string, string> = {
   "wavegram.print": "Prenta",
   "wavegram.showTech": "Birta tæknilegar upplýsingar",
   "wavegram.failed": "Tókst ekki að sækja bylgjurit.",
+  "meteogram.loadFailed": "Tókst ikki at heinta veðurrit fyri {{model}} — punkturin kann vera uttan fyri spáøki modelsins. Royn eitt annað model ella ein annan stað. ({{message}})",
+  "meteogram.outsideDomain": "Hesin staður kann vera uttan fyri spáøki {{model}}.",
+  "meteogram.openAtCenter": "Vís veðurrit fyri merkta punktin",
   "wavegram.unconfigured":
     "Bylgjuritstænastan er ikki sett upp. Set VITE_BELGINGUR_BASE_URL fyri at virkja hana.",
   "wavegram.downloadFail":

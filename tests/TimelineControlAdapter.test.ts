@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type * as WeatherLayers from "weatherlayers-gl";
 import {
   TimelineControlAdapter,
   type PlaybackHooks,
@@ -28,14 +29,20 @@ describe("TimelineControlAdapter", () => {
   it("raw returns the original inner control", () => {
     const inner = makeInner();
     const { hooks } = makeHooks();
-    const adapter = new TimelineControlAdapter(inner as any, hooks);
+    const adapter = new TimelineControlAdapter(
+      inner as unknown as WeatherLayers.TimelineControl,
+      hooks,
+    );
     expect(adapter.raw).toBe(inner);
   });
 
   it("start() calls inner.start then hooks.onStart", async () => {
     const inner = makeInner();
     const { hooks, spies } = makeHooks();
-    const adapter = new TimelineControlAdapter(inner as any, hooks);
+    const adapter = new TimelineControlAdapter(
+      inner as unknown as WeatherLayers.TimelineControl,
+      hooks,
+    );
     await adapter.start();
     expect(inner.start).toHaveBeenCalledOnce();
     expect(spies.onStart).toHaveBeenCalledOnce();
@@ -44,7 +51,10 @@ describe("TimelineControlAdapter", () => {
   it("pause() calls hooks.onPause then inner.pause", () => {
     const inner = makeInner();
     const { hooks, spies } = makeHooks();
-    const adapter = new TimelineControlAdapter(inner as any, hooks);
+    const adapter = new TimelineControlAdapter(
+      inner as unknown as WeatherLayers.TimelineControl,
+      hooks,
+    );
     adapter.pause();
     expect(spies.onPause).toHaveBeenCalledOnce();
     expect(inner.pause).toHaveBeenCalledOnce();
@@ -53,7 +63,10 @@ describe("TimelineControlAdapter", () => {
   it("stop() calls hooks.onStop then inner.stop", () => {
     const inner = makeInner();
     const { hooks, spies } = makeHooks();
-    const adapter = new TimelineControlAdapter(inner as any, hooks);
+    const adapter = new TimelineControlAdapter(
+      inner as unknown as WeatherLayers.TimelineControl,
+      hooks,
+    );
     adapter.stop();
     expect(spies.onStop).toHaveBeenCalledOnce();
     expect(inner.stop).toHaveBeenCalledOnce();
@@ -62,7 +75,10 @@ describe("TimelineControlAdapter", () => {
   it("getConfig() delegates to inner.getConfig", () => {
     const inner = makeInner();
     const { hooks } = makeHooks();
-    const adapter = new TimelineControlAdapter(inner as any, hooks);
+    const adapter = new TimelineControlAdapter(
+      inner as unknown as WeatherLayers.TimelineControl,
+      hooks,
+    );
     const config = adapter.getConfig();
     expect(inner.getConfig).toHaveBeenCalledOnce();
     expect(config).toEqual({ datetimes: ["t1"], datetime: "t1" });
@@ -71,7 +87,10 @@ describe("TimelineControlAdapter", () => {
   it("setConfig() delegates to inner.setConfig", () => {
     const inner = makeInner();
     const { hooks } = makeHooks();
-    const adapter = new TimelineControlAdapter(inner as any, hooks);
+    const adapter = new TimelineControlAdapter(
+      inner as unknown as WeatherLayers.TimelineControl,
+      hooks,
+    );
     const cfg = { datetimes: ["t2"], datetime: "t2" };
     adapter.setConfig(cfg);
     expect(inner.setConfig).toHaveBeenCalledWith(cfg);
@@ -80,7 +99,10 @@ describe("TimelineControlAdapter", () => {
   it("start() still calls hooks.onStart when inner lacks start method", async () => {
     const inner = makeInner({ start: undefined });
     const { hooks, spies } = makeHooks();
-    const adapter = new TimelineControlAdapter(inner as any, hooks);
+    const adapter = new TimelineControlAdapter(
+      inner as unknown as WeatherLayers.TimelineControl,
+      hooks,
+    );
     await adapter.start();
     expect(spies.onStart).toHaveBeenCalledOnce();
   });
@@ -88,7 +110,10 @@ describe("TimelineControlAdapter", () => {
   it("pause() still calls hooks.onPause when inner lacks pause method", () => {
     const inner = makeInner({ pause: undefined });
     const { hooks, spies } = makeHooks();
-    const adapter = new TimelineControlAdapter(inner as any, hooks);
+    const adapter = new TimelineControlAdapter(
+      inner as unknown as WeatherLayers.TimelineControl,
+      hooks,
+    );
     adapter.pause();
     expect(spies.onPause).toHaveBeenCalledOnce();
   });
@@ -96,7 +121,10 @@ describe("TimelineControlAdapter", () => {
   it("stop() still calls hooks.onStop when inner lacks stop method", () => {
     const inner = makeInner({ stop: undefined });
     const { hooks, spies } = makeHooks();
-    const adapter = new TimelineControlAdapter(inner as any, hooks);
+    const adapter = new TimelineControlAdapter(
+      inner as unknown as WeatherLayers.TimelineControl,
+      hooks,
+    );
     adapter.stop();
     expect(spies.onStop).toHaveBeenCalledOnce();
   });
@@ -104,14 +132,20 @@ describe("TimelineControlAdapter", () => {
   it("getConfig() returns undefined when inner lacks getConfig", () => {
     const inner = makeInner({ getConfig: undefined });
     const { hooks } = makeHooks();
-    const adapter = new TimelineControlAdapter(inner as any, hooks);
+    const adapter = new TimelineControlAdapter(
+      inner as unknown as WeatherLayers.TimelineControl,
+      hooks,
+    );
     expect(adapter.getConfig()).toBeUndefined();
   });
 
   it("setConfig() is a no-op when inner lacks setConfig", () => {
     const inner = makeInner({ setConfig: undefined });
     const { hooks } = makeHooks();
-    const adapter = new TimelineControlAdapter(inner as any, hooks);
+    const adapter = new TimelineControlAdapter(
+      inner as unknown as WeatherLayers.TimelineControl,
+      hooks,
+    );
     expect(() => adapter.setConfig({ datetime: "t1" })).not.toThrow();
   });
 });

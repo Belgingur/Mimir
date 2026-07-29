@@ -2,7 +2,26 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- maximum-scale=1 + user-scalable=no: let MapLibre own the two-finger
+         pinch on the canvas instead of the browser zooming the whole page.
+         viewport-fit=cover: fill the whole screen edge-to-edge (no white bars
+         beside the notch in landscape). The controls are kept clear of the
+         camera housing / home indicator with env(safe-area-inset-*) padding in
+         the CSS (see tokens.css + landscape.css), so nothing hides under it. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <!-- Run full-screen (no URL bar) when launched from the home screen. -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <!-- "default" (not black-translucent) keeps the status bar opaque so app
+         content sits below it in home-screen / standalone mode, matching the
+         non-cover viewport above. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Mímir" />
+    <!-- Colour the browser/standalone chrome to match the app surface. -->
+    <meta name="theme-color" content="#13181d" />
     <title>Mímir by Belgingur</title>
     <link rel="preconnect" href="https://api.maptiler.com" crossorigin />
     <!-- Prevent FOUC: hide app until stylesheet loads and overrides opacity -->
@@ -129,6 +148,55 @@
           class="map-overlay map-overlay--top-left"
           aria-label="Map controls"
         >
+          <div class="map-control-card control menu-card" aria-label="Menu">
+            <button
+              class="layer-toggle-trigger"
+              id="layer-toggle-trigger"
+              type="button"
+              aria-label="Menu"
+              aria-expanded="false"
+              data-i18n-attr="aria-label"
+              data-i18n="map.menu"
+            >
+            <span class="layer-toggle-trigger__label" data-i18n="map.menu"
+              >Menu</span
+            >
+            <span
+              class="layer-toggle-trigger__icon layer-toggle-trigger__icon--layers"
+              aria-hidden="true"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </span>
+            <span
+              class="layer-toggle-trigger__icon layer-toggle-trigger__icon--collapse"
+              aria-hidden="true"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M18 15l-6-6-6 6" />
+              </svg>
+            </span>
+            </button>
+          </div>
           <div
             class="map-control-card control view-toggle view-toggle--map"
             aria-label="View mode"
@@ -238,55 +306,6 @@
             class="map-control-card control forecast-only layer-switch-card"
             aria-label="Layer controls"
           >
-            <button
-              class="layer-toggle-trigger"
-              id="layer-toggle-trigger"
-              type="button"
-              aria-label="Toggle layers"
-              aria-expanded="false"
-              data-i18n-attr="aria-label"
-              data-i18n="map.toggleLayers"
-            >
-              <span
-                class="layer-toggle-trigger__label"
-                data-i18n="map.variables"
-                >Variables</span
-              >
-              <span
-                class="layer-toggle-trigger__icon layer-toggle-trigger__icon--layers"
-                aria-hidden="true"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                  <path d="M2 17l10 5 10-5" />
-                  <path d="M2 12l10 5 10-5" />
-                </svg>
-              </span>
-              <span
-                class="layer-toggle-trigger__icon layer-toggle-trigger__icon--collapse"
-                aria-hidden="true"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M18 15l-6-6-6 6" />
-                </svg>
-              </span>
-            </button>
             <div id="layer-group-list" class="layer-group-list" hidden></div>
           </div>
         </div>
@@ -310,6 +329,16 @@
             value="1"
           />
           <div class="value" id="opacity-value">1.00</div>
+        </div>
+
+        <!-- Draggable forecast-time readout — repeats the timeline tab's
+             timestamp; draggable around the map like the legend card. -->
+        <div
+          class="map-time-bubble control forecast-only"
+          aria-label="Forecast time"
+          hidden
+        >
+          <span class="map-time-bubble__text"></span>
         </div>
 
         <!-- Legend card — position: absolute within .map-wrap; bottom-right, just above the bottom bar -->

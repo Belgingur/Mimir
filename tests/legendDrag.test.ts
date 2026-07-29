@@ -3,7 +3,7 @@ import { setupLegendDrag } from "../src/lib/legendDrag";
 
 beforeAll(() => {
   if (typeof globalThis.PointerEvent === "undefined") {
-    (globalThis as any).PointerEvent = class PointerEvent extends MouseEvent {
+    globalThis.PointerEvent = class PointerEvent extends MouseEvent {
       readonly pointerId: number;
       readonly pointerType: string;
       constructor(type: string, init: PointerEventInit & MouseEventInit = {}) {
@@ -11,7 +11,7 @@ beforeAll(() => {
         this.pointerId = init.pointerId ?? 0;
         this.pointerType = init.pointerType ?? "";
       }
-    };
+    } as unknown as typeof PointerEvent;
   }
 });
 

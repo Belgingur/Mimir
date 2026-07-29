@@ -69,7 +69,7 @@ const encodeFrac = (frac: number) => Math.round(frac * 255);
 describe("extractSnowPoints", () => {
   it("returns null when rasterScalar is null", () => {
     const layer = makeLayer(12, 12, new Uint8Array(144));
-    (layer as any).rasterScalar = null;
+    layer.rasterScalar = null;
     expect(extractSnowPoints(layer)).toBeNull();
   });
 
@@ -196,7 +196,7 @@ describe("extractSnowPoints", () => {
       }
     }
     const layer = makeLayer(paddedWidth, height, data);
-    (layer as any).rasterScalar.widthMeta = logicalWidth;
+    layer.rasterScalar!.widthMeta = logicalWidth;
     const points = extractSnowPoints(layer);
     expect(points).not.toBeNull();
   });

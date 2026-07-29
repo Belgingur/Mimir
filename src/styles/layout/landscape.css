@@ -10,15 +10,20 @@
     --bottom-bar-height: 36px;
   }
 
-  /* ── 0. Hide mobile-only elements ────────────────────────────── */
-  /* Overrides: mobile-small.css (max-width: 480px) shows these; here we always hide them */
+  /* ── 0. Collapsible chrome: hamburger drives the top-right row ── */
+  /* Landscape lays the stack out horizontally (a tall vertical menu would
+     overflow the short viewport). The Menu button is always visible and pins to
+     the right edge; opening it fans modes + variables out to its left. */
 
-  .layer-toggle-trigger {
-    display: none !important;
+  .menu-card {
+    order: 3; /* rightmost — the Menu button pins to the screen edge */
+    padding: 4px;
   }
 
-  .layer-switch-card .layer-group-list {
-    display: flex !important;
+  .layer-toggle-trigger {
+    display: inline-flex !important;
+    width: var(--icon-button-size);
+    height: var(--icon-button-size);
   }
 
   /* ── Always-visible elements in landscape ────────────────────── */
@@ -47,69 +52,84 @@
 
   /* .model-card intentionally NOT forced — it is controlled by JS render state */
 
-  /* ── 1. TOP BAR: view-toggle + utility + layers in one row ───── */
-  /* Overrides: mobile-small.css (max-width: 480px) hides .utility-toggle and .layer-switch-card */
+  /* ── 1. TOP-RIGHT BAR: Menu pins the right edge; opening it fans out left.
+     Left → right: [variables][mode bar][Menu] — modes sit next to Menu because
+     the variable picker disappears in iconography view. ─────────────── */
 
   .view-toggle--map {
-    position: fixed !important;
-    top: 8px !important;
-    left: 8px !important;
+    order: 2; /* adjacent to Menu */
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
     right: auto !important;
     bottom: auto !important;
-    display: inline-flex !important;
-    visibility: visible !important;
     flex-direction: row !important;
+    align-items: center;
     gap: 4px;
     padding: 4px;
   }
 
-  .mode-icon-button {
-    width: var(--icon-button-xs);
-    height: var(--icon-button-xs);
-    border-radius: var(--radius-md);
+  body:not(.chrome-open) .view-toggle--map {
+    display: none !important;
   }
 
-  .mode-icon-button__icon {
-    width: 17px;
-    height: 17px;
+  body.chrome-open .view-toggle--map {
+    display: inline-flex !important;
+    visibility: visible !important;
+  }
+
+  /* Match the language switcher's size so every button in the bar is uniform. */
+  .mode-icon-button {
+    width: var(--icon-button-size);
+    height: var(--icon-button-size);
   }
 
   /* Grid toggle is now in .zoom-buttons — no separate utility-toggle in landscape */
 
-  /* ── LAYER SWITCH: horizontal strip, top-right ───────────────── */
-  /* Overrides: mobile-small.css (max-width: 480px) hides this with display: none !important */
+  /* ── VARIABLES CARD: leftmost — fans out furthest from Menu ── */
 
   .layer-switch-card {
-    position: fixed !important;
-    top: 8px !important;
+    order: 1;
+    position: relative !important;
+    top: auto !important;
     left: auto !important;
-    right: 8px !important;
+    right: auto !important;
     bottom: auto !important;
-    display: block !important;
-    visibility: visible !important;
+    align-items: center;
+    gap: 4px;
     width: auto;
-    max-width: calc(100vw - 200px);
+    max-width: none;
     max-height: none;
     overflow: visible;
     padding: 4px;
     border-radius: 12px;
   }
 
+  /* Collapsed: only the hamburger shows; opening fans modes + variables left. */
+  body:not(.chrome-open) .layer-switch-card {
+    display: none !important;
+  }
+
+  body.chrome-open .layer-switch-card {
+    display: flex !important;
+    flex-direction: row;
+    visibility: visible !important;
+  }
+
   .layer-group-list {
     flex-direction: row !important;
-    gap: 3px;
+    align-items: center;
+    gap: 4px;
     flex-wrap: nowrap;
+    /* Size to content — no scrollbar. The full bar (modes + variables +
+       hamburger) fits comfortably within a landscape phone's width. */
+    max-width: none;
+    overflow: visible;
   }
 
   .layer-slot__button {
-    width: var(--icon-button-xs);
-    height: var(--icon-button-xs);
-    border-radius: var(--radius-md);
-  }
-
-  .layer-slot__icon {
-    width: 16px;
-    height: 16px;
+    width: var(--icon-button-size);
+    height: var(--icon-button-size);
   }
 
   .wind-style-flyout,
@@ -120,8 +140,24 @@
     transform: translateX(-50%);
   }
 
+  /* Right-anchored horizontal row holding the collapse bar. Overrides the base
+     `display: contents` so the cards line up in one row, pinned to the right
+     edge and growing leftward as the hamburger opens. */
   .map-overlay--top-left {
-    display: contents;
+    display: flex !important;
+    flex-direction: row;
+    align-items: center;
+    top: calc(8px + var(--safe-area-top, 0px));
+    right: calc(8px + var(--safe-area-right));
+    left: auto;
+    gap: 6px;
+    max-width: calc(100vw - 16px - var(--safe-area-left) - var(--safe-area-right));
+  }
+
+  /* Cards keep their natural size — never shrink — so icons stay crisp and
+     the row never needs a scrollbar. */
+  .map-overlay--top-left > * {
+    flex: 0 0 auto;
   }
 
   /* ── 2. BOTTOM BAR: landscape tweaks ───────────────────────── */
@@ -170,21 +206,43 @@
     top: -4px;
   }
 
-  /* ── 4. LEGEND: bottom-left, compact, above bar ────────────── */
+  /* ── 4. LEGEND: bottom-left, scaled down for the short landscape canvas ── */
+  /* Landscape phones are very short; the full-size legend ate ~2/3 of the
+     height. Shrink it from its bottom-left anchor so it stays pinned in the
+     corner above the bottom bar but takes far less vertical space. */
 
   .legend-stack-card {
-    left: 8px;
+    left: calc(8px + var(--safe-area-left));
     right: auto;
-    bottom: calc(var(--bottom-bar-height) + 6px);
-    max-width: min(180px, calc(100vw - 320px));
+    bottom: calc(var(--bottom-bar-height) + var(--safe-area-bottom) + 6px);
+    max-width: min(180px, calc(100vw - 220px));
+    transform: scale(0.7);
+    transform-origin: bottom left;
   }
 
-  /* ── 5. ZOOM BUTTONS: bottom-left stack ─────────────────────── */
+  /* ── 5. ZOOM + GRID: bottom-right corner ────────────────────── */
 
   .zoom-buttons {
     top: auto;
-    left: 8px;
-    bottom: calc(var(--bottom-bar-height) + 50px);
+    left: auto;
+    right: calc(8px + var(--safe-area-right));
+    bottom: calc(var(--bottom-bar-height) + var(--safe-area-bottom) + 6px);
+  }
+
+  /* ── INFO BUTTON: tucked just below the hamburger on the right ──── */
+
+  .info-button {
+    top: calc(var(--icon-button-size) + 20px);
+    right: calc(8px + var(--safe-area-right));
+    left: auto;
+    bottom: auto;
+  }
+
+  .info-panel {
+    top: calc(var(--icon-button-size) + 50px);
+    right: calc(8px + var(--safe-area-right));
+    left: auto;
+    bottom: auto;
   }
 
   .zoom-buttons {
@@ -212,6 +270,7 @@
   }
 
   .mode-icon-button__label,
+  .layer-toggle-trigger__label,
   .layer-slot::after {
     display: none;
   }

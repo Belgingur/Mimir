@@ -2,6 +2,7 @@ import type * as WeatherLayers from "weatherlayers-gl";
 import { LRUMap } from "../lib/LRUMap";
 import {
   normalizeIdList,
+  normalizeModelList,
   normalizeVariableList,
   pickDefaultId,
   resolveSelectionChange,
@@ -22,6 +23,8 @@ import {
   filterTimesByRange,
 } from "../lib/timelineHelpers";
 import { decodeScalarGrid } from "../lib/imageProcessing";
+import { selectModel } from "../lib/selectModel";
+import { processTexturePixels } from "../lib/textureProcessing";
 import { sampleInhouseScalarAtCoord } from "../lib/gridSampling";
 import { clamp } from "../lib/mathUtils";
 import {
@@ -33,6 +36,7 @@ import {
 import type {
   InhouseManifest,
   InhouseLayer,
+  ModelCoverage,
   InhouseGroupId,
   CanonicalVariable,
   CanonicalStyle,
@@ -93,6 +97,7 @@ import {
   GLOBAL_MODELS,
   DEFAULT_VIEW,
   DEFAULT_NON_WAVES_MODEL,
+  MODEL_RESOLUTION_METERS,
   shouldCenterOnBounds,
   getModelResolutionMeters,
   getModelDefaultCenter,
@@ -159,6 +164,22 @@ export interface InhouseCatalogDeps {
   setCurrentDatetime: (dt: string) => void;
   isRestoringFromPersisted: () => boolean;
   setRestoringFromPersisted: (v: boolean) => void;
+  /** True while the first-visit geolocation view owns the camera, so the model
+   *  domain auto-centre is skipped (see applyInitialCamera / task A1). */
+  isInitialAutoCenterSuppressed?: () => boolean;
+  /** Clear the above once the user explicitly switches models. */
+  clearInitialAutoCenterSuppression?: () => void;
+  /**
+   * Approximate user location used to re-rank models when the current one turns
+   * out to render no data (task A3 health safety net). Null when unknown.
+   */
+  getAutoSelectLocation?: () => { lat: number; lon: number } | null;
+  /**
+   * Switch to another model programmatically (runs the same flow as the model
+   * `<select>`). Used by the empty-model safety net and the "use my location"
+   * button. Wired in controllerFactory.
+   */
+  switchToModel?: (model: string) => void;
   getPendingTimeIndex: () => number | null;
   setPendingTimeIndex: (v: number | null) => void;
   isMapReady: () => boolean;
@@ -260,6 +281,10 @@ export class InhouseCatalogController {
 
   // --- Catalog state ---
   private _inhouseModels: string[] = [];
+  /** Per-model coverage metadata (bbox/resolution/health) from models.json (task A2/A3). */
+  private _inhouseModelMeta: Map<string, ModelCoverage> = new Map();
+  /** Models auto-demoted after they loaded with no data, so we only demote once (task A3). */
+  private readonly _autoDemotedModels = new Set<string>();
   private _inhouseAnalyses: string[] = [];
   private _inhouseVariables: string[] = [];
   private _inhouseVariableMeta: Record<string, VariableMeta> = {};
@@ -268,6 +293,9 @@ export class InhouseCatalogController {
   private _inhouseSelectedVariable = "";
   private _inhouseTimeIndex = 0;
   private _inhouseAbort: AbortController | null = null;
+  /** Separate abort for background neighbor-frame prefetch, so it never
+   *  cancels the foreground frame load and is dropped when the view moves (B1). */
+  private _prefetchAbort: AbortController | null = null;
   private _inhouseCatalogReady: Promise<void> | null = null;
   private readonly _inhouseLayers: InhouseLayer[] = [];
 
@@ -492,6 +520,10 @@ export class InhouseCatalogController {
     analysis: string,
     bounds: [number, number, number, number],
   ): void {
+    // First-visit geolocation owns the initial camera: skip auto-centre so it
+    // can't clobber the located/Reykjavík view (task A1). Stays suppressed until
+    // the user explicitly switches models (handleModelChange clears it).
+    if (this.deps.isInitialAutoCenterSuppressed?.()) return;
     // BEL-IS always opens at the Iceland overview, even when restoring persisted state.
     // Use jumpTo (not easeTo) so it can't be cancelled by subsequent map events.
     if (model === "BEL-IS") {
@@ -765,6 +797,10 @@ export class InhouseCatalogController {
       throw new Error(`Failed to load frame ${url} (${response.status})`);
     }
     const blob = await response.blob();
+    // Decode + process pixels on the main thread (task B1 keeps the work in the
+    // shared, unit-tested processTexturePixels). NOTE: the off-thread worker path
+    // (textureDecoderClient/textureDecoderWorker) is intentionally NOT used here
+    // — it regressed frame loading in the browser and is parked pending a fix.
     const bitmap = await createImageBitmap(blob);
     const canvas = document.createElement("canvas");
     canvas.width = bitmap.width;
@@ -774,60 +810,9 @@ export class InhouseCatalogController {
     ctx.drawImage(bitmap, 0, 0);
     const imageData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
     const srcData = new Uint8Array(imageData.data.buffer.slice(0));
-    const width = bitmap.width;
-    const height = bitmap.height;
-    // Pre-scan alpha
-    let preAlphaOn = 0;
-    let preAlphaPartial = 0;
-    let preMinR = 255;
-    let preMaxR = 0;
-    for (let i = 0; i < srcData.length; i += 4) {
-      const r = srcData[i];
-      const a = srcData[i + 3];
-      if (a >= 255) preAlphaOn += 1;
-      else if (a > 0) preAlphaPartial += 1;
-      if (r < preMinR) preMinR = r;
-      if (r > preMaxR) preMaxR = r;
-    }
-    // Only ignore alpha (treat image as fully opaque) when there are NO fully-opaque pixels
-    // AND NO partial-alpha pixels. Partial alpha indicates the image uses alpha for domain
-    // masking (e.g. BEL-FO temperature), so we must preserve it to build a correct domain mask.
-    const ignoreAlpha =
-      preAlphaOn === 0 && preAlphaPartial === 0 && preMaxR > 0;
-    // Normalize alpha
-    for (let i = 0; i < srcData.length; i += 4) {
-      let a = srcData[i + 3];
-      if (ignoreAlpha) {
-        a = 255;
-      } else if (a === 0) {
-        srcData[i] = 0;
-        srcData[i + 1] = 0;
-        srcData[i + 2] = 0;
-      } else if (a > 0 && a < 255) {
-        a = 255;
-      }
-      srcData[i + 3] = a;
-    }
-    let rawRange: [number, number] | null = null;
-    const data = srcData;
-    let alphaOn = 0;
-    let alphaOff = 0;
-    let min = 255;
-    let max = 0;
-    let minR = 255;
-    let maxR = 0;
-    for (let i = 0; i < srcData.length; i += 4) {
-      const r = srcData[i];
-      const alpha = srcData[i + 3];
-      if (alpha >= 255) alphaOn += 1;
-      else alphaOff += 1;
-      if (r < minR) minR = r;
-      if (r > maxR) maxR = r;
-      if (alpha < 255) continue;
-      if (r < min) min = r;
-      if (r > max) max = r;
-    }
-    rawRange = Number.isFinite(min) && Number.isFinite(max) ? [min, max] : null;
+    const processed = processTexturePixels(srcData, bitmap.width, bitmap.height);
+    const { data, width, height, rawRange, alphaOn, alphaOff, minR, maxR } =
+      processed;
     const texture = {
       data,
       width,
@@ -898,6 +883,9 @@ export class InhouseCatalogController {
     if (this._inhouseAbort) {
       this._inhouseAbort.abort();
     }
+    // Drop any in-flight neighbour prefetch so it doesn't compete with the new
+    // foreground load (task B1). A fresh prefetch is scheduled when this resolves.
+    this._prefetchAbort?.abort();
     this._inhouseAbort = new AbortController();
     const controller = this._inhouseAbort;
     const warningMessages: string[] = [];
@@ -1254,6 +1242,138 @@ export class InhouseCatalogController {
     }
     this.setInhouseWarning(warningMessages.join(" "));
     this.deps.scheduleUpdateLayers();
+    // Health safety net (task A3): if this model loaded but rendered no data
+    // anywhere, demote it and fall back to the next covering model.
+    this.maybeDemoteEmptyModel();
+    // Warm the neighbouring time steps in the background so scrubbing to the
+    // next/previous frame is instant (task B1).
+    this.schedulePrefetchNeighbors(this._inhouseTimeIndex);
+  }
+
+  /**
+   * Public, coverage-aware model pick (task A3). Runs the pure `selectModel`
+   * over the catalog's model metadata for the given point, or the current
+   * auto-select location when omitted. Returns a model id present in the
+   * catalog, or null when nothing healthy covers the point.
+   */
+  selectModelForLocation(lat?: number, lon?: number): string | null {
+    let point: { lat: number; lon: number } | null;
+    if (typeof lat === "number" && typeof lon === "number") {
+      point = { lat, lon };
+    } else {
+      point = this.deps.getAutoSelectLocation?.() ?? null;
+    }
+    if (!point) return null;
+    const picked = selectModel(point.lat, point.lon, [
+      ...this._inhouseModelMeta.values(),
+    ]);
+    return picked && this._inhouseModels.includes(picked) ? picked : null;
+  }
+
+  /**
+   * Detect a model that loaded successfully but contains no data anywhere (the
+   * ECMWF-IS "empty domain" case): every visible layer has an image whose domain
+   * mask is entirely off. Demote the model (so selectModel won't pick it again)
+   * and, when we have an approximate location, switch to the next covering model.
+   * Runs at most once per model. A layer with no domain mask (fully-opaque image)
+   * counts as having data, so healthy global models are never demoted.
+   */
+  private maybeDemoteEmptyModel(): void {
+    const model = this._inhouseSelectedModel;
+    if (!model || this._autoDemotedModels.has(model)) return;
+    const withImage = this._inhouseLayers.filter((layer) => layer.image);
+    if (!withImage.length) return; // nothing loaded — not an "empty data" case
+    const hasData = withImage.some(
+      (layer) => layer.domainMaskOn === undefined || layer.domainMaskOn > 0,
+    );
+    if (hasData) return;
+
+    this._autoDemotedModels.add(model);
+    const meta = this._inhouseModelMeta.get(model);
+    if (meta) meta.available = false;
+
+    const loc = this.deps.getAutoSelectLocation?.();
+    if (!loc || !this.deps.switchToModel) return;
+    const next = selectModel(loc.lat, loc.lon, [
+      ...this._inhouseModelMeta.values(),
+    ]);
+    if (next && next !== model && this._inhouseModels.includes(next)) {
+      if (this.deps.isDev)
+        console.log("[inhouse] model rendered empty — auto-demote", {
+          model,
+          next,
+        });
+      this.deps.switchToModel(next);
+    }
+  }
+
+  /**
+   * Background-prefetch the frames adjacent to `centerIndex` into the texture
+   * cache (task B1). Uses a dedicated abort controller so it never cancels the
+   * foreground load and is dropped the moment the view moves again. Scheduled on
+   * idle; frames already cached are skipped.
+   */
+  private schedulePrefetchNeighbors(centerIndex: number): void {
+    if (this._prefetchAbort) this._prefetchAbort.abort();
+    const base = this._inhouseLayers[0];
+    if (!base || !base.times.length) return;
+    const controller = new AbortController();
+    this._prefetchAbort = controller;
+    const maxIndex = base.times.length - 1;
+    const run = () => {
+      if (controller.signal.aborted) return;
+      // Nearest neighbours first (most likely next scrub step).
+      for (const offset of [1, -1, 2, -2]) {
+        const idx = centerIndex + offset;
+        if (idx < 0 || idx > maxIndex) continue;
+        void this.prefetchFrameIndex(idx, controller.signal);
+      }
+    };
+    const idle = (
+      globalThis as { requestIdleCallback?: (cb: () => void, opts?: unknown) => void }
+    ).requestIdleCallback;
+    if (typeof idle === "function") idle(run, { timeout: 1500 });
+    else setTimeout(run, 200);
+  }
+
+  /**
+   * Warm the texture cache for a single time index across all active layers,
+   * without touching the layers' visible `image` (that stays the foreground
+   * frame). Prefetch failures are swallowed.
+   */
+  private async prefetchFrameIndex(
+    index: number,
+    signal: AbortSignal,
+  ): Promise<void> {
+    const base = this._inhouseLayers[0];
+    if (!base) return;
+    const targetTime = base.times[index];
+    if (!targetTime) return;
+    await Promise.allSettled(
+      this._inhouseLayers.map(async (layer) => {
+        if (signal.aborted) return;
+        const matchIndex =
+          layer === base
+            ? index
+            : matchNearestTimeIndex(layer.times, targetTime);
+        const baseUrl = this.getVariableBaseUrl(
+          layer.model,
+          layer.analysis,
+          layer.variable,
+        );
+        const fileName = layer.manifest.fileTemplate.replace(
+          "{index:03d}",
+          formatIndex(matchIndex, 3),
+        );
+        const url = `${baseUrl}/${fileName}`;
+        if (this._textureCache.has(url)) return;
+        try {
+          await this.loadInhouseTexture(url, signal);
+        } catch {
+          // Prefetch is best-effort — ignore aborts and load errors.
+        }
+      }),
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -1326,20 +1446,33 @@ export class InhouseCatalogController {
       const modelsRaw = await this.fetchJson<unknown>(
         `${root}/${FORECAST_DATA_SEGMENT}/models.json`,
       );
-      const modelsNorm = normalizeIdList(modelsRaw);
-      this._inhouseModels = sortModels(
-        Array.isArray(modelsNorm) ? modelsNorm : modelsNorm.ids,
-      );
+      const modelsNorm = normalizeModelList(modelsRaw);
+      this._inhouseModels = sortModels(modelsNorm.ids);
+      this._inhouseModelMeta = new Map(Object.entries(modelsNorm.meta));
+      // Backfill resolution from the built-in table when models.json omits it,
+      // so coverage-aware ranking works even before ops populate resolution_km.
+      for (const meta of this._inhouseModelMeta.values()) {
+        if (meta.resolutionKm == null) {
+          const meters = MODEL_RESOLUTION_METERS[meta.id];
+          if (typeof meters === "number") meta.resolutionKm = meters / 1000;
+        }
+      }
       const preferredModel =
         this.deps.persistedModelId &&
         this._inhouseModels.includes(this.deps.persistedModelId)
           ? this.deps.persistedModelId
           : "";
+      // First visit (no persisted model): pick the finest healthy model that
+      // covers the user's approximate location (task A1/A3). Falls back to the
+      // declared default when the location is unknown or nothing covers it.
+      let autoSelected = "";
+      if (!preferredModel) {
+        autoSelected = this.selectModelForLocation() ?? "";
+      }
       this._inhouseSelectedModel =
         preferredModel ||
-        (Array.isArray(modelsNorm)
-          ? (this._inhouseModels[0] ?? "")
-          : pickDefaultId(this._inhouseModels, modelsNorm.defaultId));
+        autoSelected ||
+        pickDefaultId(this._inhouseModels, modelsNorm.defaultId);
     } catch (error) {
       this.setInhouseWarning(
         `Failed to load models.json: ${error instanceof Error ? error.message : String(error)}`,
@@ -2228,6 +2361,9 @@ export class InhouseCatalogController {
       isGroupAvailableForModel: (groupId) =>
         this.isGroupAvailableForModel(groupId),
     });
+    // A deliberate user model switch always recentres on the new model's domain,
+    // even if the first-visit geolocation view was suppressing auto-centre (A1).
+    this.deps.clearInitialAutoCenterSuppression?.();
     // Reset the centering guard so the new model's domain is always centered.
     // Without this, switching A→B→A could skip centering on A the second time if the
     // same model+analysis key was already used, leaving the map at B's camera position.
