@@ -62,6 +62,11 @@ export interface MeteogramControllerDeps {
     analysisTimeISO?: string;
     generatedAt?: string;
   } | null;
+  /** Name of the place at a point — the city label clicked on the map, else the
+   *  nearest place from the bundled dataset — or undefined when nothing is close
+   *  enough to fairly label the point, in which case the raw coordinate is used.
+   *  See lib/resolveClickedPlace.ts. */
+  readonly getPlaceLabel?: (lng: number, lat: number) => string | undefined;
   /** Drop a pin at the clicked map point (map-panel layout). Optional so the
    *  controller still works headless / in tests without a live map. */
   readonly showPin?: (lng: number, lat: number, label: string) => void;
@@ -138,6 +143,40 @@ export class MeteogramController {
     clearMapPanelPoint();
   }
 
+  /** Resolved place name for a point, or undefined when there isn't a usable one. */
+  private placeNameAt(lng: number, lat: number): string | undefined {
+    const name = this.deps.getPlaceLabel?.(lng, lat)?.trim();
+    return name ? name : undefined;
+  }
+
+  /**
+   * Label for a map point: the resolved place name where there is one, else the
+   * raw coordinate. The name is Mímir's own — the city label clicked on the map,
+   * or the nearest place from the bundled dataset — so the point being labelled
+   * is still exactly the point clicked, never snapped to a WOD station.
+   */
+  private pointLabel(lng: number, lat: number): string {
+    return this.placeNameAt(lng, lat) ?? `${lat.toFixed(3)}, ${lng.toFixed(3)}`;
+  }
+
+  /**
+   * Tell the widget what to call this point. `location-name` outranks the
+   * widget's own name resolution, so it is only set when a place actually
+   * resolved; otherwise it is removed so `prefer-coordinates` shows the raw
+   * coordinate as before (and a stale name from a previous point cannot leak).
+   * The widget drops the attribute itself when the user picks a station in its
+   * overlay, so this never fights a manual pick.
+   */
+  private applyLocationName(
+    widget: MeteogramWidget,
+    lng: number,
+    lat: number,
+  ): void {
+    const name = this.placeNameAt(lng, lat);
+    if (name) widget.setAttribute("location-name", name);
+    else widget.removeAttribute("location-name");
+  }
+
   /**
    * Whether a point falls outside the selected model's domain bounds. Returns
    * false when the bounds are unknown (no layer loaded yet) so the widget's own
@@ -210,7 +249,7 @@ export class MeteogramController {
     lat: number,
     lng: number,
   ): { clientName: string } {
-    const label = `${lat.toFixed(3)}, ${lng.toFixed(3)}`;
+    const label = this.pointLabel(lng, lat);
     // Show Mímir's own model name in the widget rather than the WOD config's
     // (e.g. "ISLAND-9" instead of "Ísafjörður - 2.5km"). See the widget's
     // `forecast-label` attribute.
@@ -219,6 +258,7 @@ export class MeteogramController {
       this.widget.setAttribute("language", this.widgetLanguage());
       this.widget.setAttribute("forecast-label", modelLabel);
       this.applyAnalysisAttrs(this.widget);
+      this.applyLocationName(this.widget, lng, lat);
       this.widget.loadChartLocation(lat, lng, label);
       return { clientName };
     }
@@ -230,6 +270,7 @@ export class MeteogramController {
     fresh.setAttribute("forecast-label", modelLabel);
     fresh.setAttribute("location-lat", String(lat));
     fresh.setAttribute("location-lon", String(lng));
+    this.applyLocationName(fresh, lng, lat);
     this.applyAnalysisAttrs(fresh);
     this.attachWidgetListeners(fresh);
     this.deps.dom.widgetHost.appendChild(fresh);
@@ -311,7 +352,7 @@ export class MeteogramController {
     writeMapPanelPoint(lat, lng);
     dom.modal.classList.add("is-open");
     dom.modal.setAttribute("aria-hidden", "false");
-    const label = `${lat.toFixed(3)}, ${lng.toFixed(3)}`;
+    const label = this.pointLabel(lng, lat);
     dom.location.textContent = label;
     // Early out-of-domain hint: if the point is outside the selected model's
     // known bounds we say so immediately, before the widget's fetch resolves.

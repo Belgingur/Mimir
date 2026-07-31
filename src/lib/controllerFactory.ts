@@ -22,6 +22,15 @@ import { LayerGroupController } from "../controllers/LayerGroupController";
 import { LayerComposer } from "../controllers/LayerComposer";
 import { IconographyController } from "../controllers/IconographyController";
 import { attachMapEventHandlers } from "./mapEventHandlers";
+import { resolveWeatherBeforeId } from "./mapLayerOrder";
+import { applyPlaceLabelStyle } from "./placeLabelStyle";
+import { createPlaceLabeller } from "./placeLabeller";
+import { addCityLabelLayer } from "./cityLabelLayer";
+import {
+  createPlaceResolver,
+  type PlaceResolver,
+  type ResolvedPlace,
+} from "./resolveClickedPlace";
 import { resolveMapClickTarget } from "./mapClickRouting";
 import { setupLegendDrag } from "./legendDrag";
 import { initMobileDrawer } from "./mobileDrawer";
@@ -107,6 +116,50 @@ export function createControllers(config: ControllerFactoryConfig) {
   function updateLayers() {
     if (!layerComposer) return;
     layerComposer.updateLayers();
+  }
+
+  // --- Basemap presentation (draw order + place labels) ---
+  // MapLibre layer id the weather raster is anchored before, so the basemap's
+  // city labels paint on top of the weather imagery. Resolved by scanning the
+  // live style (never hardcoded — a MapTiler style update would silently break
+  // a hardcoded id and push the overlay back to the top).
+  let weatherBeforeId: string | undefined;
+  function onStyleReady() {
+    let next: string | undefined;
+    try {
+      next = resolveWeatherBeforeId(map.getStyle());
+    } catch {
+      // Style not ready yet; the styledata handler will retry.
+      return;
+    }
+    // Recolour labels, drop admin-region labels, keep city names at high zoom,
+    // and (re)add Mímir's own population-tiered city layer — a style swap drops
+    // both. All idempotent, so re-running on every styledata is harmless.
+    applyPlaceLabelStyle(map);
+    ensureCityLabels();
+    if (next === weatherBeforeId) return;
+    weatherBeforeId = next;
+    if (isDev) {
+      console.log(`[mapLayerOrder] weather overlay anchored before ${next}`);
+    }
+    // Re-emit the deck layers so the new anchor takes effect.
+    scheduleUpdateLayers();
+  }
+
+  /**
+   * Add the city-label layer once both halves are ready: the style (layers
+   * cannot be added before it loads) and the place dataset (fetched async).
+   * Whichever finishes last triggers the add; the call itself is idempotent.
+   */
+  function ensureCityLabels() {
+    if (!map.isStyleLoaded()) return;
+    const places = placeResolver.loadedPlaces();
+    if (places.length === 0) return;
+    try {
+      addCityLabelLayer(map, places);
+    } catch {
+      /* style swapped mid-call; the next styledata will retry */
+    }
   }
 
   const schedulePersistState = createPersistScheduler(() => {
@@ -276,6 +329,7 @@ export function createControllers(config: ControllerFactoryConfig) {
     jumpToMap: (view) => map.jumpTo(view),
     easeToMap: (options) => map.easeTo(options),
     setOverlayProps: (props) => overlay.setProps(props),
+    getWeatherBeforeId: () => weatherBeforeId,
     getUiState: () => uiState,
     isMapReady: () => mapReady,
     getCatalogController: () => catalogController,
@@ -802,6 +856,8 @@ export function createControllers(config: ControllerFactoryConfig) {
                 }
               : null;
           },
+          getPlaceLabel: (lng: number, lat: number) =>
+            placeLabeller.labelAt(lng, lat),
           showPin,
           removePin,
           isDev,
@@ -824,7 +880,48 @@ export function createControllers(config: ControllerFactoryConfig) {
       });
   }
 
+  // --- Click → named place ---
+  // Basemap label hit-test first, bundled Natural Earth dataset as fallback.
+  // Both paths are local: no geocoding / reverse-geocoding request, and no tile
+  // request beyond the basemap and weather imagery already loaded.
+  const placeResolver: PlaceResolver = createPlaceResolver({
+    map,
+    getLocale,
+    // The model-specific station lists the iconography already loads are much
+    // denser than Natural Earth in the areas the app cares about most.
+    getExtraPlaces: () => iconographyController?.namedPlaces ?? [],
+    isDev,
+  });
+
+  // The city-label layer is drawn from the same dataset, so it goes up as soon
+  // as the fetch lands (or as soon as the style does, whichever is later).
+  void placeResolver.preload().then(ensureCityLabels);
+
+  // Labels map points with the resolved place name, so the meteogram panel
+  // shows "Reykjavík" rather than "64.143, -21.937".
+  const placeLabeller = createPlaceLabeller();
+
   attachMapEventHandlers(map, {
+    getPlaceResolver: () => placeResolver,
+    onPlaceResolved: (
+      place: ResolvedPlace | null,
+      lngLat: { lng: number; lat: number },
+    ) => {
+      placeLabeller.remember(place, lngLat);
+      if (isDev) {
+        console.log("[placeClick]", place);
+      }
+      // Published as a DOM event so downstream features can consume the result
+      // without this factory having to know about them.
+      map
+        .getContainer()
+        .dispatchEvent(
+          new CustomEvent<ResolvedPlace | null>("mimir:placeclick", {
+            detail: place,
+          }),
+        );
+    },
+    onStyleReady,
     getOverlay: () => overlay,
     getLayerComposer: () => layerComposer,
     getCatalogController: () => catalogController,

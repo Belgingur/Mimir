@@ -30,6 +30,9 @@ export interface SetupMeteogramDeps {
     analysisTimeISO?: string;
     generatedAt?: string;
   } | null;
+  /** Name of the place at a point (clicked city label, else nearest place), or
+   *  undefined when nothing is close enough to fairly label it. */
+  readonly getPlaceLabel?: (lng: number, lat: number) => string | undefined;
   /** Drop/remove the selected-point pin on the map (docked-panel layout). */
   readonly showPin: (lng: number, lat: number, label: string) => void;
   readonly removePin: () => void;
@@ -113,6 +116,7 @@ export function setupMeteogram(deps: SetupMeteogramDeps): MeteogramController {
     isMeteogramTarget: deps.isMeteogramTarget,
     getModelBounds: deps.getModelBounds,
     getAnalysisInfo: deps.getAnalysisInfo,
+    getPlaceLabel: deps.getPlaceLabel,
     showPin: deps.showPin,
     removePin: deps.removePin,
     isDev: deps.isDev,

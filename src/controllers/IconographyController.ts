@@ -236,6 +236,16 @@ export class IconographyController {
   get isActive(): boolean {
     return this._active;
   }
+  /**
+   * The named places loaded for the current model (a model-specific station
+   * list where one exists, else the global cities file). Exposed so the
+   * click-to-place resolver can prefer these over the bundled Natural Earth
+   * dataset — for BEL-IS that is 208 Icelandic stations against Natural
+   * Earth's 9, which matters because Iceland is the primary market.
+   */
+  get namedPlaces(): readonly CityEntry[] {
+    return this._cities;
+  }
 
   // ─── Init ──────────────────────────────────────────────────────────────────
 
