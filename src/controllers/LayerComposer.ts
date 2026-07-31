@@ -143,6 +143,10 @@ export interface LayerComposerDeps {
     duration?: number;
   }) => void;
   setOverlayProps: (props: { layers: LayersList }) => void;
+  /** MapLibre layer id the weather raster is drawn *before*, so basemap city
+   *  labels stay on top of the weather imagery (see lib/mapLayerOrder.ts).
+   *  Undefined until the style has loaded, or when it carries no symbol layers. */
+  getWeatherBeforeId?: () => string | undefined;
   getUiState: () => UiState;
   isMapReady: () => boolean;
   getCatalogController: () => InhouseCatalogController;
@@ -822,6 +826,11 @@ export class LayerComposer {
         }
         const rasterLayer = new WeatherLayers.RasterLayer({
           id: `inhouse-${layer.id}`,
+          // Interleaved deck layers default to the top of MapLibre's stack,
+          // which paints the weather over every city label. Anchoring the
+          // raster below the first `place` symbol layer keeps the labels
+          // visible — and therefore genuinely clickable, not just hit-testable.
+          beforeId: this.deps.getWeatherBeforeId?.(),
           image: rasterImage,
           imageType: WeatherLayers.ImageType.SCALAR,
           imageUnscale: rasterImageUnscale,

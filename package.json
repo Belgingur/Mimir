@@ -13,6 +13,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "postinstall": "patch-package",
+    "places:build": "node scripts/build-places.mjs",
     "meteogram:sync": "node scripts/vendor-meteogram.mjs sync",
     "meteogram:check": "node scripts/vendor-meteogram.mjs check"
   },
@@ -26,7 +27,9 @@
     "@luma.gl/webgl": "^9.3.3",
     "d3-contour": "^4.0.2",
     "d3-time-format": "^4.1.0",
+    "geokdbush": "^2.1.0",
     "geotiff": "^3.0.0",
+    "kdbush": "^4.0.2",
     "maplibre-gl": "^5.2.0",
     "weatherlayers-gl": "2026.5.1"
   },

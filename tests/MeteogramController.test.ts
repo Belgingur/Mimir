@@ -236,6 +236,94 @@ describe("MeteogramController", () => {
     localStorage.removeItem("mimirMapPanelState");
   });
 
+  describe("resolved place name", () => {
+    it("labels the panel, pin and widget with the resolved city name", async () => {
+      const showPin = vi.fn();
+      const { controller, dom, widget } = buildController({
+        showPin,
+        getPlaceLabel: () => "Reykjavík",
+      });
+      await controller.openAt(-21.937, 64.143);
+
+      expect(dom.location.textContent).toBe("Reykjavík");
+      expect(showPin).toHaveBeenLastCalledWith(-21.937, 64.143, "Reykjavík");
+      // location-name outranks the widget's own resolution, so its header
+      // agrees with the panel instead of showing the raw coordinate.
+      expect(widget.getAttribute("location-name")).toBe("Reykjavík");
+      // The point itself is still exactly the clicked point.
+      expect(widget.getAttribute("location-lat")).toBe("64.143");
+      expect(widget.getAttribute("location-lon")).toBe("-21.937");
+    });
+
+    it("receives the point as (lng, lat)", async () => {
+      const getPlaceLabel = vi.fn(() => "Akureyri");
+      const { controller } = buildController({ getPlaceLabel });
+      await controller.openAt(-18.1, 65.667);
+      expect(getPlaceLabel).toHaveBeenCalledWith(-18.1, 65.667);
+    });
+
+    it("falls back to coordinates when no place resolves", async () => {
+      const { controller, dom, widget } = buildController({
+        getPlaceLabel: () => undefined,
+      });
+      await controller.openAt(-20, 64);
+      expect(dom.location.textContent).toBe("64.000, -20.000");
+      // Left unset so the widget's own prefer-coordinates behaviour stands.
+      expect(widget.hasAttribute("location-name")).toBe(false);
+    });
+
+    it("ignores a blank resolved name", async () => {
+      const { controller, dom, widget } = buildController({
+        getPlaceLabel: () => "   ",
+      });
+      await controller.openAt(-20, 64);
+      expect(dom.location.textContent).toBe("64.000, -20.000");
+      expect(widget.hasAttribute("location-name")).toBe(false);
+    });
+
+    it("does not leak a stale name onto a later unnamed point", async () => {
+      let label: string | undefined = "Reykjavík";
+      const { controller, widget } = buildController({
+        getPlaceLabel: () => label,
+      });
+      await controller.openAt(-21.937, 64.143);
+      expect(widget.getAttribute("location-name")).toBe("Reykjavík");
+
+      // Same client, so the existing widget is reused rather than recreated.
+      label = undefined;
+      await controller.openAt(-30, 62);
+      expect(widget.hasAttribute("location-name")).toBe(false);
+      expect(widget.calls[widget.calls.length - 1]).toEqual([
+        62,
+        -30,
+        "62.000, -30.000",
+      ]);
+    });
+
+    it("keeps the resolved name when the widget announces the same point", async () => {
+      const showPin = vi.fn();
+      const { controller, dom, widget } = buildController({
+        showPin,
+        getPlaceLabel: () => "Reykjavík",
+      });
+      await controller.openAt(-21.937, 64.143);
+
+      // The widget echoes location-name back in its location event, so the
+      // subtitle keeps the city name and gains the "now" temperature.
+      widget.dispatchEvent(
+        new CustomEvent("bel-meteogram-location", {
+          detail: { lat: 64.143, lon: -21.937, name: "Reykjavík", tempC: 7 },
+        }),
+      );
+      expect(dom.location.textContent).toBe("Reykjavík · 7°");
+      expect(showPin).toHaveBeenLastCalledWith(
+        -21.937,
+        64.143,
+        "Reykjavík · 7°",
+      );
+    });
+  });
+
   it("closes when the backdrop (modal itself) is clicked", async () => {
     const { controller, dom } = buildController();
     await controller.openAt(-20, 64);
