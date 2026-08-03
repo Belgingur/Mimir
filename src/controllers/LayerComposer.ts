@@ -1928,11 +1928,13 @@ export class LayerComposer {
     `;
   }
 
+  // Ticks every 10°C across the encoder domain; 0°C is called out separately
+  // because the ramp has a hard cyan→green discontinuity there.
   private readonly tempLegendTicks = [
-    -30, -25, -20, -15, -10, -5, 0, 5, 10, 15, 20, 25, 30,
+    -50, -40, -30, -20, -10, 0, 10, 20, 30, 40, 50,
   ];
-  private readonly tempScaleMin = -30;
-  private readonly tempScaleMax = 30;
+  private readonly tempScaleMin = -50;
+  private readonly tempScaleMax = 50;
 
   private getTempStopPercent(value: number): number {
     return (
@@ -1973,7 +1975,9 @@ export class LayerComposer {
             ${this.tempLegendTicks
               .map((value) => {
                 const percent = this.getTempStopPercent(value);
-                return `<div class="precip-legend__label" style="bottom: ${percent.toFixed(2)}%">${value}</div>`;
+                const freezing =
+                  value === 0 ? " precip-legend__label--freezing" : "";
+                return `<div class="precip-legend__label${freezing}" style="bottom: ${percent.toFixed(2)}%">${value}</div>`;
               })
               .join("")}
           </div>

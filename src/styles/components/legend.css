@@ -131,3 +131,19 @@ body.view-iconography .legend-stack-card {
   font-size: 11px;
   color: var(--text);
 }
+
+/* The temperature ramp breaks hard from cyan to green at 0°C. The legend marks
+   that boundary so it reads as the freezing line rather than a rendering seam. */
+.precip-legend__label--freezing {
+  font-weight: 600;
+}
+
+.precip-legend__label--freezing::before {
+  content: "";
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  width: 10px;
+  margin-right: 3px;
+  border-top: 1px solid var(--text);
+}
