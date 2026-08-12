@@ -243,58 +243,6 @@ export const clampScalarImage = (
   return { data: out, width, height };
 };
 
-/**
- * Convert a log1p-encoded scalar image to a linearly-encoded one so that
- * weatherlayers-gl can apply its standard linear imageUnscale correctly.
- *
- * Encoding invariant (must match make_image in netcdf2image.py):
- *   encoded_pixel = log1p(value) / log1p(srcMax) * 255
- *
- * This function inverts that to produce a linear pixel:
- *   linear_pixel = expm1(raw / 255 * log1p(srcMax)) / srcMax * 255
- *
- * After this transform, imageUnscale [0, srcMax] gives the correct physical
- * value when applied linearly by weatherlayers-gl.
- *
- * Handles LA (2-band), single-channel (1-band), and RGBA (4-band) images.
- * Alpha is preserved; fully transparent pixels are passed through as-is.
- */
-export const linearizeLog1pScalarImage = (
-  image: TextureData,
-  srcMax: number,
-): TextureData => {
-  const { data, width, height } = image;
-  const bands = Math.round(data.length / (width * height));
-  const log1pMax = Math.log1p(srcMax);
-  const out = new Uint8Array(data.length);
-  for (let i = 0; i < data.length; i += bands) {
-    const alpha =
-      bands === 2
-        ? (data[i + 1] ?? 255)
-        : bands >= 4
-          ? (data[i + 3] ?? 255)
-          : 255;
-    if (alpha === 0) {
-      // Transparent pixel — leave output bytes as zero (already initialised).
-      continue;
-    }
-    const raw = data[i] ?? 0;
-    const value = Math.expm1((raw / 255) * log1pMax);
-    const encoded = Math.round(
-      Math.min(255, Math.max(0, (value / srcMax) * 255)),
-    );
-    out[i] = encoded;
-    if (bands === 2) {
-      out[i + 1] = alpha; // LA: second band is alpha
-    } else if (bands >= 3) {
-      out[i + 1] = encoded; // RGB/RGBA: replicate to G and B
-      out[i + 2] = encoded;
-      if (bands >= 4) out[i + 3] = alpha;
-    }
-  }
-  return { data: out, width, height };
-};
-
 export const normalizeVectorImage = (image: TextureData) => {
   const { data, width, height } = image;
   const bands = Math.round(data.length / (width * height));
