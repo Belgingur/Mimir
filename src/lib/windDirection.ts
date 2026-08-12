@@ -22,7 +22,6 @@ const BINS_16 = [
   "NW",
   "NNW",
 ] as const;
-export type CompassBin16 = (typeof BINS_16)[number];
 
 /** i18n keys that match the 16-point bins. */
 const DIR_KEYS = BINS_16.map((d) => `dir.${d}` as const);
