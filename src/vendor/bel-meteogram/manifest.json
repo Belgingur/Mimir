@@ -1,8 +1,14 @@
 {
   "repository": "https://github.com/Belgingur/meteogram",
-  "version": "0.1.3",
-  "tag": "v0.1.3",
-  "commit": "b538c4ea181401d0a6de9a6285def4927858a75c",
+  "version": "0.2.0-dev+542eb9f",
+  "tag": "unreleased",
+  "commit": "542eb9f92536f18174cfa45ec2e2e03ab0bf4af8",
   "asset": "bel-meteogram.js",
-  "sha256": "c7ec41fa0f604547d34c3cf38a25975f36bb49d373b102d93a38f9d05c0d1d6f"
+  "sha256": "7bbf1faba6667188ca28b374662eb8e3d54c7e4864c93eaee5de01fc9ece7593",
+  "unreleased": {
+    "why": "Local build of the unified-chart-geometry work, vendored ahead of a release so it can be tested on real devices. `npm run meteogram:check` passes (it only compares the committed bundle to sha256 above), but `npm run meteogram:sync` CANNOT restore this file — there is no published release to download it from.",
+    "branch": "feat/unified-chart-geometry",
+    "baseRelease": "v0.1.3",
+    "toFinish": "Push the branch, merge, tag + publish the release with this asset, then set version/tag/commit/sha256 to the published values and re-run `npm run meteogram:sync` to confirm the download matches."
+  }
 }
