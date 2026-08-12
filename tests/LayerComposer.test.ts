@@ -1457,6 +1457,126 @@ describe("LayerComposer", () => {
     });
   });
 
+  describe("temperature legend cropping", () => {
+    /** °C → the uint8 code the encoder would write for it on a [-50, 50] frame. */
+    const code = (celsius: number) => Math.round(((celsius + 50) / 100) * 255);
+
+    /** A loaded temperature frame whose in-domain pixels span `lo`…`hi` °C. */
+    const tempFrame = (lo: number, hi: number, analysis = "2026-08-11_00") =>
+      ({
+        id: "t",
+        model: "BEL-IS",
+        analysis,
+        variable: "air_temperature_at_2m_agl",
+        rawRange: [code(lo), code(hi)] as [number, number],
+      }) as unknown as InhouseLayer;
+
+    const palette = (composer: LayerComposer) =>
+      (composer as unknown as { temperatureScaleCValue: unknown })
+        .temperatureScaleCValue;
+
+    const observe = (
+      composer: LayerComposer,
+      layer: InhouseLayer,
+      unscale: [number, number] = [-50, 50],
+    ) =>
+      callPrivate(composer, "recordTempLegendRange", layer, unscale, palette(composer));
+
+    const labels = (host: HTMLDivElement) =>
+      [...host.querySelectorAll(".precip-legend__label")].map((el) =>
+        Number(el.textContent),
+      );
+
+    it("shows the whole ramp until a frame has been observed", () => {
+      const deps = makeDeps();
+      const composer = new LayerComposer(deps);
+      composer.initLegends();
+      expect(labels(deps.dom.legendHost)).toEqual([
+        -50, -40, -30, -20, -10, 0, 10, 20, 30, 40, 50,
+      ]);
+    });
+
+    it("crops the bar to the range the loaded frame occupies", () => {
+      const deps = makeDeps();
+      const composer = new LayerComposer(deps);
+      composer.initLegends();
+      observe(composer, tempFrame(3, 9));
+      expect(labels(deps.dom.legendHost)).toEqual([-5, 0, 5, 10, 15]);
+    });
+
+    it("never recolours: a reading keeps the ramp's own colour", () => {
+      const deps = makeDeps();
+      const composer = new LayerComposer(deps);
+      composer.initLegends();
+      const full = deps.dom.legendHost.innerHTML;
+      observe(composer, tempFrame(3, 9));
+      const cropped = deps.dom.legendHost.innerHTML;
+      // #48a322 is the 8°C band in TEMPERATURE_SCALE; it survives the crop
+      // unchanged, and so does every other colour still on the bar.
+      expect(full).toContain("rgba(72, 163, 34, 1)");
+      expect(cropped).toContain("rgba(72, 163, 34, 1)");
+      // ...while a colour outside the window is simply not drawn any more.
+      expect(full).toContain("rgba(96, 0, 96, 1)"); // -40°C
+      expect(cropped).not.toContain("rgba(96, 0, 96, 1)");
+    });
+
+    it("widens across a run's frames and never shrinks back", () => {
+      const deps = makeDeps();
+      const composer = new LayerComposer(deps);
+      composer.initLegends();
+      observe(composer, tempFrame(3, 9));
+      observe(composer, tempFrame(-12, 1));
+      const widened = labels(deps.dom.legendHost);
+      expect(widened[0]).toBeLessThanOrEqual(-15);
+      expect(widened[widened.length - 1]).toBeGreaterThanOrEqual(10);
+      // Re-observing the mild frame must not pull the bar back in.
+      observe(composer, tempFrame(3, 9));
+      expect(labels(deps.dom.legendHost)).toEqual(widened);
+    });
+
+    it("starts over when the model run changes", () => {
+      const deps = makeDeps();
+      const composer = new LayerComposer(deps);
+      composer.initLegends();
+      observe(composer, tempFrame(-30, 20));
+      observe(composer, tempFrame(3, 9, "2026-08-11_12"));
+      expect(labels(deps.dom.legendHost)).toEqual([-5, 0, 5, 10, 15]);
+    });
+
+    it("keeps 0°C labelled, and marks it as the freezing line", () => {
+      const deps = makeDeps();
+      const composer = new LayerComposer(deps);
+      composer.initLegends();
+      observe(composer, tempFrame(-4, 11));
+      expect(labels(deps.dom.legendHost)).toContain(0);
+      expect(
+        deps.dom.legendHost.querySelector(".precip-legend__label--freezing")
+          ?.textContent,
+      ).toBe("0");
+    });
+
+    it("ignores a frame with no usable range", () => {
+      const deps = makeDeps();
+      const composer = new LayerComposer(deps);
+      composer.initLegends();
+      const before = deps.dom.legendHost.innerHTML;
+      observe(composer, {
+        ...tempFrame(3, 9),
+        rawRange: null,
+      } as unknown as InhouseLayer);
+      expect(deps.dom.legendHost.innerHTML).toBe(before);
+    });
+
+    it("never labels past the tropics ramp's own extent", () => {
+      const composer = new LayerComposer(makeDeps());
+      const host = document.createElement("div");
+      callPrivate(composer, "renderTempTropicsLegend", host);
+      const values = labels(host);
+      expect(Math.min(...values)).toBeGreaterThanOrEqual(-20);
+      expect(Math.max(...values)).toBeLessThanOrEqual(40);
+    });
+  });
+
   describe("renderPrecipLegend", () => {
     it("creates precip legend DOM elements", () => {
       const composer = new LayerComposer(makeDeps());
