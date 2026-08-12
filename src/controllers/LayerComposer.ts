@@ -60,7 +60,7 @@ import {
   buildStepPalette,
 } from "../lib/paletteUtils";
 import { buildStreamlineGeotransform } from "../lib/streamlineBuilder";
-import { resolveInhouseUnit } from "../lib/inhouseCatalogHelpers";
+import { resolveDisplayUnit } from "../lib/inhouseCatalogHelpers";
 import {
   getArrowStepForModel,
   getGridStepForZoom,
@@ -1194,9 +1194,10 @@ export class LayerComposer {
                       tooltipController.finiteDirectionOrUndefined(windDir),
                   },
                 });
-                const rawUnit =
-                  layer.manifest.unit ?? resolveInhouseUnit(layer.variable);
-                const unit = rawUnit === "mm hr-1" ? "mm/hr" : rawUnit;
+                const unit = resolveDisplayUnit(
+                  layer.variable,
+                  layer.manifest.unit,
+                );
                 const formatted =
                   value < 1 ? value.toFixed(2) : value.toFixed(1);
                 tooltipController.updateTooltipValueOverride(
@@ -1238,8 +1239,10 @@ export class LayerComposer {
               return;
             }
             if (typeof value === "number" && Number.isFinite(value)) {
-              const unit =
-                layer.manifest.unit ?? resolveInhouseUnit(layer.variable);
+              const unit = resolveDisplayUnit(
+                layer.variable,
+                layer.manifest.unit,
+              );
               const displayValue = value;
               const formatted = isCloud
                 ? displayValue.toFixed(0)

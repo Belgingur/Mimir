@@ -14,6 +14,21 @@ import { createMeteogramTrigger } from "./meteogramTrigger";
 export interface SetupMeteogramDeps {
   /** `.map-wrap` element the modal and mobile trigger are appended to. */
   readonly mapWrap: HTMLElement;
+  /**
+   * Mount the mobile trigger into the crosshair's action slot, immediately right
+   * of the value pill. Returns false when there is no slot (TRANSIENT_CROSSHAIR
+   * off), in which case the button falls back to the `.zoom-buttons` stack.
+   *
+   * `isAvailable` lets the crosshair make the value pill a second tap target for
+   * the same action, while keeping that shortcut dead whenever the button is.
+   */
+  readonly mountTriggerInCrosshair?: (
+    el: HTMLElement,
+    isAvailable: () => boolean,
+  ) => boolean;
+  /** Told whenever the meteogram opens or closes, so the crosshair that launched
+   *  it can stay put while it is on screen. */
+  readonly onOpenStateChange?: (open: boolean) => void;
   readonly getSelectedModel: () => string;
   readonly getLayerMode: () => string;
   readonly getLocale: () => string;
@@ -119,22 +134,35 @@ export function setupMeteogram(deps: SetupMeteogramDeps): MeteogramController {
     getPlaceLabel: deps.getPlaceLabel,
     showPin: deps.showPin,
     removePin: deps.removePin,
+    onOpenStateChange: deps.onOpenStateChange,
     isDev: deps.isDev,
   });
 
-  // Mobile trigger: an icon button in the on-map zoom/grid stack that opens the
-  // meteogram for the centre-crosshair point. Falls back to .map-wrap if the
-  // zoom controls aren't present (shouldn't happen, but keeps setup total).
-  const mount =
-    deps.mapWrap.querySelector<HTMLElement>(".zoom-buttons") ?? deps.mapWrap;
+  // Mobile trigger: an icon button that opens the meteogram for the
+  // centre-crosshair point. It lives in the crosshair's own action slot when the
+  // transient crosshair is on, and in the on-map zoom/grid stack otherwise. The
+  // detached element is mounted by whichever host claims it — hence the throwaway
+  // container, which is never inserted into the document itself.
+  const staging = document.createElement("div");
   const trigger = createMeteogramTrigger({
-    mount,
+    mount: staging,
+    variant: "crosshair",
     isMeteogramTarget: deps.isMeteogramTarget,
     onActivate: () => {
       const center = deps.getMapCenter();
       void controller.openAt(center.lng, center.lat);
     },
   });
+  if (!deps.mountTriggerInCrosshair?.(trigger.el, deps.isMeteogramTarget)) {
+    // Legacy layout: back into the +/−/grid stack, styled as one of its buttons.
+    // Falls back to .map-wrap if the stack isn't present (shouldn't happen, but
+    // keeps setup total).
+    trigger.el.className = "zoom-buttons__meteogram forecast-only";
+    trigger.refresh();
+    const stack =
+      deps.mapWrap.querySelector<HTMLElement>(".zoom-buttons") ?? deps.mapWrap;
+    stack.appendChild(trigger.el);
+  }
   controller.bindTrigger(trigger);
 
   return controller;

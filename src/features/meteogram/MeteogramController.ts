@@ -71,6 +71,11 @@ export interface MeteogramControllerDeps {
    *  controller still works headless / in tests without a live map. */
   readonly showPin?: (lng: number, lat: number, label: string) => void;
   readonly removePin?: () => void;
+  /** Called whenever the panel opens or closes. The transient centre crosshair
+   *  uses this to hold itself visible for as long as the meteogram it launched is
+   *  on screen. Only fired on an actual change, so repeated opens at the same
+   *  point don't churn. */
+  readonly onOpenStateChange?: (open: boolean) => void;
   readonly isDev: boolean;
 }
 
@@ -136,11 +141,13 @@ export class MeteogramController {
 
   close(): void {
     const { dom } = this.deps;
+    const wasOpen = this.isOpen;
     dom.modal.classList.remove("is-open");
     dom.modal.setAttribute("aria-hidden", "true");
     this.pendingOutOfBounds = false;
     this.deps.removePin?.();
     clearMapPanelPoint();
+    if (wasOpen) this.deps.onOpenStateChange?.(false);
   }
 
   /** Resolved place name for a point, or undefined when there isn't a usable one. */
@@ -338,6 +345,12 @@ export class MeteogramController {
     // always shown on the map.
     widget.addEventListener("bel-meteogram-location", (event) => {
       if (this.widget !== widget) return;
+      // The widget resolves its point asynchronously, so this can land *after*
+      // the user has already closed the panel. Without this guard the late
+      // event re-drops the map pin — a stray "place · temp" label stuck on the
+      // map with nothing open — which is exactly what happens when the panel is
+      // dismissed quickly. close() has already removed the pin; leave it gone.
+      if (!this.isOpen) return;
       const detail = (event as CustomEvent<BelMeteogramLocationDetail>).detail;
       const label = formatPinLabel(detail);
       this.deps.dom.location.textContent = label;
@@ -349,9 +362,11 @@ export class MeteogramController {
     const { dom } = this.deps;
     const modelId = this.deps.getSelectedModel();
     const clientName = this.resolveClientNameForModel(modelId);
+    const wasOpen = this.isOpen;
     writeMapPanelPoint(lat, lng);
     dom.modal.classList.add("is-open");
     dom.modal.setAttribute("aria-hidden", "false");
+    if (!wasOpen) this.deps.onOpenStateChange?.(true);
     const label = this.pointLabel(lng, lat);
     dom.location.textContent = label;
     // Early out-of-domain hint: if the point is outside the selected model's

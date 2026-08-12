@@ -14,6 +14,20 @@ export const resolveVariableMeta = (key: string) => {
 export const resolveInhouseUnit = (variable: string) =>
   resolveVariableMeta(variable)?.unit ?? "";
 
+/**
+ * Unit label to show in the UI for a layer.
+ *
+ * Prefers `VARIABLE_META`, which resolves through i18n — precipitation rate is
+ * "mm/hr" in English but "mm/klst" in Icelandic and "mm/godz." in Polish — and
+ * falls back to the manifest's own string for variables we carry no metadata
+ * for (e.g. wave height's "m"). The manifest unit is raw CF-style data ("mm
+ * hr-1") and never localised, so it must not win where we know better.
+ */
+export const resolveDisplayUnit = (
+  variable: string,
+  manifestUnit?: string | null,
+): string => resolveInhouseUnit(variable) || manifestUnit || "";
+
 export const formatIndex = (index: number, width = 3) =>
   String(index).padStart(width, "0");
 
