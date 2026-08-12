@@ -4,6 +4,8 @@ import {
   TooltipController,
   type TooltipDeps,
 } from "../src/controllers/TooltipController";
+import { registerLocale, setLocale } from "../src/lib/i18n";
+import { is } from "../src/locales/is";
 
 function createTooltipDom() {
   const tooltipHost = document.createElement("div") as HTMLDivElement;
@@ -22,13 +24,9 @@ function createTooltipDom() {
 
 function createDeps(overrides: Partial<TooltipDeps> = {}): {
   deps: TooltipDeps;
-  formatDirection: ReturnType<typeof vi.fn>;
   formatValueWithUnit: ReturnType<typeof vi.fn>;
 } {
   const { tooltipHost } = createTooltipDom();
-  const formatDirection = vi.fn((direction: number) =>
-    direction >= 180 ? "S" : "N",
-  );
   const formatValueWithUnit = vi.fn(
     (value: number, format: WeatherLayers.UnitFormat) =>
       `${value.toFixed(format.decimals)} ${format.unit}`,
@@ -36,14 +34,12 @@ function createDeps(overrides: Partial<TooltipDeps> = {}): {
   const deps: TooltipDeps = {
     dom: { tooltipHost },
     getWindUnitFormat: () => null,
-    formatDirection,
     formatValueWithUnit,
     directionTypeInward: "inward",
-    directionFormatCardinal3: "cardinal3",
     unitSystemMetric: "metric",
     ...overrides,
   };
-  return { deps, formatDirection, formatValueWithUnit };
+  return { deps, formatValueWithUnit };
 }
 
 describe("TooltipController", () => {
@@ -82,7 +78,7 @@ describe("TooltipController", () => {
 
   describe("updateWindDirectionDebug", () => {
     it("creates direction span and formats/accentuates direction", () => {
-      const { deps, formatDirection } = createDeps();
+      const { deps } = createDeps();
       const ctrl = new TooltipController(deps);
       ctrl.updateWindDirectionDebug(190);
       const el = deps.dom.tooltipHost.querySelector(
@@ -92,21 +88,56 @@ describe("TooltipController", () => {
       expect(el?.textContent).toBe("S");
       expect(el?.style.display).toBe("inline-block");
       expect(el?.style.marginLeft).toBe("6px");
-      expect(formatDirection).toHaveBeenCalledWith(190, "inward", "cardinal3");
+    });
+
+    it("shows the acronym in the active locale, not always English", () => {
+      registerLocale("is", is);
+      setLocale("is");
+      try {
+        const { deps } = createDeps();
+        const ctrl = new TooltipController(deps);
+        // 330° = NNW, which Icelandic writes NNV (vestur, not west).
+        ctrl.updateWindDirectionDebug(330);
+        const el = deps.dom.tooltipHost.querySelector(
+          ".tooltip-wind-direction",
+        ) as HTMLSpanElement;
+        expect(el.textContent).toBe("NNV");
+      } finally {
+        setLocale("en");
+      }
+    });
+
+    it("hides WeatherLayers' own English acronym while localised", () => {
+      registerLocale("is", is);
+      setLocale("is");
+      try {
+        const dom = createTooltipDom();
+        const english = document.createElement("span");
+        english.textContent = "NNW";
+        dom.container.appendChild(english);
+        const ctrl = new TooltipController({
+          dom: { tooltipHost: dom.tooltipHost },
+          getWindUnitFormat: () => null,
+          formatValueWithUnit: vi.fn(),
+          directionTypeInward: "inward",
+          unitSystemMetric: "metric",
+        });
+        ctrl.updateWindDirectionDebug(330);
+        expect(english.style.display).toBe("none");
+      } finally {
+        setLocale("en");
+      }
     });
 
     it("hides duplicate/acronym and undefined spans, keeps m/s span visible", () => {
       const { deps, container } = (() => {
         const dom = createTooltipDom();
-        const formatDirection = vi.fn(() => "N");
         const formatValueWithUnit = vi.fn((value: number) => `${value} m/s`);
         const d: TooltipDeps = {
           dom: { tooltipHost: dom.tooltipHost },
           getWindUnitFormat: () => null,
-          formatDirection,
           formatValueWithUnit,
           directionTypeInward: "inward",
-          directionFormatCardinal3: "cardinal3",
           unitSystemMetric: "metric",
         };
         return { deps: d, container: dom.container };
@@ -170,10 +201,8 @@ describe("TooltipController", () => {
           unit: "kn",
           decimals: 0,
         }),
-        formatDirection: vi.fn(() => "N"),
         formatValueWithUnit,
         directionTypeInward: "inward",
-        directionFormatCardinal3: "cardinal3",
         unitSystemMetric: "metric",
       });
       ctrl.updateTooltipWindSpeed(12.2);
@@ -255,10 +284,8 @@ describe("TooltipController", () => {
         const d: TooltipDeps = {
           dom: { tooltipHost: dom.tooltipHost },
           getWindUnitFormat: () => null,
-          formatDirection: vi.fn(() => "N"),
           formatValueWithUnit: vi.fn(() => "1.0 m/s"),
           directionTypeInward: "inward",
-          directionFormatCardinal3: "cardinal3",
           unitSystemMetric: "metric",
         };
         return { deps: d, valueSpan: dom.valueSpan };

@@ -2,10 +2,13 @@ import { describe, it, expect } from "vitest";
 import {
   resolveVariableMeta,
   resolveInhouseUnit,
+  resolveDisplayUnit,
   formatIndex,
   resolveManifestTimes,
 } from "../src/lib/inhouseCatalogHelpers";
 import type { InhouseManifest } from "../src/lib/inhouseTypes";
+import { registerLocale, setLocale } from "../src/lib/i18n";
+import { is } from "../src/locales/is";
 
 const makeManifest = (
   overrides: Partial<InhouseManifest> = {},
@@ -58,6 +61,35 @@ describe("resolveInhouseUnit", () => {
 
   it("returns empty string for unknown variable", () => {
     expect(resolveInhouseUnit("nonexistent")).toBe("");
+  });
+});
+
+describe("resolveDisplayUnit", () => {
+  it("prefers the localised unit over the manifest's raw CF string", () => {
+    expect(resolveDisplayUnit("lwe_precipitation_rate", "mm hr-1")).toBe(
+      "mm/hr",
+    );
+    registerLocale("is", is);
+    setLocale("is");
+    try {
+      expect(resolveDisplayUnit("lwe_precipitation_rate", "mm hr-1")).toBe(
+        "mm/klst",
+      );
+      // Language-independent units are unaffected.
+      expect(resolveDisplayUnit("air_temperature_at_2m_agl", "K")).toBe("°C");
+      expect(resolveDisplayUnit("wind_speed", "m s-1")).toBe("m/s");
+    } finally {
+      setLocale("en");
+    }
+  });
+
+  it("falls back to the manifest unit for variables we have no metadata for", () => {
+    expect(resolveDisplayUnit("sea_surface_wave_height", "m")).toBe("m");
+  });
+
+  it("returns an empty string when neither source knows the unit", () => {
+    expect(resolveDisplayUnit("nonexistent")).toBe("");
+    expect(resolveDisplayUnit("nonexistent", null)).toBe("");
   });
 });
 

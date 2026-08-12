@@ -269,3 +269,20 @@
     display: inline-flex;
   }
 }
+
+/* ── Crosshair-attached meteogram button (TRANSIENT_CROSSHAIR layout) ─────── */
+
+/* Geometry, hit target and the pill-joining chrome all come from
+   .center-readout__action > button in styles/components/center-readout.css —
+   the slot owns the layout so the reserved width is correct whether or not the
+   meteogram feature is even built. All this adds is availability gating, which
+   is the feature's own concern: hidden when a map click would not resolve to a
+   meteogram (GWES / waves). The enclosing .center-readout is already mobile-only
+   and already hidden in iconography view, so neither needs restating here. */
+.center-readout__action > button.center-readout__meteogram {
+  display: none;
+}
+
+.center-readout__action > button.center-readout__meteogram.is-available {
+  display: inline-flex;
+}

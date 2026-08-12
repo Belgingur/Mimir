@@ -52,4 +52,46 @@ describe("createMeteogramTrigger", () => {
     el.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(onActivate).toHaveBeenCalledTimes(1);
   });
+
+  it("defaults to the control-stack variant", () => {
+    const trigger = createMeteogramTrigger({
+      mount: document.createElement("div"),
+      isMeteogramTarget: () => true,
+      onActivate: () => {},
+    });
+    expect(trigger.el.classList.contains("zoom-buttons__meteogram")).toBe(true);
+    expect(trigger.el.classList.contains("center-readout__meteogram")).toBe(
+      false,
+    );
+  });
+
+  it("styles as a crosshair-attached chip when asked", () => {
+    const slot = document.createElement("span");
+    const trigger = createMeteogramTrigger({
+      mount: slot,
+      variant: "crosshair",
+      isMeteogramTarget: () => true,
+      onActivate: () => {},
+    });
+    expect(slot.contains(trigger.el)).toBe(true);
+    expect(trigger.el.classList.contains("center-readout__meteogram")).toBe(
+      true,
+    );
+    expect(trigger.el.classList.contains("zoom-buttons__meteogram")).toBe(false);
+    // Availability gating still applies in the crosshair slot.
+    expect(trigger.el.classList.contains("is-available")).toBe(true);
+  });
+
+  it("carries an accessible name in both variants", () => {
+    for (const variant of ["stack", "crosshair"] as const) {
+      const trigger = createMeteogramTrigger({
+        mount: document.createElement("div"),
+        variant,
+        isMeteogramTarget: () => true,
+        onActivate: () => {},
+      });
+      expect(trigger.el.getAttribute("aria-label")).toBeTruthy();
+      expect(trigger.el.type).toBe("button");
+    }
+  });
 });

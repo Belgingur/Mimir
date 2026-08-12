@@ -34,7 +34,10 @@ import {
 import { resolveMapClickTarget } from "./mapClickRouting";
 import { setupLegendDrag } from "./legendDrag";
 import { initMobileDrawer } from "./mobileDrawer";
-import { initCenterReadout } from "./centerReadout";
+import { initCenterReadout, type CenterReadout } from "./centerReadout";
+import { isTransientCrosshairEnabled } from "./transientCrosshairFlag";
+import { isMobileControlsViewport } from "./mobileControlsViewport";
+import { shouldForceMobileMapControls } from "./mobileMapControls";
 import { getLocale, onLocaleChange, t } from "./i18n";
 import {
   readStoredLocation,
@@ -59,11 +62,35 @@ export interface ControllerFactoryConfig {
 export function createControllers(config: ControllerFactoryConfig) {
   const { map, dom, isDev, persistedState, localeIsUrlDriven } = config;
 
+  // --- Mobile: gesture-only zoom, no on-map control stack ---
+  // On phones the whole `.zoom-buttons` stack (+, −, grid, meteogram) is removed
+  // from the DOM rather than hidden, so it cannot intercept touches near the
+  // top-left corner. Zooming is by pinch / double-tap / two-finger tap /
+  // double-tap-drag — all native MapLibre handlers, all enabled by default (see
+  // main.ts). Desktop keeps the stack: it has no pinch gesture and still needs
+  // +/−. shouldForceMobileMapControls() is the accessibility escape hatch for
+  // anyone who cannot perform those gestures — see lib/mobileMapControls.ts.
+  //
+  // This runs before any controller is constructed, so nothing captures a
+  // reference to a button that is about to be detached.
+  if (
+    isTransientCrosshairEnabled() &&
+    isMobileControlsViewport() &&
+    !shouldForceMobileMapControls()
+  ) {
+    dom.mapWrap.querySelector(".zoom-buttons")?.remove();
+    dom.zoomIn = null;
+    dom.zoomOut = null;
+    dom.gridToggleButton = null;
+  }
+
   // --- Shared mutable state ---
   let mapReady = false;
   // Populated asynchronously (and only when the feature is enabled) by the
   // guarded dynamic import below; stays null in the default public build.
   let meteogramController: MeteogramController | null = null;
+  // Assigned synchronously further down, before any async work can observe it.
+  let centerReadout: CenterReadout | null = null;
   let timelineController: TimelineController | undefined;
   let timelineCurrentDatetime = "";
   let timelineLastFrameLoadHadErrors = false;
@@ -281,19 +308,12 @@ export function createControllers(config: ControllerFactoryConfig) {
   const tooltipController = new TooltipController({
     dom: { tooltipHost: dom.tooltipHost },
     getWindUnitFormat: () => layerComposer.windUnitFormat,
-    formatDirection: (direction, directionType, directionFormat) =>
-      WeatherLayers.formatDirection(
-        direction,
-        directionType as WeatherLayers.DirectionType,
-        directionFormat as WeatherLayers.DirectionFormat,
-      ),
     formatValueWithUnit: (value, format) =>
       WeatherLayers.formatValueWithUnit(
         value,
         format as WeatherLayers.UnitFormat,
       ),
     directionTypeInward: WeatherLayers.DirectionType.INWARD,
-    directionFormatCardinal3: WeatherLayers.DirectionFormat.CARDINAL3,
     unitSystemMetric: WeatherLayers.UnitSystem.METRIC,
     createTooltipControl: (config) =>
       new WeatherLayers.TooltipControl(
@@ -384,10 +404,16 @@ export function createControllers(config: ControllerFactoryConfig) {
     getCurrentDatetime: () =>
       timelineController?.currentDatetime ?? timelineCurrentDatetime,
     setCurrentDatetime: (dt) => {
+      const changed = timelineCurrentDatetime !== dt;
       timelineCurrentDatetime = dt;
       if (timelineController) {
         timelineController.currentDatetime = dt;
       }
+      // Timeline scrubbing (and playback) counts as an interaction: show the
+      // crosshair with the value for the new timestamp, then let it fade as
+      // usual. Guarded on an actual change so redundant sets don't keep
+      // restarting the hide timer.
+      if (changed) centerReadout?.notifyInteraction();
     },
     isRestoringFromPersisted: () => restoringFromPersisted,
     setRestoringFromPersisted: (v) => {
@@ -775,10 +801,10 @@ export function createControllers(config: ControllerFactoryConfig) {
   dom.opacityValue.textContent = uiState.opacity.toFixed(2);
   layerGroupController.attachToggleHandlers();
 
-  dom.zoomIn.addEventListener("click", () => {
+  dom.zoomIn?.addEventListener("click", () => {
     map.zoomIn({ duration: 200 });
   });
-  dom.zoomOut.addEventListener("click", () => {
+  dom.zoomOut?.addEventListener("click", () => {
     map.zoomOut({ duration: 200 });
   });
   dom.infoButton.addEventListener("click", () => {
@@ -834,10 +860,20 @@ export function createControllers(config: ControllerFactoryConfig) {
           getSelectedModel: () => catalogController.inhouseSelectedModel,
           getLayerMode: () => uiState.layerMode,
           getLocale,
+          // The coordinate the crosshair actually sampled its displayed value
+          // at, so the button can never open a point a frame of movement away
+          // from what the readout showed. Falls back to a live read when there
+          // is no captured sample yet (or on the legacy always-on crosshair).
           getMapCenter: () => {
+            const captured = centerReadout?.getActionPoint();
+            if (captured) return captured;
             const c = map.getCenter();
             return { lng: c.lng, lat: c.lat };
           },
+          mountTriggerInCrosshair: (el, isAvailable) =>
+            centerReadout?.mountAction(el, isAvailable) ?? false,
+          // Keep the crosshair from fading out behind an open meteogram.
+          onOpenStateChange: (open) => centerReadout?.setMeteogramOpen(open),
           isMeteogramTarget: () =>
             resolveMapClickTarget({
               selectedModel: catalogController.inhouseSelectedModel,
@@ -955,7 +991,10 @@ export function createControllers(config: ControllerFactoryConfig) {
   }
   initMobileDrawer();
 
-  initCenterReadout({
+  // Assigned synchronously here, so the meteogram feature's dynamic import —
+  // kicked off earlier in this same function body — always finds it in its
+  // `.then()`, which cannot run before this body returns.
+  centerReadout = initCenterReadout({
     map,
     getCatalogController: () => catalogController,
     getViewMode: () => layerGroupController.viewMode,

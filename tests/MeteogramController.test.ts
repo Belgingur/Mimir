@@ -154,6 +154,44 @@ describe("MeteogramController", () => {
     expect(showPin).toHaveBeenLastCalledWith(-21.9, 64.13, "Reykjavík · 7°");
   });
 
+  it("ignores a location event that lands after the panel was closed", async () => {
+    // The widget resolves its point asynchronously. Closing quickly used to
+    // leave the late event re-dropping the pin, stranding a "place · temp"
+    // label on the map with nothing open.
+    const showPin = vi.fn();
+    const removePin = vi.fn();
+    const { controller, widget } = buildController({ showPin, removePin });
+    await controller.openAt(-20, 64);
+    showPin.mockClear();
+
+    controller.close();
+    widget.dispatchEvent(
+      new CustomEvent("bel-meteogram-location", {
+        detail: { lat: 64.13, lon: -21.9, name: "Reykjavík", tempC: 7 },
+      }),
+    );
+
+    expect(showPin).not.toHaveBeenCalled();
+    expect(removePin).toHaveBeenCalled();
+  });
+
+  it("still follows location events while the panel is open", async () => {
+    const showPin = vi.fn();
+    const { controller, widget } = buildController({ showPin });
+    await controller.openAt(-20, 64);
+    controller.close();
+    await controller.openAt(-20, 64);
+    showPin.mockClear();
+
+    widget.dispatchEvent(
+      new CustomEvent("bel-meteogram-location", {
+        detail: { lat: 64.13, lon: -21.9, name: "Reykjavík", tempC: 7 },
+      }),
+    );
+
+    expect(showPin).toHaveBeenCalledWith(-21.9, 64.13, "Reykjavík · 7°");
+  });
+
   it("falls back to coordinates in the pin label when no place name is resolved", async () => {
     const showPin = vi.fn();
     const { controller, widget } = buildController({ showPin });

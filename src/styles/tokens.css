@@ -42,6 +42,10 @@
   --z-labels: 40; /* @kind other */
   --z-grid: 90; /* @kind other */
   --z-controls: 200; /* @kind other */
+  /* Centre crosshair overlay: above the map canvas, deck layers and grid, but
+     below the legend / bottom timeline bar (--z-chrome) and every menu or
+     modal. See styles/components/center-readout.css. */
+  --z-crosshair: 235; /* @kind other */
   --z-overlay: 240; /* @kind other */
   --z-chrome: 245; /* @kind other */
   --z-tooltip: 260; /* @kind other */

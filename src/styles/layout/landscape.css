@@ -160,6 +160,20 @@
     flex: 0 0 auto;
   }
 
+  /* ── FORECAST-TIME BUBBLE: top-LEFT corner ───────────────────── */
+  /* The bubble's default top-centre anchor collides with the chrome row above,
+     which fans out leftward from the Menu button and reaches past the middle of
+     the short landscape viewport. Move it to the top-left corner, which is free
+     in landscape (zoom sits bottom-right, legend bottom-left, info under the
+     hamburger). setupLegendDrag resets inline drag offsets on orientation
+     change, so this override always wins after a rotate. */
+
+  .map-time-bubble {
+    top: calc(8px + var(--safe-area-top));
+    left: calc(8px + var(--safe-area-left));
+    transform: none;
+  }
+
   /* ── 2. BOTTOM BAR: landscape tweaks ───────────────────────── */
 
   .bottom-bar {

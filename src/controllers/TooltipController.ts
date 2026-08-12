@@ -1,5 +1,6 @@
 import type * as WeatherLayers from "weatherlayers-gl";
 import { t } from "../lib/i18n";
+import { windDirectionBin } from "../lib/windDirection";
 
 type TooltipControlLike = WeatherLayers.TooltipControl & {
   updatePickingInfo: (info: unknown) => void;
@@ -9,20 +10,17 @@ export interface TooltipDom {
   tooltipHost: HTMLDivElement;
 }
 
+/** A bare English 16-point compass label, e.g. "N", "SE", "WNW". */
+const ENGLISH_CARDINAL = /^(N|E|S|W|[NS][EW]|[NS][NS][EW]|[EW][NS][EW])$/;
+
 export interface TooltipDeps {
   dom: TooltipDom;
   getWindUnitFormat: () => WeatherLayers.UnitFormat | null;
-  formatDirection: (
-    direction: number,
-    directionType: unknown,
-    directionFormat: unknown,
-  ) => string;
   formatValueWithUnit: (
     value: number,
     format: WeatherLayers.UnitFormat,
   ) => string;
   directionTypeInward: unknown;
-  directionFormatCardinal3: unknown;
   unitSystemMetric: unknown;
   createTooltipControl?: (config: unknown) => WeatherLayers.TooltipControl;
   placementTop?: unknown;
@@ -95,15 +93,18 @@ export class TooltipController {
       : undefined;
   }
 
-  /** Returns a 3-letter cardinal abbreviation (e.g. "NNW") for an inward wave direction, or null. */
+  /**
+   * Returns a localised 16-point compass abbreviation (e.g. "NNW", "NNV" in
+   * Icelandic) for a from-direction, or null.
+   *
+   * This used to call WeatherLayers' `formatDirection(…, CARDINAL3)`, which only
+   * ever emits English initials. `windDirectionBin` bins identically (16 × 22.5°
+   * about north, no inward/outward flip) but resolves the label through i18n.
+   */
   formatCardinalDirection(direction: number | null): string | null {
     const normalized = this.normalizeDirection(direction);
     if (normalized === null) return null;
-    return this.deps.formatDirection(
-      normalized,
-      this.deps.directionTypeInward,
-      this.deps.directionFormatCardinal3,
-    );
+    return windDirectionBin(normalized);
   }
 
   updateWindDirectionDebug(direction: number | null): void {
@@ -138,11 +139,7 @@ export class TooltipController {
     }
     if (typeof direction === "number" && Number.isFinite(direction)) {
       const normalized = this.normalizeDirection(direction) ?? 0;
-      const acronym = this.deps.formatDirection(
-        normalized,
-        this.deps.directionTypeInward,
-        this.deps.directionFormatCardinal3,
-      );
+      const acronym = windDirectionBin(normalized);
       directionText.textContent = this.DEBUG_SHOW_WIND_DEGREES
         ? `${acronym} ${Math.round(normalized)}°`
         : `${acronym}`;
@@ -161,7 +158,13 @@ export class TooltipController {
           span.style.display = "none";
           return;
         }
-        if (text === acronym && span.children.length === 0) {
+        // Drop WeatherLayers' own compass span so the localised one isn't
+        // doubled up. It matches `acronym` while the app is in English; in any
+        // other locale it stays English, hence the bare-cardinal test too.
+        if (
+          (text === acronym || ENGLISH_CARDINAL.test(text)) &&
+          span.children.length === 0
+        ) {
           span.style.display = "none";
           return;
         }

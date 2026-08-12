@@ -10,7 +10,7 @@ import {
   GWES_MODEL_ID,
 } from "../lib/selectionRules";
 import {
-  resolveInhouseUnit,
+  resolveDisplayUnit,
   formatIndex,
   resolveManifestTimes,
 } from "../lib/inhouseCatalogHelpers";
@@ -2064,7 +2064,7 @@ export class InhouseCatalogController {
   }
 
   formatInhouseTooltipValue(layer: InhouseLayer, value: number): string {
-    const unit = layer.manifest.unit ?? resolveInhouseUnit(layer.variable);
+    const unit = resolveDisplayUnit(layer.variable, layer.manifest.unit);
     const isAirTemp = layer.variable === "air_temperature_at_2m_agl";
     const displayValue = isAirTemp && value > 100 ? value - 273.15 : value;
     const formatted = isAirTemp
