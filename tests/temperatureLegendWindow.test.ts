@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import { TEMPERATURE_SCALE } from "../src/lib/temperatureScale";
-import { TEMPERATURE_SCALE_TROPICS } from "../src/lib/temperatureScaleTropics";
 import {
   cropStopsToWindow,
   legendTicks,
@@ -9,8 +8,8 @@ import {
   MIN_SPAN_C,
   rawRangeToCelsius,
   resolveLegendWindow,
+  rangeInViewport,
   stopPercent,
-  unionRange,
   windowsEqual,
   type TemperatureLegendWindow,
 } from "../src/lib/temperatureLegendWindow";
@@ -18,8 +17,6 @@ import {
 /** The encoder domain the legend used to hardcode. */
 const DOMAIN = { lo: -50, hi: 50 };
 const FULL: TemperatureLegendWindow = { lo: -50, hi: 50, step: 10 };
-/** The tropics ramp's own extent (BEL-BR). */
-const TROPICS_DOMAIN = { lo: -20, hi: 40 };
 
 describe("rawRangeToCelsius", () => {
   it("maps the full uint8 range onto the encoder domain", () => {
@@ -42,18 +39,6 @@ describe("rawRangeToCelsius", () => {
     expect(rawRangeToCelsius([200, 100], [-50, 50])).toBeNull();
     expect(rawRangeToCelsius([0, 255], [50, 50])).toBeNull();
     expect(rawRangeToCelsius([Number.NaN, 255], [-50, 50])).toBeNull();
-  });
-});
-
-describe("unionRange", () => {
-  it("widens to cover both sides and tolerates absent ones", () => {
-    expect(unionRange({ lo: 2, hi: 9 }, { lo: -3, hi: 6 })).toEqual({
-      lo: -3,
-      hi: 9,
-    });
-    expect(unionRange(null, { lo: 1, hi: 2 })).toEqual({ lo: 1, hi: 2 });
-    expect(unionRange({ lo: 1, hi: 2 }, null)).toEqual({ lo: 1, hi: 2 });
-    expect(unionRange(null, null)).toBeNull();
   });
 });
 
@@ -94,9 +79,6 @@ describe("resolveLegendWindow", () => {
       expect(window.lo).toBeGreaterThanOrEqual(DOMAIN.lo);
       expect(window.hi).toBeLessThanOrEqual(DOMAIN.hi);
     }
-    const tropics = resolveLegendWindow({ lo: -30, hi: 60 }, TROPICS_DOMAIN);
-    expect(tropics.lo).toBe(TROPICS_DOMAIN.lo);
-    expect(tropics.hi).toBe(TROPICS_DOMAIN.hi);
   });
 
   it("slides inward rather than spilling out when widening at a domain edge", () => {
@@ -231,16 +213,6 @@ describe("cropStopsToWindow", () => {
     expect(cropped[cropped.length - 1][0]).toBe(50);
   });
 
-  it("works the same on the tropics ramp", () => {
-    const cropped = cropStopsToWindow(TEMPERATURE_SCALE_TROPICS, {
-      lo: 10,
-      hi: 40,
-      step: 5,
-    });
-    expect(cropped[0][0]).toBe(10);
-    expect(cropped[cropped.length - 1][0]).toBe(40);
-  });
-
   it("clamps a band that straddles the low edge instead of dropping it", () => {
     const stops: [number, string][] = [
       [0, "a"],
@@ -279,5 +251,127 @@ describe("windowsEqual", () => {
     expect(windowsEqual(FULL, { lo: -5, hi: 15, step: 5 })).toBe(false);
     expect(windowsEqual(null, null)).toBe(true);
     expect(windowsEqual(FULL, null)).toBe(false);
+  });
+});
+
+describe("rangeInViewport", () => {
+  /**
+   * A 10x10 RGBA frame spanning the whole globe, where the raw code is a
+   * function of the pixel's column — so a viewport over the left edge sees
+   * different values from one over the right.
+   */
+  const FRAME_BOUNDS = [-180, -90, 180, 90] as const;
+  const frame = (value: (x: number, y: number) => number, alpha = () => 255) => {
+    const width = 10;
+    const height = 10;
+    const data = new Uint8Array(width * height * 4);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const i = (y * width + x) * 4;
+        data[i] = value(x, y);
+        data[i + 3] = alpha();
+      }
+    }
+    return { data, width, height };
+  };
+
+  const codes = frame((x) => x * 25); // 0, 25, 50 … 225
+
+  it("reports only what the viewport covers, not the whole frame", () => {
+    const west = rangeInViewport(codes, FRAME_BOUNDS, [-180, -90, -100, 90], [
+      -50, 50,
+    ]);
+    const east = rangeInViewport(codes, FRAME_BOUNDS, [100, -90, 180, 90], [
+      -50, 50,
+    ]);
+    expect(west!.hi).toBeLessThan(east!.lo);
+    // ...and the whole-frame answer is wider than either.
+    const all = rangeInViewport(codes, FRAME_BOUNDS, FRAME_BOUNDS, [-50, 50])!;
+    expect(all.lo).toBeLessThanOrEqual(west!.lo);
+    expect(all.hi).toBeGreaterThanOrEqual(east!.hi);
+  });
+
+  it("follows the map: panning changes the answer", () => {
+    const seen = [
+      rangeInViewport(codes, FRAME_BOUNDS, [-180, -90, -90, 90], [-50, 50])!,
+      rangeInViewport(codes, FRAME_BOUNDS, [-90, -90, 0, 90], [-50, 50])!,
+      rangeInViewport(codes, FRAME_BOUNDS, [0, -90, 90, 90], [-50, 50])!,
+      rangeInViewport(codes, FRAME_BOUNDS, [90, -90, 180, 90], [-50, 50])!,
+    ];
+    for (let i = 1; i < seen.length; i++) {
+      expect(seen[i].lo).toBeGreaterThan(seen[i - 1].lo);
+    }
+  });
+
+  it("clips the viewport to the frame instead of reading outside it", () => {
+    const regional = [-30, 60, -8, 69] as const;
+    const inside = rangeInViewport(codes, regional, [-25, 62, -12, 67], [
+      -50, 50,
+    ]);
+    const overhang = rangeInViewport(codes, regional, [-180, -90, 180, 90], [
+      -50, 50,
+    ]);
+    expect(inside).not.toBeNull();
+    expect(overhang).not.toBeNull();
+  });
+
+  it("returns null when the map is looking away from the model", () => {
+    const iceland = [-30, 60, -8, 69] as const;
+    expect(
+      rangeInViewport(codes, iceland, [100, -40, 140, -10], [-50, 50]),
+    ).toBeNull();
+  });
+
+  it("skips nodata pixels outside the model domain", () => {
+    // Alpha 0 everywhere: nothing is in-domain, so there is nothing to report.
+    const masked = frame((x) => x * 25, () => 0);
+    expect(
+      rangeInViewport(masked, FRAME_BOUNDS, FRAME_BOUNDS, [-50, 50]),
+    ).toBeNull();
+  });
+
+  it("handles single-band frames, which carry no alpha", () => {
+    const width = 4;
+    const height = 4;
+    const data = new Uint8Array(width * height);
+    data.fill(128);
+    data[0] = 10;
+    const range = rangeInViewport(
+      { data, width, height },
+      FRAME_BOUNDS,
+      FRAME_BOUNDS,
+      [-50, 50],
+    );
+    expect(range).not.toBeNull();
+    expect(range!.lo).toBeLessThan(range!.hi);
+  });
+
+  it("bounds its work on a large frame by striding", () => {
+    const width = 1440;
+    const height = 720;
+    const big = new Uint8Array(width * height * 4);
+    for (let i = 0; i < big.length; i += 4) {
+      big[i] = 100;
+      big[i + 3] = 255;
+    }
+    const started = performance.now();
+    const range = rangeInViewport(
+      { data: big, width, height },
+      FRAME_BOUNDS,
+      FRAME_BOUNDS,
+      [-50, 50],
+    );
+    expect(range).not.toBeNull();
+    expect(performance.now() - started).toBeLessThan(120);
+  });
+
+  it("degrades safely on missing or malformed input", () => {
+    expect(rangeInViewport(null, FRAME_BOUNDS, FRAME_BOUNDS, [-50, 50])).toBeNull();
+    expect(rangeInViewport(codes, FRAME_BOUNDS, FRAME_BOUNDS, null)).toBeNull();
+    expect(
+      rangeInViewport({ data: new Uint8Array(0), width: 0, height: 0 }, FRAME_BOUNDS, FRAME_BOUNDS, [-50, 50]),
+    ).toBeNull();
+    // A degenerate frame footprint has no linear mapping to pixels.
+    expect(rangeInViewport(codes, [10, 10, 10, 10], FRAME_BOUNDS, [-50, 50])).toBeNull();
   });
 });

@@ -97,14 +97,91 @@ export function paletteDomain(
   return { lo: Math.min(...values), hi: Math.max(...values) };
 }
 
-/** Widest of two observed ranges; either side may be absent. */
-export function unionRange(
-  a: TemperatureRange | null,
-  b: TemperatureRange | null,
+/** A decoded frame: interleaved bytes, with nodata marked by alpha 0. */
+export interface ScalarFrame {
+  data: Uint8Array;
+  width: number;
+  height: number;
+}
+
+/** west, south, east, north */
+export type GeoBounds = readonly [number, number, number, number];
+
+/**
+ * Cap on how many pixels one viewport scan touches. A full-globe GFS frame is
+ * ~1500×750; scanning every pixel of it on each pan is wasted work when the
+ * answer only has to survive being snapped to the nearest 5°C. Above this the
+ * scan strides, sampling an even lattice instead.
+ */
+export const MAX_SCAN_SAMPLES = 40_000;
+
+/**
+ * Value range inside the part of a frame the map is actually showing.
+ *
+ * The frame's bounds map linearly onto its pixel grid (row 0 is the northern
+ * edge), which is how every other consumer of these images treats them. The
+ * viewport is intersected with the frame, converted to a pixel rectangle, and
+ * only that rectangle is scanned — so panning from Iceland to the Sahara
+ * changes the answer, which scanning the whole domain never did.
+ *
+ * Pixels with alpha 0 are outside the model's domain and are skipped, exactly
+ * as the full-frame `rawRange` scan skips them.
+ */
+export function rangeInViewport(
+  frame: ScalarFrame | null | undefined,
+  frameBounds: GeoBounds,
+  view: GeoBounds,
+  unscale: readonly [number, number] | null | undefined,
 ): TemperatureRange | null {
-  if (!a) return b;
-  if (!b) return a;
-  return { lo: Math.min(a.lo, b.lo), hi: Math.max(a.hi, b.hi) };
+  if (!frame || !unscale) return null;
+  const { data, width, height } = frame;
+  if (!(width > 0) || !(height > 0) || !data?.length) return null;
+
+  const bands = Math.round(data.length / (width * height));
+  if (!(bands >= 1)) return null;
+
+  const [fw, fs, fe, fn] = frameBounds;
+  const lonSpan = fe - fw;
+  const latSpan = fn - fs;
+  if (!(lonSpan > 0) || !(latSpan > 0)) return null;
+
+  // Intersect the view with the frame, then convert to pixel indices. Row 0 is
+  // the north edge, so latitude runs backwards through the rows.
+  const west = Math.max(fw, Math.min(view[0], view[2]));
+  const east = Math.min(fe, Math.max(view[0], view[2]));
+  const south = Math.max(fs, Math.min(view[1], view[3]));
+  const north = Math.min(fn, Math.max(view[1], view[3]));
+  if (!(east > west) || !(north > south)) return null; // no overlap
+
+  const x0 = clampIndex(Math.floor(((west - fw) / lonSpan) * (width - 1)), width);
+  const x1 = clampIndex(Math.ceil(((east - fw) / lonSpan) * (width - 1)), width);
+  const y0 = clampIndex(Math.floor(((fn - north) / latSpan) * (height - 1)), height);
+  const y1 = clampIndex(Math.ceil(((fn - south) / latSpan) * (height - 1)), height);
+
+  const cols = x1 - x0 + 1;
+  const rows = y1 - y0 + 1;
+  const stride = Math.max(1, Math.ceil(Math.sqrt((cols * rows) / MAX_SCAN_SAMPLES)));
+
+  let lo = 255;
+  let hi = 0;
+  let seen = 0;
+  for (let y = y0; y <= y1; y += stride) {
+    const rowStart = y * width;
+    for (let x = x0; x <= x1; x += stride) {
+      const i = (rowStart + x) * bands;
+      if (bands >= 4 && data[i + 3] === 0) continue; // nodata
+      const v = data[i];
+      if (v < lo) lo = v;
+      if (v > hi) hi = v;
+      seen++;
+    }
+  }
+  if (!seen) return null;
+  return rawRangeToCelsius([lo, hi], unscale);
+}
+
+function clampIndex(value: number, size: number): number {
+  return Math.max(0, Math.min(size - 1, value));
 }
 
 /**
