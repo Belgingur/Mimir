@@ -14,18 +14,17 @@ import { BELGINGUR_SCALE } from "../lib/precipitationScale";
 import { WIND_SPEED_SCALE } from "../lib/windSpeedScale";
 import { WAVE_HEIGHT_SCALE } from "../lib/waveHeightScale";
 import { TEMPERATURE_SCALE } from "../lib/temperatureScale";
-import { TEMPERATURE_SCALE_TROPICS } from "../lib/temperatureScaleTropics";
 import {
   cropStopsToWindow,
   legendTicks,
   paletteDomain,
+  rangeInViewport,
   rawRangeToCelsius,
   resolveLegendWindow,
   stopPercent,
-  unionRange,
   windowsEqual,
+  type ScalarFrame,
   type TemperatureLegendWindow,
-  type TemperatureRange,
 } from "../lib/temperatureLegendWindow";
 import { CLOUD_COVER_SCALE } from "../lib/cloudCoverScale";
 import { SNOW_DEPTH_SCALE } from "../lib/snowDepthScale";
@@ -250,24 +249,12 @@ export class LayerComposer {
     >[0],
   ) as unknown as WeatherLayers.Palette;
 
-  private readonly temperatureScaleTropicsValue = TEMPERATURE_SCALE_TROPICS.map(
-    ([value, hex]: [number, string]) => [value, parseHexColor(hex)],
-  ) as unknown as WeatherLayers.Palette;
-  private readonly temperatureScaleTropicsStep = buildStepPalette(
-    this.temperatureScaleTropicsValue as unknown as Parameters<
-      typeof buildStepPalette
-    >[0],
-  ) as unknown as WeatherLayers.Palette;
-
   /**
-   * Widest temperature range seen across the frames loaded so far for the
-   * current model run, in °C, and the window it currently resolves to. Drives
-   * the legend crop; reset whenever the run changes so a new run's legend is
-   * not stuck at the previous one's extremes.
+   * The window the temperature bar is currently cropped to. Recomputed from the
+   * displayed frame and the visible map area on every composite; kept only so
+   * an unchanged window does not redraw the legend.
    */
-  private tempLegendObserved: TemperatureRange | null = null;
   private tempLegendWindow: TemperatureLegendWindow | null = null;
-  private tempLegendRunKey = "";
 
   private readonly windSpeedScaleValue = WIND_SPEED_SCALE.map(
     ([value, hex]: [number, string]) => [value, parseHexColor(hex)],
@@ -575,15 +562,8 @@ export class LayerComposer {
       this.legendControl = null;
     }
 
-    // Temperature legend — re-render the correct variant for the current model.
     if (dom.legendHost) {
-      const currentModel =
-        this.deps.getCatalogController().inhouseSelectedModel;
-      if (currentModel === "BEL-BR") {
-        this.renderTempTropicsLegend(dom.legendHost);
-      } else {
-        this.renderTempLegend(dom.legendHost);
-      }
+      this.renderTempLegend(dom.legendHost);
     }
 
     if (dom.waveLegendHost) {
@@ -755,11 +735,8 @@ export class LayerComposer {
         const isSnowDepth =
           INHOUSE_GROUP_VARIABLES.snow.primary.includes(layer.variable) ||
           layer.variable.includes("snow_depth");
-        const isTropicsModel = layer.model === "BEL-BR";
         const palette = isAirTemp
-          ? ((isTropicsModel
-              ? this.temperatureScaleTropicsStep
-              : this.temperatureScaleCValueStep) as WeatherLayers.Palette)
+          ? (this.temperatureScaleCValueStep as WeatherLayers.Palette)
           : isWindSpeed
             ? (this.windSpeedScaleValueStep as WeatherLayers.Palette)
             : isPrecip
@@ -805,9 +782,7 @@ export class LayerComposer {
           imageMinValue = undefined;
         }
         if (isAirTemp) {
-          const activeTempScale = isTropicsModel
-            ? this.temperatureScaleTropicsValue
-            : this.temperatureScaleCValue;
+          const activeTempScale = this.temperatureScaleCValue;
           const tempPaletteMin = Number(
             (activeTempScale[0] as [number, unknown])[0],
           );
@@ -829,7 +804,7 @@ export class LayerComposer {
           imageMaxValue = undefined;
           // The frame's own value range is already in hand here — feed it to the
           // legend so the bar crops to the temperatures this run actually holds.
-          this.recordTempLegendRange(layer, imageUnscale, activeTempScale);
+          this.updateTempLegendWindow(layer, imageUnscale, activeTempScale);
         }
         // Note: for log1p-encoded images we do NOT linearise the raster pixels
         // here. Instead precipScaleValueLog1p transforms the palette stops into
@@ -1861,13 +1836,7 @@ export class LayerComposer {
         this.legendControl.remove();
         this.legendControl = null;
       }
-      const currentModel =
-        this.deps.getCatalogController().inhouseSelectedModel;
-      if (currentModel === "BEL-BR") {
-        this.renderTempTropicsLegend(host);
-      } else {
-        this.renderTempLegend(host);
-      }
+      this.renderTempLegend(host);
     }
     // Cloud legend lives in its own host — render/refresh it when switching to cloud mode.
     if (mode === "cloud") {
@@ -1957,39 +1926,45 @@ export class LayerComposer {
   }
 
   /**
-   * Fold one loaded frame's value range into the legend's cropping window.
+   * Point the legend's cropping window at the temperatures currently on screen.
    *
-   * The range is unioned across the run rather than taken per frame: scrubbing
-   * the timeline would otherwise resize the bar under the reader's cursor on
-   * every step. Unioning means the window only ever grows within a run, so a
-   * colour that appeared at hour 12 still has a label at hour 36.
+   * Two things decide the window and both change constantly: which frame is
+   * displayed, and where the map is looking. So it is recomputed from scratch
+   * here rather than accumulated — an earlier version unioned the range across
+   * a run so the bar could not resize mid-scrub, but that meant one hot
+   * afternoon pinned the scale high for the rest of the forecast, and the bar
+   * stopped describing what was on the screen.
+   *
+   * Nothing extra is needed to make it follow the map: `moveend` and `zoomend`
+   * both schedule a layer update, so panning and zooming come back through
+   * here on their own.
    *
    * Runs at composite time (i.e. often), so it exits early unless the resolved
-   * window actually changed — the snapping in resolveLegendWindow is what makes
-   * that cheap: an observed edge has to move a whole step to matter.
+   * window actually changed. Snapping to 5°C is what makes that cheap, and is
+   * also what stops the bar twitching: an edge has to cross a whole step before
+   * anything is redrawn.
    */
-  private recordTempLegendRange(
+  private updateTempLegendWindow(
     layer: InhouseLayer,
     unscale: [number, number],
     palette: WeatherLayers.Palette,
   ): void {
-    const runKey = `${layer.model}|${layer.variable}|${layer.analysis}`;
-    if (runKey !== this.tempLegendRunKey) {
-      this.tempLegendRunKey = runKey;
-      this.tempLegendObserved = null;
-      this.tempLegendWindow = null;
-    }
-
-    const observed = rawRangeToCelsius(layer.rawRange, unscale);
+    const view = this.deps.getMapBounds();
+    const observed =
+      rangeInViewport(
+        layer.image as ScalarFrame | null,
+        getInhouseLayerBounds(layer),
+        [view.getWest(), view.getSouth(), view.getEast(), view.getNorth()],
+        unscale,
+      ) ??
+      // The map may be looking somewhere this model does not cover (or the
+      // frame may not be decoded yet); fall back to the whole frame so the bar
+      // still describes something real.
+      rawRangeToCelsius(layer.rawRange, unscale);
     if (!observed) return;
 
-    const merged = unionRange(this.tempLegendObserved, observed);
-    this.tempLegendObserved = merged;
-
-    const domain = paletteDomain(
-      palette as unknown as [number, unknown][],
-    );
-    const next = resolveLegendWindow(merged, domain);
+    const domain = paletteDomain(palette as unknown as [number, unknown][]);
+    const next = resolveLegendWindow(observed, domain);
     if (windowsEqual(next, this.tempLegendWindow)) return;
     this.tempLegendWindow = next;
 
@@ -2002,10 +1977,6 @@ export class LayerComposer {
 
   private renderTempLegend(host: HTMLDivElement): void {
     this.renderTemperatureLegendBar(host, this.temperatureScaleCValue);
-  }
-
-  private renderTempTropicsLegend(host: HTMLDivElement): void {
-    this.renderTemperatureLegendBar(host, this.temperatureScaleTropicsValue);
   }
 
   /**
@@ -2022,10 +1993,10 @@ export class LayerComposer {
       number,
       [number, number, number, number],
     ][];
-    const window = resolveLegendWindow(
-      this.tempLegendObserved,
-      paletteDomain(scale),
-    );
+    // Until a frame has been composited there is nothing on screen to crop to,
+    // so the bar shows the whole ramp.
+    const window =
+      this.tempLegendWindow ?? resolveLegendWindow(null, paletteDomain(scale));
 
     const stops = cropStopsToWindow(scale, window).map(([value, color]) => ({
       percent: stopPercent(value, window),
