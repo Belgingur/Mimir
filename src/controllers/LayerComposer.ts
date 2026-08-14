@@ -1871,6 +1871,40 @@ export class LayerComposer {
     return `rgba(${r}, ${g}, ${b}, ${(a ?? 255) / 255})`;
   }
 
+  /**
+   * The tick-label column beside a legend bar.
+   *
+   * Every label is absolutely positioned, so the column has no content width of
+   * its own and used to reserve a fixed 32px — wide enough for the widest label
+   * any legend might have ("1/4" on cloud cover) and therefore too wide for the
+   * rest, leaving a strip of dead card to the right of the numbers. The hidden
+   * sizer carries the column's own widest label, so each legend is exactly as
+   * wide as it needs to be and no wider.
+   */
+  private legendLabelsHtml(
+    labels: { text: string; percent: number; modifier?: string }[],
+    fontSize?: string,
+  ): string {
+    const widest = labels.reduce(
+      (a, b) => (b.text.length > a.length ? b.text : a),
+      "",
+    );
+    // The sizer only reserves the right width if it is set in the same type as
+    // the labels it stands in for (cloud cover draws its fractions larger).
+    const size = fontSize ? `font-size: ${fontSize};` : "";
+    const rows = labels
+      .map(
+        ({ text, percent, modifier }) =>
+          `<div class="precip-legend__label${modifier ?? ""}" style="bottom: ${percent.toFixed(2)}%;${size}">${text}</div>`,
+      )
+      .join("");
+    return `
+          <div class="precip-legend__labels">
+            <span class="precip-legend__sizer" aria-hidden="true" style="${size}">${widest}</span>
+            ${rows}
+          </div>`;
+  }
+
   private readonly windLegendTicks = [0, 5, 10, 15, 20, 25, 30, 35, 40];
   private readonly windScaleMin = 0;
   private readonly windScaleMax = 40;
@@ -1912,14 +1946,12 @@ export class LayerComposer {
         <div class="precip-legend__title"><span class="precip-legend__unit">m/s</span></div>
         <div class="precip-legend__scale">
           <div class="precip-legend__bar" style="background: linear-gradient(to top, ${gradient});"></div>
-          <div class="precip-legend__labels">
-            ${this.windLegendTicks
-              .map((value) => {
-                const percent = this.getWindStopPercent(value);
-                return `<div class="precip-legend__label" style="bottom: ${percent.toFixed(2)}%">${value}</div>`;
-              })
-              .join("")}
-          </div>
+${this.legendLabelsHtml(
+            this.windLegendTicks.map((value) => ({
+              text: String(value),
+              percent: this.getWindStopPercent(value),
+            })),
+          )}
         </div>
       </div>
     `;
@@ -2017,18 +2049,16 @@ export class LayerComposer {
         <div class="precip-legend__title"><span class="precip-legend__unit">°C</span></div>
         <div class="precip-legend__scale">
           <div class="precip-legend__bar" style="background: linear-gradient(to top, ${gradient});"></div>
-          <div class="precip-legend__labels">
-            ${legendTicks(window)
-              .map((value) => {
-                const percent = stopPercent(value, window);
-                // The ramp breaks hard from cyan to green at 0°C; the marker
-                // makes that read as the freezing line, not a rendering seam.
-                const freezing =
-                  value === 0 ? " precip-legend__label--freezing" : "";
-                return `<div class="precip-legend__label${freezing}" style="bottom: ${percent.toFixed(2)}%">${value}</div>`;
-              })
-              .join("")}
-          </div>
+${this.legendLabelsHtml(
+            legendTicks(window).map((value) => ({
+              text: String(value),
+              percent: stopPercent(value, window),
+              // The ramp breaks hard from cyan to green at 0°C; the marker makes
+              // that read as the freezing line, not a rendering seam.
+              modifier:
+                value === 0 ? " precip-legend__label--freezing" : undefined,
+            })),
+          )}
         </div>
       </div>
     `;
@@ -2071,14 +2101,12 @@ export class LayerComposer {
         <div class="precip-legend__title"><span class="precip-legend__unit">${t("unit.mmhr")}</span></div>
         <div class="precip-legend__scale">
           <div class="precip-legend__bar" style="background: linear-gradient(to top, ${gradient});"></div>
-          <div class="precip-legend__labels">
-            ${this.precipTicks
-              .map((value) => {
-                const percent = this.getPrecipStopPercent(value);
-                return `<div class="precip-legend__label" style="bottom: ${percent.toFixed(2)}%">${value}</div>`;
-              })
-              .join("")}
-          </div>
+${this.legendLabelsHtml(
+            this.precipTicks.map((value) => ({
+              text: String(value),
+              percent: this.getPrecipStopPercent(value),
+            })),
+          )}
         </div>
       </div>
     `;
@@ -2121,14 +2149,13 @@ export class LayerComposer {
       <div class="precip-legend">
         <div class="precip-legend__scale">
           <div class="precip-legend__bar" style="background: linear-gradient(to top, ${gradient});"></div>
-          <div class="precip-legend__labels">
-            ${this.cloudTickLabels
-              .map((label, i) => {
-                const bottom = (i * bandPct).toFixed(2);
-                return `<div class="precip-legend__label" style="bottom: ${bottom}%; font-size: 1.5em;">${label}</div>`;
-              })
-              .join("")}
-          </div>
+${this.legendLabelsHtml(
+            this.cloudTickLabels.map((label, i) => ({
+              text: label,
+              percent: i * bandPct,
+            })),
+            "1.5em",
+          )}
         </div>
       </div>
     `;
@@ -2190,15 +2217,12 @@ export class LayerComposer {
         <div class="precip-legend__title"><span class="precip-legend__unit">mm</span></div>
         <div class="precip-legend__scale">
           <div class="precip-legend__bar" style="background: linear-gradient(to top, ${gradient});"></div>
-          <div class="precip-legend__labels">
-            ${this.snowDepthTicks
-              .map((value, i) => {
-                const percent = this.getSnowDepthStopPercent(value);
-                const label = this.snowDepthTickLabels[i] ?? String(value);
-                return `<div class="precip-legend__label" style="bottom: ${percent.toFixed(2)}%">${label}</div>`;
-              })
-              .join("")}
-          </div>
+${this.legendLabelsHtml(
+            this.snowDepthTicks.map((value, i) => ({
+              text: this.snowDepthTickLabels[i] ?? String(value),
+              percent: this.getSnowDepthStopPercent(value),
+            })),
+          )}
         </div>
       </div>
     `;

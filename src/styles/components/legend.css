@@ -16,8 +16,16 @@
      gives the same visual result as position: fixed, but is unaffected by
      any containment that MapLibre or backdrop-filter might impose on fixed. */
   position: absolute;
-  right: 12px;
-  bottom: calc(var(--bottom-bar-height) + var(--safe-area-bottom) + 8px);
+  /* Bottom-LEFT: on the right it sat under the model chooser and the vertical
+     layer rail, both of which open over it. `right: auto` because a box with
+     both edges pinned is over-constrained, and which one wins is a detail of
+     the writing direction rather than something to rely on.
+     The offset clears the two things that share this corner: the info button
+     (24px tall, 6px above the bottom bar) and the timeline bubble, which rides
+     the rail and so passes under here whenever the playhead is near the start. */
+  left: calc(12px + var(--safe-area-left, 0px));
+  right: auto;
+  bottom: calc(var(--bottom-bar-height) + var(--safe-area-bottom) + 38px);
   width: fit-content;
   max-width: calc(100vw - 24px);
   gap: 10px;
@@ -121,8 +129,18 @@ body.view-iconography .legend-stack-card {
 
 .precip-legend__labels {
   position: relative;
-  min-width: 32px;
   font-variant-numeric: tabular-nums;
+}
+
+/* Every label is absolutely positioned, so the column would otherwise have no
+   width of its own. This hidden copy of the longest label gives it exactly the
+   width its own numbers need — a fixed reserve had to fit the widest label of
+   any legend ("1/4" on cloud cover) and left dead card beside the rest. */
+.precip-legend__sizer {
+  display: inline-block;
+  visibility: hidden;
+  font-size: 11px;
+  pointer-events: none;
 }
 
 .precip-legend__label {
