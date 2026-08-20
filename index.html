@@ -23,6 +23,13 @@
     <!-- Colour the browser/standalone chrome to match the app surface. -->
     <meta name="theme-color" content="#13181d" />
     <title>Mímir by Belgingur</title>
+    <!-- The house mark, re-cut from the wordmark SVG on belgingur.is and cropped
+         to the wave: the icon the site serves at its root is a 64px 16-colour
+         raster, which is visibly rough on a retina tab. The SVG is what browsers
+         actually use; the PNG is the fallback and the home-screen icon. -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="180x180" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
     <link rel="preconnect" href="https://api.maptiler.com" crossorigin />
     <!-- Prevent FOUC: hide app until stylesheet loads and overrides opacity -->
     <style>
