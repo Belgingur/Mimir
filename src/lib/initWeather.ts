@@ -2,6 +2,7 @@ import * as WeatherLayers from "weatherlayers-gl";
 import type { AppDom } from "./domRegistry";
 import type { UiState } from "./inhouseTypes";
 import { getGridStepForZoom } from "./zoomSteps";
+import { matchNearestTimeIndex } from "./timelineHelpers";
 import { TimelineController } from "../controllers/TimelineController";
 import type { InhouseCatalogController } from "../controllers/InhouseCatalogController";
 import type { LayerComposer } from "../controllers/LayerComposer";
@@ -84,8 +85,15 @@ export async function initWeather(
   if (datetimes.length) {
     timelineController.timelineDatetimes = datetimes.slice();
     timelineController.activeTimelineDatetimes = datetimes.slice();
-    timelineController.currentDatetime = datetimes[0];
-    deps.setTimelineCurrentDatetime(datetimes[0]);
+    // Open on the frame nearest the moment the page loads rather than the run's
+    // first step — that step is typically 00:00 UTC, which reads as the middle
+    // of last night and is rarely what anyone opening a forecast wants to see.
+    // A returning visitor's saved position still wins: it arrives later, via
+    // pendingTimeIndex in syncInhouseTimeToTimeline.
+    const initialDatetime =
+      datetimes[matchNearestTimeIndex(datetimes, new Date().toISOString())];
+    timelineController.currentDatetime = initialDatetime;
+    deps.setTimelineCurrentDatetime(initialDatetime);
   }
 
   timelineController.ensureCustomTimeline(dom.timelineHost);
