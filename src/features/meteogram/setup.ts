@@ -102,7 +102,11 @@ export function setupMeteogram(deps: SetupMeteogramDeps): MeteogramController {
         "api-url",
         `${apiBase}/api/v2/widget/meteo/config/${clientName}`,
       );
-      el.setAttribute("hours", "48");
+      // No `hours`: in full mode the widget takes the whole run — it sends no
+      // `duration` and the API returns every timestep the forecast has, so the
+      // graph ends where the data ends (a short-range model plots its three
+      // days, a long one its fortnight). The attribute only bounds the
+      // card-sized `mode="graph"` embed, which this is not.
       el.setAttribute("mode", "full");
       el.setAttribute("view", "graph");
       // Always show the exact clicked coordinate, never snap the label to the
