@@ -18,25 +18,8 @@ the release `tag`, the source `commit`, and the `sha256` of the bundle. CI runs
 `npm run meteogram:check`, which fails the build if `bel-meteogram.js` drifts
 from that checksum.
 
-### Currently vendored: an unreleased build
-
-`manifest.json` presently records `tag: "unreleased"` — the committed bundle is
-a **local build** of `Belgingur/meteogram@542eb9f` (branch
-`feat/unified-chart-geometry`, on top of the `v0.1.3` release), vendored ahead
-of a release so the chart-geometry work can be tested on real devices.
-
-What that changes:
-
-- `npm run meteogram:check` still passes. It only compares the committed file
-  against `manifest.sha256`, which is the local build's hash.
-- **`npm run meteogram:sync` cannot restore this file.** It downloads
-  `releases/download/<tag>/<asset>`, and there is no such release to download.
-  Running it will fail until the release is cut.
-
-To return to normal: publish the release upstream, then set `version`, `tag`,
-`commit` and `sha256` to the published values, drop the `unreleased` block from
-`manifest.json`, and run `npm run meteogram:sync` to confirm the downloaded
-asset matches.
+Currently vendored: **v0.2.0**, which is a published release — `npm run
+meteogram:sync` downloads it and reproduces the committed bundle byte for byte.
 
 ## Updating to a new widget release
 
