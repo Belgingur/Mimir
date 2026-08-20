@@ -6,6 +6,7 @@ import {
   formatTimelineZoneLabel,
   buildTimelineDayBlocks,
   matchNearestTimeIndex,
+  nowRailRatio,
   filterTimesByRange,
 } from "../src/lib/timelineHelpers";
 
@@ -191,5 +192,76 @@ describe("filterTimesByRange", () => {
   it("returns all for unparseable range dates", () => {
     const range = { start: "GARBAGE", end: "GARBAGE" };
     expect(filterTimesByRange(times, range)).toEqual(times);
+  });
+});
+
+describe("nowRailRatio", () => {
+  const ms = (iso: string) => Date.parse(iso);
+
+  it("places now at the fraction of the run it has reached", () => {
+    const times = [
+      "2026-03-19T00:00:00Z",
+      "2026-03-19T06:00:00Z",
+      "2026-03-19T12:00:00Z",
+      "2026-03-19T18:00:00Z",
+      "2026-03-20T00:00:00Z",
+    ];
+    // Exactly on the middle step: index 2 of 4 spans.
+    expect(nowRailRatio(times, ms("2026-03-19T12:00:00Z"))).toBeCloseTo(0.5, 10);
+    expect(nowRailRatio(times, ms("2026-03-19T00:00:00Z"))).toBeCloseTo(0, 10);
+    expect(nowRailRatio(times, ms("2026-03-20T00:00:00Z"))).toBeCloseTo(1, 10);
+  });
+
+  it("interpolates between two steps", () => {
+    const times = [
+      "2026-03-19T00:00:00Z",
+      "2026-03-19T06:00:00Z",
+      "2026-03-19T12:00:00Z",
+    ];
+    // Three hours into the first six-hour step = half of index 0→1, and the
+    // rail spans two steps, so 0.5 / 2.
+    expect(nowRailRatio(times, ms("2026-03-19T03:00:00Z"))).toBeCloseTo(
+      0.25,
+      10,
+    );
+  });
+
+  it("measures position in index space, not clock space", () => {
+    // Uneven spacing: an hourly head followed by a six-hourly tail. Each step
+    // still occupies the same rail width, so a moment one hour in sits at the
+    // first of three spans — 1/3 — not at the 1/13th of elapsed time.
+    const times = [
+      "2026-03-19T00:00:00Z",
+      "2026-03-19T01:00:00Z",
+      "2026-03-19T07:00:00Z",
+      "2026-03-19T13:00:00Z",
+    ];
+    expect(nowRailRatio(times, ms("2026-03-19T01:00:00Z"))).toBeCloseTo(
+      1 / 3,
+      10,
+    );
+  });
+
+  it("draws no tick when now is outside the run", () => {
+    const times = ["2026-03-19T00:00:00Z", "2026-03-19T12:00:00Z"];
+    // Before the run and after it: clamping to an edge would claim the forecast
+    // covers this moment.
+    expect(nowRailRatio(times, ms("2026-03-18T23:00:00Z"))).toBeNull();
+    expect(nowRailRatio(times, ms("2026-03-19T13:00:00Z"))).toBeNull();
+  });
+
+  it("draws no tick without a span to place it on", () => {
+    expect(nowRailRatio([], ms("2026-03-19T00:00:00Z"))).toBeNull();
+    expect(
+      nowRailRatio(["2026-03-19T00:00:00Z"], ms("2026-03-19T00:00:00Z")),
+    ).toBeNull();
+  });
+
+  it("draws no tick for unusable input", () => {
+    const times = ["2026-03-19T00:00:00Z", "GARBAGE"];
+    expect(nowRailRatio(times, ms("2026-03-19T00:00:00Z"))).toBeNull();
+    expect(
+      nowRailRatio(["2026-03-19T00:00:00Z", "2026-03-19T12:00:00Z"], NaN),
+    ).toBeNull();
   });
 });

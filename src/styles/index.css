@@ -12,6 +12,7 @@
 @import "./components/model-card.css";
 @import "./components/timeline.css";
 @import "./components/dataset-loader.css";
+@import "./components/new-run-notice.css";
 @import "./components/chart-modal.css";
 @import "./components/grid-labels.css";
 @import "./components/overlay.css";

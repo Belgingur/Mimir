@@ -85,6 +85,41 @@ export const matchNearestTimeIndex = (times: string[], target: string) => {
   return best;
 };
 
+/**
+ * Where the present moment sits on the timeline rail, as a 0–1 fraction of the
+ * rail's width — or null when now falls outside the run, in which case the rail
+ * draws no tick at all. Pinning one to an edge instead would claim the forecast
+ * covers this moment when it does not.
+ *
+ * The rail's x-axis is *index*-linear, not time-linear: every step gets the same
+ * width, so a run that starts hourly and continues three-hourly does not
+ * compress on screen. The position is therefore interpolated in index space —
+ * find the pair of steps bracketing now, then offset within that pair. Deriving
+ * it from the raw timestamps instead would drift away from the step it names
+ * wherever the spacing changes.
+ */
+export const nowRailRatio = (
+  datetimes: string[],
+  nowMs: number,
+): number | null => {
+  if (datetimes.length < 2 || !Number.isFinite(nowMs)) return null;
+  const ms = datetimes.map((d) => Date.parse(d));
+  if (ms.some((value) => !Number.isFinite(value))) return null;
+  // Ascending order is what the manifests publish; a descending or scrambled
+  // list simply finds no bracketing pair below and yields no tick.
+  if (nowMs < ms[0] || nowMs > ms[ms.length - 1]) return null;
+  for (let i = 0; i < ms.length - 1; i += 1) {
+    const from = ms[i];
+    const to = ms[i + 1];
+    if (nowMs >= from && nowMs <= to) {
+      const span = to - from;
+      const withinStep = span > 0 ? (nowMs - from) / span : 0;
+      return (i + withinStep) / (ms.length - 1);
+    }
+  }
+  return null;
+};
+
 export type DatetimeRange = {
   start?: string;
   end?: string;

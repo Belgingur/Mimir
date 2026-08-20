@@ -101,6 +101,9 @@ export const pt: Record<string, string> = {
   "status.loadingDataset": "Carregando {{model}}…",
   "status.datasetFailed": "Não foi possível carregar {{model}}. Pode não ter dados agora.",
   "action.backToModel": "Voltar para {{model}}",
+  "status.newRun": "Está disponível uma previsão mais recente.",
+  "action.reload": "Recarregar",
+  "action.dismiss": "Dispensar",
   "status.loadingWavegram": "Carregando ondograma…",
   "status.loadingMeteogram": "Carregando meteograma…",
   "status.noData": "Nenhum dado disponível.",
@@ -159,6 +162,7 @@ export const pt: Record<string, string> = {
   // ── Timeline ─────────────────────────────────────────────────────────
   "timeline.play": "Reproduzir linha do tempo",
   "timeline.selectedTime": "Horário selecionado",
+  "timeline.now": "Agora",
   // ── Error messages ───────────────────────────────────────────────────
   "error.updateLayers": "Falha ao atualizar camadas",
   "error.countryOutlines": "Falha ao carregar contornos de países",

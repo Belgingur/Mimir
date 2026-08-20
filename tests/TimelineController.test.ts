@@ -264,6 +264,62 @@ describe("TimelineController", () => {
       expect(shell.style.display).toBe("none");
     });
 
+    it("puts the now tick where the present hour falls in the run", () => {
+      // Fake timers are already installed by the outer beforeEach, so Date.now()
+      // inside renderCustomTimeline reads this.
+      vi.setSystemTime(new Date("2026-03-20T06:00:00Z"));
+      const { deps, dom } = createDeps();
+      const ctrl = new TimelineController(deps);
+      ctrl.activeTimelineDatetimes = [
+        "2026-03-20T00:00:00Z",
+        "2026-03-20T06:00:00Z",
+        "2026-03-20T12:00:00Z",
+      ];
+      ctrl.ensureCustomTimeline(dom.timelineHost);
+      const now = dom.timelineHost.querySelector(
+        ".timeline-rail__now",
+      ) as HTMLElement;
+      expect(now.hidden).toBe(false);
+      expect(now.style.left).toBe("50%");
+    });
+
+    it("draws no now tick when the run does not cover the present", () => {
+      // A day after the run's last step: a tick pinned to the right edge would
+      // claim the forecast reaches this moment.
+      vi.setSystemTime(new Date("2026-03-21T12:00:00Z"));
+      const { deps, dom } = createDeps();
+      const ctrl = new TimelineController(deps);
+      ctrl.activeTimelineDatetimes = [
+        "2026-03-20T00:00:00Z",
+        "2026-03-20T12:00:00Z",
+      ];
+      ctrl.ensureCustomTimeline(dom.timelineHost);
+      const now = dom.timelineHost.querySelector(
+        ".timeline-rail__now",
+      ) as HTMLElement;
+      expect(now.hidden).toBe(true);
+    });
+
+    it("re-reads the clock when the tab becomes visible again", () => {
+      vi.setSystemTime(new Date("2026-03-20T00:00:00Z"));
+      const { deps, dom } = createDeps();
+      const ctrl = new TimelineController(deps);
+      ctrl.activeTimelineDatetimes = [
+        "2026-03-20T00:00:00Z",
+        "2026-03-20T12:00:00Z",
+        "2026-03-21T00:00:00Z",
+      ];
+      ctrl.ensureCustomTimeline(dom.timelineHost);
+      const now = dom.timelineHost.querySelector(
+        ".timeline-rail__now",
+      ) as HTMLElement;
+      expect(now.style.left).toBe("0%");
+      // Hours pass in a background tab; nothing re-renders until it is looked at.
+      vi.setSystemTime(new Date("2026-03-20T12:00:00Z"));
+      document.dispatchEvent(new Event("visibilitychange"));
+      expect(now.style.left).toBe("50%");
+    });
+
     it("renders bubble/progress/marker from selected index", () => {
       const { deps, dom } = createDeps();
       const ctrl = new TimelineController(deps);

@@ -343,6 +343,70 @@ describe("InhouseCatalogController", () => {
     });
   });
 
+  describe("fetchLatestAnalysisId", () => {
+    const selectModel = (model: string) => {
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedModel = model;
+    };
+
+    it("reports the run analyses.json advertises as latest", async () => {
+      selectModel("gfs-1");
+      stubFetch({
+        "analyses.json": {
+          schemaVersion: 1,
+          analyses: ["2026-03-04_00", "2026-03-04_12"],
+          latest: "2026-03-04_12",
+        },
+      });
+      await expect(ctrl.fetchLatestAnalysisId()).resolves.toBe("2026-03-04_12");
+    });
+
+    it("bypasses the HTTP cache — a cached copy is the thing under suspicion", async () => {
+      selectModel("gfs-1");
+      const fetchMock = stubFetch({
+        "analyses.json": { analyses: ["a"], latest: "a" },
+      });
+      await ctrl.fetchLatestAnalysisId();
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/gfs-1/analyses.json"),
+        expect.objectContaining({ cache: "no-store" }),
+      );
+    });
+
+    it("falls back to the first id when no latest is declared", async () => {
+      selectModel("gfs-1");
+      stubFetch({ "analyses.json": { analyses: ["2026-03-04_00"] } });
+      await expect(ctrl.fetchLatestAnalysisId()).resolves.toBe("2026-03-04_00");
+    });
+
+    it("answers null without a selected model", async () => {
+      selectModel("");
+      await expect(ctrl.fetchLatestAnalysisId()).resolves.toBeNull();
+    });
+
+    it("answers null on a failed request rather than throwing", async () => {
+      // A background staleness poll must not surface as an error over a map
+      // that is working perfectly well.
+      selectModel("gfs-1");
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({ ok: false, status: 503 }),
+      );
+      await expect(ctrl.fetchLatestAnalysisId()).resolves.toBeNull();
+    });
+
+    it("answers null when the network throws", async () => {
+      selectModel("gfs-1");
+      vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+      await expect(ctrl.fetchLatestAnalysisId()).resolves.toBeNull();
+    });
+
+    it("answers null when the payload carries no analyses", async () => {
+      selectModel("gfs-1");
+      stubFetch({ "analyses.json": { schemaVersion: 1 } });
+      await expect(ctrl.fetchLatestAnalysisId()).resolves.toBeNull();
+    });
+  });
+
   describe("getInhouseFrameUrl", () => {
     it("builds frame URL with zero-padded index", () => {
       const layer = makeLayer();

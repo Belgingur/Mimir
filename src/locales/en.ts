@@ -117,6 +117,9 @@ export const en: Record<string, string> = {
   "status.loadingDataset": "Loading {{model}}…",
   "status.datasetFailed": "Couldn't load {{model}}. It may have no data right now.",
   "action.backToModel": "Back to {{model}}",
+  "status.newRun": "A newer forecast run is available.",
+  "action.reload": "Reload",
+  "action.dismiss": "Dismiss",
   "status.loadingWavegram": "Loading wavegram…",
   "status.loadingMeteogram": "Loading meteogram…",
   "status.noData": "No data available.",
@@ -185,6 +188,7 @@ export const en: Record<string, string> = {
   // ── Timeline ─────────────────────────────────────────────────────────
   "timeline.play": "Play timeline",
   "timeline.selectedTime": "Selected time",
+  "timeline.now": "Now",
 
   // ── Error messages ───────────────────────────────────────────────────
   "error.updateLayers": "Failed to update layers",

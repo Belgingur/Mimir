@@ -1,0 +1,74 @@
+/* "A newer forecast run is available" pill.
+
+   Sits top-centre, tucked under .map-time-bubble (top: 12px) rather than in a
+   corner: all four are already taken — zoom top-left, menu/view-toggle
+   top-right, info + legend bottom-left, timeline along the bottom. It shares
+   the bubble's centre line so the two read as one column of status rather than
+   two competing badges. */
+.new-run-notice {
+  position: absolute;
+  top: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-chrome);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(420px, calc(100% - 24px));
+  padding: 7px 8px 7px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-light, rgba(0, 0, 0, 0.12));
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--text, #1f1f1f);
+  font-size: 13px;
+  line-height: 1.3;
+  box-shadow: 0 8px 22px rgba(20, 32, 43, 0.2);
+}
+
+.new-run-notice[hidden] {
+  display: none;
+}
+
+.new-run-notice__text {
+  min-width: 0;
+}
+
+.new-run-notice__action {
+  flex: 0 0 auto;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  border: 0;
+  background: var(--accent-orange-dark, #ef7f1a);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.new-run-notice__action:hover {
+  background: var(--accent-orange, #f59b3a);
+}
+
+.new-run-notice__dismiss {
+  flex: 0 0 auto;
+  /* 24px hit target on a 12px glyph — small enough not to compete with the
+     action, big enough to hit on a phone. */
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary, #5a5a5a);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.new-run-notice__dismiss:hover {
+  background: rgba(0, 0, 0, 0.07);
+  color: var(--text, #1f1f1f);
+}
