@@ -122,6 +122,9 @@ export const is: Record<string, string> = {
   "status.loadingDataset": "Sæki {{model}}…",
   "status.datasetFailed": "Tókst ekki að sækja {{model}}. Það kann að vera án gagna núna.",
   "action.backToModel": "Til baka í {{model}}",
+  "status.newRun": "Nýrri spá er tilbúin.",
+  "action.reload": "Endurhlaða",
+  "action.dismiss": "Loka",
   "status.loadingWavegram": "Hleð bylgjurit…",
   "status.loadingMeteogram": "Hleð veðurriti…",
   "status.noData": "Vantar gögn.",
@@ -193,6 +196,7 @@ export const is: Record<string, string> = {
   // ── Timeline ─────────────────────────────────────────────────────────
   "timeline.play": "Spila tímalínu",
   "timeline.selectedTime": "Valinn tími",
+  "timeline.now": "Núna",
 
   // ── Error messages ───────────────────────────────────────────────────
   "error.updateLayers": "Tókst ekki að uppfæra lag",

@@ -434,6 +434,32 @@ export class InhouseCatalogController {
     return (await response.json()) as T;
   }
 
+  /**
+   * The newest analysis id the server currently advertises for the selected
+   * model, or null when it cannot be established.
+   *
+   * Bypasses the HTTP cache, which the ordinary fetchJson path does not: this is
+   * asked precisely when the copy in cache is suspected of being stale, and
+   * analyses.json carries no cache-busting of its own. Answers null rather than
+   * throwing — the caller is a background staleness check, and a failed poll
+   * should be silent, not a warning banner over a working map.
+   */
+  async fetchLatestAnalysisId(): Promise<string | null> {
+    const model = this._inhouseSelectedModel;
+    if (!model) return null;
+    const url = `${this.getInhouseRoot()}/${FORECAST_DATA_SEGMENT}/${model}/analyses.json`;
+    try {
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) return null;
+      const norm = normalizeIdList(await response.json(), "latest");
+      const ids = Array.isArray(norm) ? norm : norm.ids;
+      const defaultId = Array.isArray(norm) ? "" : norm.defaultId;
+      return pickDefaultId(ids, defaultId) || null;
+    } catch {
+      return null;
+    }
+  }
+
   getInhouseFrameUrl(layer: InhouseLayer, index: number): string {
     const baseUrl = this.getVariableBaseUrl(
       layer.model,

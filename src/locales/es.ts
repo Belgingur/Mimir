@@ -121,6 +121,9 @@ export const es: Record<string, string> = {
   "status.loadingDataset": "Cargando {{model}}…",
   "status.datasetFailed": "No se pudo cargar {{model}}. Puede que no tenga datos ahora.",
   "action.backToModel": "Volver a {{model}}",
+  "status.newRun": "Hay una previsión más reciente disponible.",
+  "action.reload": "Recargar",
+  "action.dismiss": "Descartar",
   "status.loadingWavegram": "Cargando gráfico de oleaje…",
   "status.loadingMeteogram": "Cargando meteograma…",
   "status.noData": "No hay datos disponibles.",
@@ -189,6 +192,7 @@ export const es: Record<string, string> = {
   // ── Timeline ─────────────────────────────────────────────────────────
   "timeline.play": "Reproducir línea de tiempo",
   "timeline.selectedTime": "Hora seleccionada",
+  "timeline.now": "Ahora",
 
   // ── Error messages ───────────────────────────────────────────────────
   "error.updateLayers": "No se pudieron actualizar las capas",

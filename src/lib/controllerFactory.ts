@@ -47,6 +47,7 @@ import {
   LOCATED_ZOOM,
 } from "./initialCamera";
 import { createDatasetLoadingOverlay } from "./datasetLoadingOverlay";
+import { createNewRunNotice } from "./newRunNotice";
 import { LanguageSwitcherController } from "../controllers/LanguageSwitcherController";
 import { isMeteogramEnabled } from "../features/meteogram/enabled";
 import type { MeteogramController } from "../features/meteogram/MeteogramController";
@@ -598,6 +599,38 @@ export function createControllers(config: ControllerFactoryConfig) {
   // --- DOM event handlers ---
   // Loading/error overlay shown while switching model or analysis (task B2).
   const datasetLoader = createDatasetLoadingOverlay(dom.mapWrap);
+
+  // Nothing in the app polls: the catalog is read once, from map.on("load"), so
+  // a tab left open overnight keeps yesterday's run with nothing on screen to
+  // say so. On returning to the tab, ask the server what the newest run is and
+  // offer a reload if it has moved on — rather than swapping the dataset
+  // underneath the reader, which would move the hour they are looking at.
+  const newRunNotice = createNewRunNotice(dom.mapWrap, {
+    message: () => t("status.newRun"),
+    actionLabel: () => t("action.reload"),
+    dismissLabel: () => t("action.dismiss"),
+    onAction: () => window.location.reload(),
+  });
+  // Flipping between tabs should not mean a request per flip.
+  const NEW_RUN_CHECK_INTERVAL_MS = 60_000;
+  let lastNewRunCheckMs = 0;
+  const checkForNewRun = async () => {
+    if (document.visibilityState !== "visible") return;
+    if (newRunNotice.isDismissed()) return;
+    const now = Date.now();
+    if (now - lastNewRunCheckMs < NEW_RUN_CHECK_INTERVAL_MS) return;
+    lastNewRunCheckMs = now;
+    const loaded = catalogController.inhouseSelectedAnalysis;
+    if (!loaded) return;
+    const latest = await catalogController.fetchLatestAnalysisId();
+    // Analysis ids are run stamps ("2026-05-25_00"), so they sort
+    // chronologically as plain strings and only a strictly later one is news.
+    // A reader who deliberately picked an older run from the dev analysis
+    // selector is therefore also told a newer one exists, which is true.
+    if (latest && latest > loaded) newRunNotice.show();
+  };
+  document.addEventListener("visibilitychange", () => void checkForNewRun());
+
   const setSelectorsBusy = (busy: boolean) => {
     dom.inhouseModelSelect.setAttribute("aria-busy", String(busy));
     dom.inhouseAnalysisSelect.setAttribute("aria-busy", String(busy));
