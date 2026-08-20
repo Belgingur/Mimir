@@ -22,7 +22,6 @@ vi.mock("../src/lib/gridToggleUi", () => ({
   syncGridToggleButtonState: mockSyncGridToggleButtonState,
 }));
 
-import { DEFAULT_VIEW } from "../src/lib/modelConfig";
 import { LAYER_GROUPS, type UiState } from "../src/lib/inhouseTypes";
 import {
   LayerGroupController,
@@ -532,32 +531,41 @@ describe("LayerGroupController", () => {
       );
     });
 
-    it("switching to waves eases map to default view", async () => {
+    it("switching to waves keeps the camera where the user left it", async () => {
+      // GWES is global, so it covers wherever the reader already is. Whether a
+      // switch may move the camera is centerMapOnInhouseDomain's coverage call,
+      // not a per-layer reset to DEFAULT_VIEW.
       mockResolveSelectionChange.mockReturnValue({
         model: "GFS",
         layer: "waves",
         appliedException: null,
       });
       await ctrl.updateMode("waves");
-      expect(deps.easeToMap).toHaveBeenCalledWith({
-        center: DEFAULT_VIEW.center,
-        zoom: DEFAULT_VIEW.zoom,
-        duration: 800,
-      });
+      expect(deps.easeToMap).not.toHaveBeenCalled();
     });
 
-    it("applies LEAVE_GWES_BY_LAYER exception map easing for non-waves", async () => {
+    it("leaving waves by layer keeps the camera too", async () => {
       mockResolveSelectionChange.mockReturnValue({
         model: "GFS",
         layer: "wind",
         appliedException: "LEAVE_GWES_BY_LAYER",
       });
       await ctrl.updateMode("wind");
-      expect(deps.easeToMap).toHaveBeenCalledWith({
-        center: DEFAULT_VIEW.center,
-        zoom: DEFAULT_VIEW.zoom,
-        duration: 800,
+      expect(deps.easeToMap).not.toHaveBeenCalled();
+    });
+
+    it("restores the captured view on a layer change, BEL-IS included", async () => {
+      // The BEL-IS exemption here was half of why picking a different variable
+      // snapped the map back to the Iceland overview.
+      deps.getInhouseSelectedModel = () => "BEL-IS";
+      mockResolveSelectionChange.mockReturnValue({
+        model: "BEL-IS",
+        layer: "wind",
+        appliedException: null,
       });
+      await ctrl.updateMode("wind");
+      await new Promise((r) => requestAnimationFrame(r));
+      expect(deps.jumpToMap).toHaveBeenCalled();
     });
 
     it("schedules persist and syncs wind controls", async () => {
