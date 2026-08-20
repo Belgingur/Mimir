@@ -6,6 +6,7 @@ import {
   WEB_MERCATOR_METERS_PER_PIXEL_AT_Z0,
   MODEL_RESOLUTION_METERS,
   shouldCenterOnBounds,
+  modelCoversPoint,
   getModelResolutionMeters,
   getModelDefaultCenter,
   getMetersPerPixelAtLatitude,
@@ -134,5 +135,48 @@ describe("getMetersPerPixelAtLatitude", () => {
     const lat60 = getMetersPerPixelAtLatitude(60, 5);
     expect(lat60).toBeLessThan(equator);
     expect(lat60).toBeCloseTo(equator * 0.5, 0);
+  });
+});
+
+describe("modelCoversPoint", () => {
+  // The single question that decides whether a model switch may move the
+  // camera: does this model have data where the user is looking?
+  const ICELAND: [number, number, number, number] = [-25, 63, -13, 67];
+
+  it("says yes inside the domain and no outside it", () => {
+    expect(modelCoversPoint("BEL-IS", ICELAND, [-21.9, 64.1])).toBe(true);
+    expect(modelCoversPoint("BEL-IS", ICELAND, [10.7, 59.9])).toBe(false); // Oslo
+  });
+
+  it("counts the boundary as covered", () => {
+    expect(modelCoversPoint("BEL-IS", ICELAND, [-25, 63])).toBe(true);
+    expect(modelCoversPoint("BEL-IS", ICELAND, [-13, 67])).toBe(true);
+  });
+
+  it("always says yes for a global model, wherever the reader is", () => {
+    for (const center of [[-21.9, 64.1], [151.2, -33.9], [0, 0]] as [
+      number,
+      number,
+    ][]) {
+      expect(modelCoversPoint("GFS", null, center)).toBe(true);
+      expect(modelCoversPoint("GWES", ICELAND, center)).toBe(true);
+    }
+  });
+
+  it("says no for a regional model with unknown bounds", () => {
+    // Better to reframe on a domain we cannot reason about than to leave the
+    // reader on a blank map.
+    expect(modelCoversPoint("BEL-IS", null, [-21.9, 64.1])).toBe(false);
+  });
+
+  it("handles a domain crossing the antimeridian", () => {
+    const pacific: [number, number, number, number] = [170, -10, -170, 10];
+    expect(modelCoversPoint("SOME-PAC", pacific, [179, 0])).toBe(true);
+    expect(modelCoversPoint("SOME-PAC", pacific, [-179, 0])).toBe(true);
+    expect(modelCoversPoint("SOME-PAC", pacific, [0, 0])).toBe(false);
+  });
+
+  it("ignores latitude outside the band even at a covered longitude", () => {
+    expect(modelCoversPoint("BEL-IS", ICELAND, [-19, 50])).toBe(false);
   });
 });

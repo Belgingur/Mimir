@@ -122,6 +122,9 @@ function makeDeps(
     setMapMaxZoom: vi.fn(),
     getMapZoom: () => 5,
     setMapZoom: vi.fn(),
+    // Somewhere in the North Atlantic, outside every regional domain the tests
+    // use, so a test asking about coverage has to opt in explicitly.
+    getMapCenter: () => [-40, 40] as [number, number],
     easeToMap: vi.fn(),
     fitMapBounds: vi.fn(),
     getCurrentDatetime: () => "2026-03-04T00:00:00Z",
@@ -404,72 +407,85 @@ describe("InhouseCatalogController", () => {
   });
 
   describe("centerMapOnInhouseDomain", () => {
-    it("does nothing when restoring from persisted", () => {
-      const d = makeDeps({ isRestoringFromPersisted: () => true });
+    // The rule: the camera stays where the user put it, and moves only when the
+    // model they just picked has no data where they are looking.
+    const ICELAND: [number, number, number, number] = [-25, 63, -13, 67];
+
+    it("does nothing when restoring from persisted — for every model", () => {
+      // A reload restores the user's camera; BEL-IS used to override it.
+      for (const model of ["BEL-IS", "UWC-IG", "RAP", "GFS"]) {
+        const d = makeDeps({ isRestoringFromPersisted: () => true });
+        const c = new InhouseCatalogController(d);
+        c.centerMapOnInhouseDomain(model, "2026-03-04_00", ICELAND);
+        expect(d.easeToMap).not.toHaveBeenCalled();
+        expect(d.fitMapBounds).not.toHaveBeenCalled();
+      }
+    });
+
+    it("stays put when the model covers where the user is looking", () => {
+      const d = makeDeps({
+        getMapCenter: () => [-21.9, 64.1] as [number, number], // Reykjavík
+      });
       const c = new InhouseCatalogController(d);
-      c.centerMapOnInhouseDomain("BEL-IS", "2026-03-04_00", [-25, 63, -13, 67]);
+      c.centerMapOnInhouseDomain("BEL-IS", "2026-03-04_00", ICELAND);
       expect(d.easeToMap).not.toHaveBeenCalled();
       expect(d.fitMapBounds).not.toHaveBeenCalled();
     });
 
-    it("uses special center for UWC-IG", () => {
-      ctrl.centerMapOnInhouseDomain(
-        "UWC-IG",
-        "2026-03-04_00",
-        [-25, 63, -13, 67],
-      );
+    it("does not move on a variable change (same model, called again)", () => {
+      // ensureInhouseGroupLayers() calls this on every layer rebuild, which is
+      // what used to throw the view away when picking another variable.
+      const c = new InhouseCatalogController(deps);
+      c.centerMapOnInhouseDomain("UWC-IG", "2026-03-04_00", ICELAND);
+      expect(deps.easeToMap).toHaveBeenCalledTimes(1);
+      c.centerMapOnInhouseDomain("UWC-IG", "2026-03-04_00", ICELAND);
+      c.centerMapOnInhouseDomain("UWC-IG", "2026-03-04_00", ICELAND);
+      expect(deps.easeToMap).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not move for a new analysis run of the same model", () => {
+      const c = new InhouseCatalogController(deps);
+      c.centerMapOnInhouseDomain("UWC-IG", "2026-03-04_00", ICELAND);
+      expect(deps.easeToMap).toHaveBeenCalledTimes(1);
+      c.centerMapOnInhouseDomain("UWC-IG", "2026-03-04_12", ICELAND);
+      expect(deps.easeToMap).toHaveBeenCalledTimes(1);
+    });
+
+    it("refocuses UWC-IG when the view is outside it", () => {
+      ctrl.centerMapOnInhouseDomain("UWC-IG", "2026-03-04_00", ICELAND);
       expect(deps.easeToMap).toHaveBeenCalledWith(
         expect.objectContaining({ center: [-36, 68.5], zoom: 3.5 }),
       );
     });
 
-    it("uses special center for RAP", () => {
+    it("refocuses RAP when the view is outside it", () => {
       ctrl.centerMapOnInhouseDomain("RAP", "2026-03-04_00", [-60, 50, -40, 70]);
       expect(deps.easeToMap).toHaveBeenCalledWith(
         expect.objectContaining({ center: [-60, 62], zoom: 2.5 }),
       );
     });
 
-    it("resets to default view for global model", () => {
-      ctrl.centerMapOnInhouseDomain(
-        "GFS",
-        "2026-03-04_00",
-        [-180, -90, 180, 90],
-      );
-      expect(deps.easeToMap).toHaveBeenCalledWith(
-        expect.objectContaining({ center: [-20, 55] }),
-      );
-    });
-
-    it("centers on Iceland for BEL-IS", async () => {
-      ctrl.centerMapOnInhouseDomain(
-        "BEL-IS",
-        "2026-03-04_00",
-        [-25, 63, -13, 67],
-      );
-      // BEL-IS uses hardcoded Iceland center via requestAnimationFrame
+    it("refocuses BEL-IS to the Iceland overview when the view is elsewhere", async () => {
+      ctrl.centerMapOnInhouseDomain("BEL-IS", "2026-03-04_00", ICELAND);
+      // BEL-IS reframes on the next frame so settling map events cannot cancel it.
       await new Promise((r) => requestAnimationFrame(r));
       expect(deps.easeToMap).toHaveBeenCalledWith(
         expect.objectContaining({ center: [-19, 65], zoom: 6.0 }),
       );
     });
 
-    it("always re-centers BEL-IS to Iceland overview", async () => {
-      ctrl.centerMapOnInhouseDomain(
-        "BEL-IS",
-        "2026-03-04_00",
-        [-25, 63, -13, 67],
+    it("never moves for a global model — it covers wherever you are", () => {
+      ctrl.centerMapOnInhouseDomain("GFS", "2026-03-04_00", [-180, -90, 180, 90]);
+      expect(deps.easeToMap).not.toHaveBeenCalled();
+      expect(deps.fitMapBounds).not.toHaveBeenCalled();
+    });
+
+    it("frames an unlisted regional model on its bounds when uncovered", () => {
+      ctrl.centerMapOnInhouseDomain("BEL-FO", "2026-03-04_00", [-8, 61, -6, 62.5]);
+      expect(deps.fitMapBounds).toHaveBeenCalledWith(
+        [-8, 61, -6, 62.5],
+        expect.objectContaining({ padding: 40 }),
       );
-      await new Promise((r) => requestAnimationFrame(r));
-      expect(deps.easeToMap).toHaveBeenCalledTimes(1);
-      ctrl.centerMapOnInhouseDomain(
-        "BEL-IS",
-        "2026-03-04_00",
-        [-25, 63, -13, 67],
-      );
-      await new Promise((r) => requestAnimationFrame(r));
-      // BEL-IS always re-centers (no dedup for this model)
-      expect(deps.easeToMap).toHaveBeenCalledTimes(2);
     });
   });
 

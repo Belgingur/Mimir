@@ -94,11 +94,11 @@ export function createCloudForecastProvider(
 import {
   DEFAULT_MODEL_MAX_ZOOM,
   WEB_MERCATOR_METERS_PER_PIXEL_AT_Z0,
-  GLOBAL_MODELS,
-  DEFAULT_VIEW,
   DEFAULT_NON_WAVES_MODEL,
   MODEL_RESOLUTION_METERS,
   shouldCenterOnBounds,
+  modelCoversPoint,
+  MODEL_REFOCUS_VIEW,
   getModelResolutionMeters,
   getModelDefaultCenter,
   getMetersPerPixelAtLatitude,
@@ -148,6 +148,9 @@ export interface InhouseCatalogDeps {
   getMapContainer: () => { clientWidth: number; clientHeight: number };
   setMapMaxZoom: (zoom: number) => void;
   getMapZoom: () => number;
+  /** Current viewport centre as [lon, lat] — the point the coverage test asks
+   *  the newly selected model about. */
+  getMapCenter: () => [number, number];
   setMapZoom: (zoom: number) => void;
   easeToMap: (options: {
     center?: [number, number];
@@ -324,7 +327,9 @@ export class InhouseCatalogController {
   // --- Misc state ---
   private _precipCandidateIndex = 0;
   private _precipFallbackInFlight = false;
-  private _lastCenteredInhouseKey = "";
+  /** Model whose domain the camera was last framed for. Guards against
+   *  re-framing on variable changes and new analysis runs of the same model. */
+  private _lastCenteredModel = "";
   private _inhouseHoverLastTs = 0;
   readonly WIND_STREAMLINE_FLIP = false;
 
@@ -515,53 +520,63 @@ export class InhouseCatalogController {
     return maxZoom;
   }
 
+  /**
+   * Move the camera only when the selected model cannot show what the user is
+   * already looking at.
+   *
+   * The map stays where the user left it — across variable changes, across model
+   * changes that keep their view in view, and across reloads. It moves when, and
+   * only when, staying would leave them looking at a region the new model has no
+   * data for; then it frames that model's domain.
+   *
+   * This method used to re-centre on nearly every call, which is why picking a
+   * different variable threw the view away: `ensureInhouseGroupLayers()` calls it
+   * and that runs on every layer rebuild. BEL-IS was worse — pinned to the
+   * Iceland overview above the persisted-state guard, so it also overrode the
+   * camera restored on reload.
+   */
   centerMapOnInhouseDomain(
     model: string,
-    analysis: string,
+    /** Kept for the call site's shape; framing no longer depends on the run. */
+    _analysis: string,
     bounds: [number, number, number, number],
   ): void {
     // First-visit geolocation owns the initial camera: skip auto-centre so it
     // can't clobber the located/Reykjavík view (task A1). Stays suppressed until
     // the user explicitly switches models (handleModelChange clears it).
     if (this.deps.isInitialAutoCenterSuppressed?.()) return;
-    // BEL-IS always opens at the Iceland overview, even when restoring persisted state.
-    // Use jumpTo (not easeTo) so it can't be cancelled by subsequent map events.
-    if (model === "BEL-IS") {
-      this._lastCenteredInhouseKey = `${model}:${analysis}`;
-      window.requestAnimationFrame(() => {
-        this.deps.easeToMap({ center: [-19, 65], zoom: 6.0, duration: 0 });
-      });
-      return;
-    }
+    // A reload restores the camera the user left; no model may override it.
     if (this.deps.isRestoringFromPersisted()) return;
-    if (model === "UWC-IG") {
-      this._lastCenteredInhouseKey = `${model}:${analysis}`;
-      this.deps.easeToMap({ center: [-36, 68.5], zoom: 3.5, duration: 800 });
+
+    // Same model as the last decision: a variable change, a fresh analysis run,
+    // a layer rebuild. The domain has not moved, so neither does the camera.
+    // `analysis` is deliberately not part of this key — a new forecast run for
+    // the model you are already watching is not a reason to be moved.
+    if (this._lastCenteredModel === model) return;
+    this._lastCenteredModel = model;
+
+    // The user is looking at ground this model covers: stay. Zoom is a separate
+    // question, clamped by applyModelZoomConstraints for the model's resolution.
+    if (modelCoversPoint(model, bounds, this.deps.getMapCenter())) return;
+
+    const preset = MODEL_REFOCUS_VIEW[model];
+    if (preset) {
+      // BEL-IS reframes on the next frame at duration 0: the Iceland overview is
+      // set up while other map events are still settling, and an animated ease
+      // there gets cancelled by them.
+      if (model === "BEL-IS") {
+        window.requestAnimationFrame(() => {
+          this.deps.easeToMap({ ...preset, duration: 0 });
+        });
+      } else {
+        this.deps.easeToMap({ ...preset, duration: 800 });
+      }
       return;
     }
-    if (model === "RAP") {
-      this._lastCenteredInhouseKey = `${model}:${analysis}`;
-      this.deps.easeToMap({ center: [-60, 62], zoom: 2.5, duration: 800 });
-      return;
-    }
-    if (model === "UWC-DINI") {
-      this._lastCenteredInhouseKey = `${model}:${analysis}`;
-      this.deps.easeToMap({ center: [-1.5, 53.8], zoom: 4.5, duration: 800 });
-      return;
-    }
-    if (GLOBAL_MODELS.has(model)) {
-      this._lastCenteredInhouseKey = "";
-      this.deps.easeToMap({
-        center: DEFAULT_VIEW.center as [number, number],
-        zoom: DEFAULT_VIEW.zoom,
-        duration: 800,
-      });
-      return;
-    }
+    // No branch for global models: modelCoversPoint() answers `true` for every
+    // one of them, so a global model has already returned above — it can show
+    // wherever the reader is standing and never needs reframing.
     if (!shouldCenterOnBounds(model, bounds)) return;
-    const key = `${model}:${analysis}`;
-    if (this._lastCenteredInhouseKey === key) return;
-    this._lastCenteredInhouseKey = key;
     this.deps.fitMapBounds(bounds, {
       padding: 40,
       duration: 800,
@@ -2341,7 +2356,6 @@ export class InhouseCatalogController {
       setLayerMode: (mode: InhouseGroupId) => void;
       getLayerMode: () => InhouseGroupId;
       renderLayerGroupList: () => void;
-      easeToDefaultView: () => void;
       updateTimelineControlForMode: (mode: InhouseGroupId) => void;
       syncWindControls: () => void;
       syncTooltipAndLegendForMode: (mode: InhouseGroupId) => void;
@@ -2361,18 +2375,18 @@ export class InhouseCatalogController {
       isGroupAvailableForModel: (groupId) =>
         this.isGroupAvailableForModel(groupId),
     });
-    // A deliberate user model switch always recentres on the new model's domain,
-    // even if the first-visit geolocation view was suppressing auto-centre (A1).
+    // A deliberate user model switch lets the coverage rule decide the camera
+    // again, even if the first-visit geolocation view was suppressing it (A1).
     this.deps.clearInitialAutoCenterSuppression?.();
-    // Reset the centering guard so the new model's domain is always centered.
-    // Without this, switching A→B→A could skip centering on A the second time if the
-    // same model+analysis key was already used, leaving the map at B's camera position.
-    this._lastCenteredInhouseKey = "";
+    // Reset the framing guard: a deliberate model switch gets a fresh coverage
+    // decision, so A→B→A can reframe on A again if B took the camera elsewhere.
+    this._lastCenteredModel = "";
     this.setInhouseWarning(t("status.loadingModel"));
     if (resolve.model === GWES_MODEL_ID) {
       callbacks.setLayerMode("waves");
       callbacks.renderLayerGroupList();
-      callbacks.easeToDefaultView();
+      // No easeToDefaultView(): GWES is global, so it can show wherever the
+      // reader already is. centerMapOnInhouseDomain owns the camera decision.
     } else if (resolve.appliedException === "LEAVE_GWES_BY_MODEL") {
       callbacks.setLayerMode("temperature");
       callbacks.renderLayerGroupList();

@@ -6,7 +6,7 @@ import type { AppDom } from "./domRegistry";
 import type { PersistedStateV1, LayerMode } from "./viewerTypes";
 import { createPersistScheduler } from "./persistence";
 import { initWeather } from "./initWeather";
-import { DEFAULT_VIEW, getModelResolutionMeters } from "./modelConfig";
+import { getModelResolutionMeters } from "./modelConfig";
 import { LAYER_GROUPS } from "./inhouseTypes";
 import type { UiState, InhouseGroupId } from "./inhouseTypes";
 import { WavegramController } from "../controllers/WavegramController";
@@ -399,6 +399,10 @@ export function createControllers(config: ControllerFactoryConfig) {
     setMapMaxZoom: (z) => map.setMaxZoom(z),
     getMapZoom: () => map.getZoom(),
     setMapZoom: (z) => map.setZoom(z),
+    getMapCenter: () => {
+      const c = map.getCenter();
+      return [c.lng, c.lat];
+    },
     easeToMap: (o) => map.easeTo(o),
     fitMapBounds: (b, o) => map.fitBounds(b, o),
     getCurrentDatetime: () =>
@@ -617,12 +621,6 @@ export function createControllers(config: ControllerFactoryConfig) {
       },
       getLayerMode: () => uiState.layerMode,
       renderLayerGroupList: () => layerGroupController.renderLayerGroupList(),
-      easeToDefaultView: () =>
-        map.easeTo({
-          center: DEFAULT_VIEW.center,
-          zoom: DEFAULT_VIEW.zoom,
-          duration: 800,
-        }),
       updateTimelineControlForMode: (mode: LayerMode) =>
         timelineController?.updateTimelineControlForMode(mode),
       syncWindControls: () => windStyleController.syncControls(),

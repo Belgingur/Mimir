@@ -1,6 +1,6 @@
 import type * as WeatherLayers from "weatherlayers-gl";
 import { resolveSelectionChange, GWES_MODEL_ID } from "../lib/selectionRules";
-import { DEFAULT_VIEW, DEFAULT_NON_WAVES_MODEL } from "../lib/modelConfig";
+import { DEFAULT_NON_WAVES_MODEL } from "../lib/modelConfig";
 import { LAYER_GROUPS } from "../lib/inhouseTypes";
 import type { UiState, ViewMode } from "../lib/inhouseTypes";
 import type { IconographyStyle } from "../lib/viewerTypes";
@@ -334,19 +334,10 @@ export class LayerGroupController {
     const nextMode = resolve.layer;
     const modelSwitched = resolve.model !== this.deps.getInhouseSelectedModel();
     const isSwitchingToWaves = nextMode === "waves";
-    if (isSwitchingToWaves) {
-      this.deps.easeToMap({
-        center: DEFAULT_VIEW.center,
-        zoom: DEFAULT_VIEW.zoom,
-        duration: 800,
-      });
-    } else if (resolve.appliedException === "LEAVE_GWES_BY_LAYER") {
-      this.deps.easeToMap({
-        center: DEFAULT_VIEW.center,
-        zoom: DEFAULT_VIEW.zoom,
-        duration: 800,
-      });
-    }
+    // Entering or leaving waves no longer throws the camera at DEFAULT_VIEW.
+    // GWES is global, so it covers wherever the reader already is; whether a
+    // switch is allowed to move the camera is centerMapOnInhouseDomain's single
+    // coverage decision, not a per-layer special case.
     if (modelSwitched) {
       await this.deps.loadInhouseAnalyses(resolve.model);
     }
@@ -389,8 +380,9 @@ export class LayerGroupController {
     if (!isSwitchingToWaves && prevMode !== "waves") {
       this.syncTooltipAndLegendForMode(nextMode);
       const restoreView = () => {
-        // Skip for models that manage their own initial centering (e.g. BEL-IS).
-        if (this.deps.getInhouseSelectedModel() === "BEL-IS") return;
+        // Every model, BEL-IS included: a variable change keeps the camera. The
+        // exemption here was half of why BEL-IS snapped back to the Iceland
+        // overview whenever the reader picked a different variable.
         this.deps.resizeMap();
         this.deps.jumpToMap(view);
       };
