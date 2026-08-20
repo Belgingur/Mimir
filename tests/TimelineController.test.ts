@@ -6,6 +6,7 @@ import {
   type TimelineDeps,
   type TimelineDom,
 } from "../src/controllers/TimelineController";
+import { buildTimelineDayBlocks } from "../src/lib/timelineHelpers";
 
 type ControlLike = {
   config: { datetimes: string[]; datetime: string };
@@ -323,12 +324,13 @@ describe("TimelineController", () => {
     it("clicking day segment jumps to midpoint index", async () => {
       const { deps, dom, spies } = createDeps();
       const ctrl = new TimelineController(deps);
-      ctrl.activeTimelineDatetimes = [
+      const datetimes = [
         "2026-03-20T00:00:00Z",
         "2026-03-20T03:00:00Z",
         "2026-03-20T06:00:00Z",
         "2026-03-20T09:00:00Z",
       ];
+      ctrl.activeTimelineDatetimes = datetimes;
       ctrl.ensureCustomTimeline(dom.timelineHost);
       const firstSegment = dom.timelineHost.querySelector(
         ".timeline-day-segment",
@@ -337,7 +339,13 @@ describe("TimelineController", () => {
       vi.advanceTimersByTime(160);
       await flush();
       expect(spies.updateLayers).toHaveBeenCalled();
-      expect(ctrl.currentDatetime).toBe("2026-03-20T06:00:00Z");
+      // Segments are cut on local days, so how these four UTC instants divide
+      // depends on the runtime zone. The behaviour under test is "land on the
+      // clicked block's midpoint", so read that block back rather than assuming
+      // all four share one day.
+      const firstBlock = buildTimelineDayBlocks(datetimes)[0];
+      const midpoint = Math.round((firstBlock.start + firstBlock.end) / 2);
+      expect(ctrl.currentDatetime).toBe(datetimes[midpoint]);
     });
 
     it("play button sets autoplay intent when idle", async () => {

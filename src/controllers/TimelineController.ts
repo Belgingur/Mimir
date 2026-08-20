@@ -2,6 +2,7 @@ import type * as WeatherLayers from "weatherlayers-gl";
 import {
   buildTimelineDayBlocks,
   formatTimelineBubbleLabel,
+  formatTimelineBubbleLabelWithZone,
 } from "../lib/timelineHelpers";
 import { TimelineControlAdapter } from "./TimelineControlAdapter";
 import type { UiState } from "../lib/inhouseTypes";
@@ -279,10 +280,14 @@ export class TimelineController {
     const selectedIndex = this.getActiveTimelineIndex();
     const ratio =
       datetimes.length > 1 ? selectedIndex / (datetimes.length - 1) : 0;
-    const bubbleLabel = formatTimelineBubbleLabel(datetimes[selectedIndex]);
-    this.timelineBubbleTextEl.textContent = bubbleLabel;
+    const selectedDatetime = datetimes[selectedIndex];
+    // The rail tab is 8–9px and absolutely positioned, so it keeps the bare
+    // reading; the roomier on-map bubble carries the zone marker for both.
+    this.timelineBubbleTextEl.textContent =
+      formatTimelineBubbleLabel(selectedDatetime);
     if (this.mapTimeBubbleTextEl) {
-      this.mapTimeBubbleTextEl.textContent = bubbleLabel;
+      this.mapTimeBubbleTextEl.textContent =
+        formatTimelineBubbleLabelWithZone(selectedDatetime);
     }
     if (this.mapTimeBubbleEl) {
       this.mapTimeBubbleEl.hidden = false;
