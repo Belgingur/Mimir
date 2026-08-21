@@ -600,16 +600,14 @@ export function createControllers(config: ControllerFactoryConfig) {
   // Loading/error overlay shown while switching model or analysis (task B2).
   const datasetLoader = createDatasetLoadingOverlay(dom.mapWrap);
 
-  // Nothing in the app polls: the catalog is read once, from map.on("load"), so
-  // a tab left open overnight keeps yesterday's run with nothing on screen to
-  // say so. On returning to the tab, ask the server what the newest run is and
-  // offer a reload if it has moved on — rather than swapping the dataset
-  // underneath the reader, which would move the hour they are looking at.
+  // Nothing in the app polls continuously. On returning to a tab, ask the
+  // server whether a newer run exists and let the reader update the forecast
+  // in place while preserving the map and nearest absolute forecast time.
   const newRunNotice = createNewRunNotice(dom.mapWrap, {
     message: () => t("status.newRun"),
-    actionLabel: () => t("action.reload"),
+    actionLabel: () => t("action.updateForecast"),
     dismissLabel: () => t("action.dismiss"),
-    onAction: () => window.location.reload(),
+    onAction: () => void refreshLatestRun(),
   });
   // Flipping between tabs should not mean a request per flip.
   const NEW_RUN_CHECK_INTERVAL_MS = 60_000;
@@ -635,6 +633,37 @@ export function createControllers(config: ControllerFactoryConfig) {
     dom.inhouseModelSelect.setAttribute("aria-busy", String(busy));
     dom.inhouseAnalysisSelect.setAttribute("aria-busy", String(busy));
   };
+
+  let latestRunRefreshInFlight = false;
+  async function refreshLatestRun(): Promise<void> {
+    if (latestRunRefreshInFlight) return;
+    const model = catalogController.inhouseSelectedModel;
+    if (!model) return;
+
+    latestRunRefreshInFlight = true;
+    const previousAnalysis = catalogController.inhouseSelectedAnalysis;
+    const mode = uiState.layerMode === "waves" ? "waves" : uiState.layerMode;
+    datasetLoader.begin(t("status.loadingDataset", { model }));
+    setSelectorsBusy(true);
+    try {
+      const refreshed = await catalogController.refreshLatestAnalysis();
+      if (!refreshed) return;
+
+      if (catalogController.inhouseSelectedAnalysis !== previousAnalysis) {
+        await catalogController.ensureInhouseGroupLayers(mode);
+        timelineController?.updateTimelineControlForMode(mode);
+        layerGroupController.syncTooltipAndLegendForMode(mode);
+        iconographyController?.onModelChange();
+        scheduleUpdateLayers();
+        schedulePersistState();
+      }
+      newRunNotice.hide();
+    } finally {
+      setSelectorsBusy(false);
+      datasetLoader.end();
+      latestRunRefreshInFlight = false;
+    }
+  }
 
   // Programmatic model switch, running the exact same flow as the model
   // `<select>`. Reused by the empty-model safety net and the locate button.

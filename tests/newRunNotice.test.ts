@@ -6,7 +6,7 @@ const build = (onAction = vi.fn(), strings = { locale: "en" }) => {
   document.body.appendChild(parent);
   const notice = createNewRunNotice(parent, {
     message: () => `newer run (${strings.locale})`,
-    actionLabel: () => `reload (${strings.locale})`,
+    actionLabel: () => `update forecast (${strings.locale})`,
     dismissLabel: () => `dismiss (${strings.locale})`,
     onAction,
   });
@@ -78,7 +78,7 @@ describe("createNewRunNotice", () => {
     notice.hide();
     notice.show();
     expect(text.textContent).toBe("newer run (is)");
-    expect(action.textContent).toBe("reload (is)");
+    expect(action.textContent).toBe("update forecast (is)");
     expect(dismiss.getAttribute("aria-label")).toBe("dismiss (is)");
   });
 });

@@ -118,7 +118,7 @@ export const fo: Record<string, string> = {
   "status.datasetFailed": "Kundi ikki sótt {{model}}. Tað kann vera uttan dáta nú.",
   "action.backToModel": "Aftur til {{model}}",
   "status.newRun": "Nýggjari spá er tøk.",
-  "action.reload": "Endurles",
+  "action.updateForecast": "Dagfør veðurforsøgn",
   "action.dismiss": "Lat aftur",
   "status.loadingWavegram": "Hleð bylgjurit…",
   "status.loadingMeteogram": "Hleð veðurriti…",

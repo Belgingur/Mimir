@@ -68,14 +68,14 @@ export function attachMapEventHandlers(
     }
   });
 
-  map.on("load", () => {
-    document.body.classList.remove("is-loading");
+  let mapLoadHandled = false;
+  const handleMapLoad = async () => {
+    if (mapLoadHandled) return;
+    mapLoadHandled = true;
     deps.setMapReady(true);
     // Inside the load handler: reading or restyling the style before it has
     // loaded either throws or silently no-ops.
     deps.onStyleReady?.();
-    // Warm the place dataset now so the first click resolves with no delay.
-    void deps.getPlaceResolver?.()?.preload();
     const persisted = deps.getPersistedState();
     if (persisted?.mapCamera) {
       map.jumpTo(persisted.mapCamera);
@@ -88,10 +88,40 @@ export function attachMapEventHandlers(
       });
     }
     map.addControl(deps.getOverlay());
-    void deps.initWeather();
-    void deps.getLayerComposer().loadCountryOutlines();
-    void deps.getCatalogController().inhouseCatalogReady;
-  });
+    await deps.initWeather();
+
+    // Let the layer update queued by the first frame run before declaring the
+    // initial view ready. The loading bar now tracks usable forecast data, not
+    // merely the basemap style.
+    await new Promise<void>((resolve) => {
+      const raf = globalThis.requestAnimationFrame;
+      if (typeof raf === "function") raf(() => resolve());
+      else setTimeout(resolve, 0);
+    });
+    document.body.classList.remove("is-loading");
+
+    // Country outlines are a large ancillary asset. Load them only after the
+    // first forecast paint, during idle time, so they do not compete with the
+    // catalog, manifests, or active frame.
+    const loadOutlines = () => {
+      void deps.getLayerComposer().loadCountryOutlines();
+    };
+    const idle = (
+      globalThis as {
+        requestIdleCallback?: (
+          callback: () => void,
+          options?: { timeout: number },
+        ) => void;
+      }
+    ).requestIdleCallback;
+    if (typeof idle === "function") idle(loadOutlines, { timeout: 2000 });
+    else setTimeout(loadOutlines, 0);
+  };
+
+  map.once("load", () => void handleMapLoad());
+  // Deferred controller loading can attach after MapLibre has already emitted
+  // `load`. The guard keeps this and the event path exactly-once.
+  if (map.loaded()) void handleMapLoad();
 
   // The style can be replaced at runtime (see the demotiles error fallback
   // above), which discards both the resolved anchor and the label restyling.

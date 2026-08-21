@@ -123,7 +123,7 @@ export const is: Record<string, string> = {
   "status.datasetFailed": "Tókst ekki að sækja {{model}}. Það kann að vera án gagna núna.",
   "action.backToModel": "Til baka í {{model}}",
   "status.newRun": "Nýrri spá er tilbúin.",
-  "action.reload": "Endurhlaða",
+  "action.updateForecast": "Uppfæra spá",
   "action.dismiss": "Loka",
   "status.loadingWavegram": "Hleð bylgjurit…",
   "status.loadingMeteogram": "Hleð veðurriti…",

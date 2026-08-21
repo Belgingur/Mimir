@@ -2,7 +2,6 @@ import maplibregl from "maplibre-gl";
 import { queryDom } from "./lib/domRegistry";
 import { loadPersistedState } from "./lib/persistence";
 import { initEdgeHitWiring } from "./lib/edgeHitWiring";
-import { createControllers } from "./lib/controllerFactory";
 import { translateDOM, registerLocale, setLocale, hasLocale } from "./lib/i18n";
 import { is } from "./locales/is";
 import { pl } from "./locales/pl";
@@ -125,4 +124,13 @@ if (!isDev) {
 const dom = queryDom();
 initEdgeHitWiring(dom);
 
-createControllers({ map, dom, isDev, persistedState, localeIsUrlDriven });
+// MapLibre can begin fetching and painting the basemap before the heavier
+// deck.gl/WeatherLayers controller graph is downloaded and evaluated.
+void import("./lib/controllerFactory")
+  .then(({ createControllers }) => {
+    createControllers({ map, dom, isDev, persistedState, localeIsUrlDriven });
+  })
+  .catch((error) => {
+    document.body.classList.remove("is-loading");
+    console.error("Failed to initialise application controllers", error);
+  });
