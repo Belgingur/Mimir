@@ -102,6 +102,26 @@
   background: rgba(255, 255, 255, 0.92);
 }
 
+/* Where the present hour falls in the run. Sits under .timeline-rail__marker in
+   document order so the scrub thumb always wins the overlap, and is deliberately
+   quieter than it — a fixed reference, not the thing being moved. The amber ties
+   it to the time bubble that carries the same reading. */
+.timeline-rail__now {
+  position: absolute;
+  top: -2px;
+  width: 2px;
+  height: 7px;
+  border-radius: 1px;
+  background: #d97433;
+  box-shadow: 0 0 0 1px rgba(19, 24, 29, 0.55);
+  transform: translateX(-1px);
+  pointer-events: none;
+}
+
+.timeline-rail__now[hidden] {
+  display: none;
+}
+
 .timeline-rail__marker {
   position: absolute;
   top: -3px;

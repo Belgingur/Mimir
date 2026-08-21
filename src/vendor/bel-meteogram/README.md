@@ -16,8 +16,10 @@ served elsewhere.
 The exact upstream release is recorded in [`manifest.json`](./manifest.json):
 the release `tag`, the source `commit`, and the `sha256` of the bundle. CI runs
 `npm run meteogram:check`, which fails the build if `bel-meteogram.js` drifts
-from that checksum — so the committed copy always corresponds to a known,
-published release.
+from that checksum.
+
+Currently vendored: **v0.2.0**, which is a published release — `npm run
+meteogram:sync` downloads it and reproduces the committed bundle byte for byte.
 
 ## Updating to a new widget release
 

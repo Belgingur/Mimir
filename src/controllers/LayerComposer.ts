@@ -14,7 +14,18 @@ import { BELGINGUR_SCALE } from "../lib/precipitationScale";
 import { WIND_SPEED_SCALE } from "../lib/windSpeedScale";
 import { WAVE_HEIGHT_SCALE } from "../lib/waveHeightScale";
 import { TEMPERATURE_SCALE } from "../lib/temperatureScale";
-import { TEMPERATURE_SCALE_TROPICS } from "../lib/temperatureScaleTropics";
+import {
+  cropStopsToWindow,
+  legendTicks,
+  paletteDomain,
+  rangeInViewport,
+  rawRangeToCelsius,
+  resolveLegendWindow,
+  stopPercent,
+  windowsEqual,
+  type ScalarFrame,
+  type TemperatureLegendWindow,
+} from "../lib/temperatureLegendWindow";
 import { CLOUD_COVER_SCALE } from "../lib/cloudCoverScale";
 import { SNOW_DEPTH_SCALE } from "../lib/snowDepthScale";
 import { InhouseCatalogController } from "./InhouseCatalogController";
@@ -60,7 +71,7 @@ import {
   buildStepPalette,
 } from "../lib/paletteUtils";
 import { buildStreamlineGeotransform } from "../lib/streamlineBuilder";
-import { resolveInhouseUnit } from "../lib/inhouseCatalogHelpers";
+import { resolveDisplayUnit } from "../lib/inhouseCatalogHelpers";
 import {
   getArrowStepForModel,
   getGridStepForZoom,
@@ -143,6 +154,10 @@ export interface LayerComposerDeps {
     duration?: number;
   }) => void;
   setOverlayProps: (props: { layers: LayersList }) => void;
+  /** MapLibre layer id the weather raster is drawn *before*, so basemap city
+   *  labels stay on top of the weather imagery (see lib/mapLayerOrder.ts).
+   *  Undefined until the style has loaded, or when it carries no symbol layers. */
+  getWeatherBeforeId?: () => string | undefined;
   getUiState: () => UiState;
   isMapReady: () => boolean;
   getCatalogController: () => InhouseCatalogController;
@@ -234,14 +249,12 @@ export class LayerComposer {
     >[0],
   ) as unknown as WeatherLayers.Palette;
 
-  private readonly temperatureScaleTropicsValue = TEMPERATURE_SCALE_TROPICS.map(
-    ([value, hex]: [number, string]) => [value, parseHexColor(hex)],
-  ) as unknown as WeatherLayers.Palette;
-  private readonly temperatureScaleTropicsStep = buildStepPalette(
-    this.temperatureScaleTropicsValue as unknown as Parameters<
-      typeof buildStepPalette
-    >[0],
-  ) as unknown as WeatherLayers.Palette;
+  /**
+   * The window the temperature bar is currently cropped to. Recomputed from the
+   * displayed frame and the visible map area on every composite; kept only so
+   * an unchanged window does not redraw the legend.
+   */
+  private tempLegendWindow: TemperatureLegendWindow | null = null;
 
   private readonly windSpeedScaleValue = WIND_SPEED_SCALE.map(
     ([value, hex]: [number, string]) => [value, parseHexColor(hex)],
@@ -549,15 +562,8 @@ export class LayerComposer {
       this.legendControl = null;
     }
 
-    // Temperature legend — re-render the correct variant for the current model.
     if (dom.legendHost) {
-      const currentModel =
-        this.deps.getCatalogController().inhouseSelectedModel;
-      if (currentModel === "BEL-BR") {
-        this.renderTempTropicsLegend(dom.legendHost);
-      } else {
-        this.renderTempLegend(dom.legendHost);
-      }
+      this.renderTempLegend(dom.legendHost);
     }
 
     if (dom.waveLegendHost) {
@@ -729,11 +735,8 @@ export class LayerComposer {
         const isSnowDepth =
           INHOUSE_GROUP_VARIABLES.snow.primary.includes(layer.variable) ||
           layer.variable.includes("snow_depth");
-        const isTropicsModel = layer.model === "BEL-BR";
         const palette = isAirTemp
-          ? ((isTropicsModel
-              ? this.temperatureScaleTropicsStep
-              : this.temperatureScaleCValueStep) as WeatherLayers.Palette)
+          ? (this.temperatureScaleCValueStep as WeatherLayers.Palette)
           : isWindSpeed
             ? (this.windSpeedScaleValueStep as WeatherLayers.Palette)
             : isPrecip
@@ -779,9 +782,7 @@ export class LayerComposer {
           imageMinValue = undefined;
         }
         if (isAirTemp) {
-          const activeTempScale = isTropicsModel
-            ? this.temperatureScaleTropicsValue
-            : this.temperatureScaleCValue;
+          const activeTempScale = this.temperatureScaleCValue;
           const tempPaletteMin = Number(
             (activeTempScale[0] as [number, unknown])[0],
           );
@@ -801,6 +802,9 @@ export class LayerComposer {
           // nodata suppression. No imageMinValue needed.
           imageMinValue = undefined;
           imageMaxValue = undefined;
+          // The frame's own value range is already in hand here — feed it to the
+          // legend so the bar crops to the temperatures this run actually holds.
+          this.updateTempLegendWindow(layer, imageUnscale, activeTempScale);
         }
         // Note: for log1p-encoded images we do NOT linearise the raster pixels
         // here. Instead precipScaleValueLog1p transforms the palette stops into
@@ -822,6 +826,11 @@ export class LayerComposer {
         }
         const rasterLayer = new WeatherLayers.RasterLayer({
           id: `inhouse-${layer.id}`,
+          // Interleaved deck layers default to the top of MapLibre's stack,
+          // which paints the weather over every city label. Anchoring the
+          // raster below the first `place` symbol layer keeps the labels
+          // visible — and therefore genuinely clickable, not just hit-testable.
+          beforeId: this.deps.getWeatherBeforeId?.(),
           image: rasterImage,
           imageType: WeatherLayers.ImageType.SCALAR,
           imageUnscale: rasterImageUnscale,
@@ -1185,9 +1194,10 @@ export class LayerComposer {
                       tooltipController.finiteDirectionOrUndefined(windDir),
                   },
                 });
-                const rawUnit =
-                  layer.manifest.unit ?? resolveInhouseUnit(layer.variable);
-                const unit = rawUnit === "mm hr-1" ? "mm/hr" : rawUnit;
+                const unit = resolveDisplayUnit(
+                  layer.variable,
+                  layer.manifest.unit,
+                );
                 const formatted =
                   value < 1 ? value.toFixed(2) : value.toFixed(1);
                 tooltipController.updateTooltipValueOverride(
@@ -1229,8 +1239,10 @@ export class LayerComposer {
               return;
             }
             if (typeof value === "number" && Number.isFinite(value)) {
-              const unit =
-                layer.manifest.unit ?? resolveInhouseUnit(layer.variable);
+              const unit = resolveDisplayUnit(
+                layer.variable,
+                layer.manifest.unit,
+              );
               const displayValue = value;
               const formatted = isCloud
                 ? displayValue.toFixed(0)
@@ -1824,13 +1836,7 @@ export class LayerComposer {
         this.legendControl.remove();
         this.legendControl = null;
       }
-      const currentModel =
-        this.deps.getCatalogController().inhouseSelectedModel;
-      if (currentModel === "BEL-BR") {
-        this.renderTempTropicsLegend(host);
-      } else {
-        this.renderTempLegend(host);
-      }
+      this.renderTempLegend(host);
     }
     // Cloud legend lives in its own host — render/refresh it when switching to cloud mode.
     if (mode === "cloud") {
@@ -1863,6 +1869,40 @@ export class LayerComposer {
   private toRgbaCss(color: [number, number, number, number]): string {
     const [r, g, b, a] = color;
     return `rgba(${r}, ${g}, ${b}, ${(a ?? 255) / 255})`;
+  }
+
+  /**
+   * The tick-label column beside a legend bar.
+   *
+   * Every label is absolutely positioned, so the column has no content width of
+   * its own and used to reserve a fixed 32px — wide enough for the widest label
+   * any legend might have ("1/4" on cloud cover) and therefore too wide for the
+   * rest, leaving a strip of dead card to the right of the numbers. The hidden
+   * sizer carries the column's own widest label, so each legend is exactly as
+   * wide as it needs to be and no wider.
+   */
+  private legendLabelsHtml(
+    labels: { text: string; percent: number; modifier?: string }[],
+    fontSize?: string,
+  ): string {
+    const widest = labels.reduce(
+      (a, b) => (b.text.length > a.length ? b.text : a),
+      "",
+    );
+    // The sizer only reserves the right width if it is set in the same type as
+    // the labels it stands in for (cloud cover draws its fractions larger).
+    const size = fontSize ? `font-size: ${fontSize};` : "";
+    const rows = labels
+      .map(
+        ({ text, percent, modifier }) =>
+          `<div class="precip-legend__label${modifier ?? ""}" style="bottom: ${percent.toFixed(2)}%;${size}">${text}</div>`,
+      )
+      .join("");
+    return `
+          <div class="precip-legend__labels">
+            <span class="precip-legend__sizer" aria-hidden="true" style="${size}">${widest}</span>
+            ${rows}
+          </div>`;
   }
 
   private readonly windLegendTicks = [0, 5, 10, 15, 20, 25, 30, 35, 40];
@@ -1906,45 +1946,94 @@ export class LayerComposer {
         <div class="precip-legend__title"><span class="precip-legend__unit">m/s</span></div>
         <div class="precip-legend__scale">
           <div class="precip-legend__bar" style="background: linear-gradient(to top, ${gradient});"></div>
-          <div class="precip-legend__labels">
-            ${this.windLegendTicks
-              .map((value) => {
-                const percent = this.getWindStopPercent(value);
-                return `<div class="precip-legend__label" style="bottom: ${percent.toFixed(2)}%">${value}</div>`;
-              })
-              .join("")}
-          </div>
+${this.legendLabelsHtml(
+            this.windLegendTicks.map((value) => ({
+              text: String(value),
+              percent: this.getWindStopPercent(value),
+            })),
+          )}
         </div>
       </div>
     `;
   }
 
-  private readonly tempLegendTicks = [
-    -30, -25, -20, -15, -10, -5, 0, 5, 10, 15, 20, 25, 30,
-  ];
-  private readonly tempScaleMin = -30;
-  private readonly tempScaleMax = 30;
+  /**
+   * Point the legend's cropping window at the temperatures currently on screen.
+   *
+   * Two things decide the window and both change constantly: which frame is
+   * displayed, and where the map is looking. So it is recomputed from scratch
+   * here rather than accumulated — an earlier version unioned the range across
+   * a run so the bar could not resize mid-scrub, but that meant one hot
+   * afternoon pinned the scale high for the rest of the forecast, and the bar
+   * stopped describing what was on the screen.
+   *
+   * Nothing extra is needed to make it follow the map: `moveend` and `zoomend`
+   * both schedule a layer update, so panning and zooming come back through
+   * here on their own.
+   *
+   * Runs at composite time (i.e. often), so it exits early unless the resolved
+   * window actually changed. Snapping to 5°C is what makes that cheap, and is
+   * also what stops the bar twitching: an edge has to cross a whole step before
+   * anything is redrawn.
+   */
+  private updateTempLegendWindow(
+    layer: InhouseLayer,
+    unscale: [number, number],
+    palette: WeatherLayers.Palette,
+  ): void {
+    const view = this.deps.getMapBounds();
+    const observed =
+      rangeInViewport(
+        layer.image as ScalarFrame | null,
+        getInhouseLayerBounds(layer),
+        [view.getWest(), view.getSouth(), view.getEast(), view.getNorth()],
+        unscale,
+      ) ??
+      // The map may be looking somewhere this model does not cover (or the
+      // frame may not be decoded yet); fall back to the whole frame so the bar
+      // still describes something real.
+      rawRangeToCelsius(layer.rawRange, unscale);
+    if (!observed) return;
 
-  private getTempStopPercent(value: number): number {
-    return (
-      ((value - this.tempScaleMin) / (this.tempScaleMax - this.tempScaleMin)) *
-      100
-    );
+    const domain = paletteDomain(palette as unknown as [number, unknown][]);
+    const next = resolveLegendWindow(observed, domain);
+    if (windowsEqual(next, this.tempLegendWindow)) return;
+    this.tempLegendWindow = next;
+
+    // legendHost always holds the temperature bar (every other mode has its own
+    // host), so re-rendering it is safe whichever mode is showing; when
+    // temperature is hidden the host is simply display:none.
+    const host = this.deps.dom.legendHost;
+    if (host) this.renderTemperatureLegendBar(host, palette);
   }
 
   private renderTempLegend(host: HTMLDivElement): void {
-    const stops = (
-      this.temperatureScaleCValue as unknown as [
-        number,
-        [number, number, number, number],
-      ][]
-    )
-      .map(([value, color]) => ({
-        value,
-        percent: this.getTempStopPercent(value),
-        color: this.toRgbaCss(color as [number, number, number, number]),
-      }))
-      .sort((a, b) => a.value - b.value);
+    this.renderTemperatureLegendBar(host, this.temperatureScaleCValue);
+  }
+
+  /**
+   * The temperature bar, cropped to the window the loaded frames actually
+   * occupy (see lib/temperatureLegendWindow.ts). The ramp itself is untouched:
+   * a reading keeps exactly the colour the map paints it, and only the slice of
+   * the ramp on display — and the ladder of labels beside it — changes.
+   */
+  private renderTemperatureLegendBar(
+    host: HTMLDivElement,
+    palette: WeatherLayers.Palette,
+  ): void {
+    const scale = palette as unknown as [
+      number,
+      [number, number, number, number],
+    ][];
+    // Until a frame has been composited there is nothing on screen to crop to,
+    // so the bar shows the whole ramp.
+    const window =
+      this.tempLegendWindow ?? resolveLegendWindow(null, paletteDomain(scale));
+
+    const stops = cropStopsToWindow(scale, window).map(([value, color]) => ({
+      percent: stopPercent(value, window),
+      color: this.toRgbaCss(color),
+    }));
 
     const gradient = stops
       .flatMap((stop, index) => {
@@ -1960,69 +2049,16 @@ export class LayerComposer {
         <div class="precip-legend__title"><span class="precip-legend__unit">°C</span></div>
         <div class="precip-legend__scale">
           <div class="precip-legend__bar" style="background: linear-gradient(to top, ${gradient});"></div>
-          <div class="precip-legend__labels">
-            ${this.tempLegendTicks
-              .map((value) => {
-                const percent = this.getTempStopPercent(value);
-                return `<div class="precip-legend__label" style="bottom: ${percent.toFixed(2)}%">${value}</div>`;
-              })
-              .join("")}
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  private readonly tempTropicsLegendTicks = [
-    -20, -15, -10, -5, 0, 5, 10, 15, 20, 25, 30, 35, 40,
-  ];
-  private readonly tempTropicsScaleMin = -20;
-  private readonly tempTropicsScaleMax = 40;
-
-  private getTempTropicsStopPercent(value: number): number {
-    return (
-      ((value - this.tempTropicsScaleMin) /
-        (this.tempTropicsScaleMax - this.tempTropicsScaleMin)) *
-      100
-    );
-  }
-
-  private renderTempTropicsLegend(host: HTMLDivElement): void {
-    const stops = (
-      this.temperatureScaleTropicsValue as unknown as [
-        number,
-        [number, number, number, number],
-      ][]
-    )
-      .map(([value, color]) => ({
-        value,
-        percent: this.getTempTropicsStopPercent(value),
-        color: this.toRgbaCss(color as [number, number, number, number]),
-      }))
-      .sort((a, b) => a.value - b.value);
-
-    const gradient = stops
-      .flatMap((stop, index) => {
-        const next = stops[Math.min(index + 1, stops.length - 1)];
-        const start = stop.percent.toFixed(2);
-        const end = next.percent.toFixed(2);
-        return [`${stop.color} ${start}%`, `${stop.color} ${end}%`];
-      })
-      .join(", ");
-
-    host.innerHTML = `
-      <div class="precip-legend">
-        <div class="precip-legend__title"><span class="precip-legend__unit">°C</span></div>
-        <div class="precip-legend__scale">
-          <div class="precip-legend__bar" style="background: linear-gradient(to top, ${gradient});"></div>
-          <div class="precip-legend__labels">
-            ${this.tempTropicsLegendTicks
-              .map((value) => {
-                const percent = this.getTempTropicsStopPercent(value);
-                return `<div class="precip-legend__label" style="bottom: ${percent.toFixed(2)}%">${value}</div>`;
-              })
-              .join("")}
-          </div>
+${this.legendLabelsHtml(
+            legendTicks(window).map((value) => ({
+              text: String(value),
+              percent: stopPercent(value, window),
+              // The ramp breaks hard from cyan to green at 0°C; the marker makes
+              // that read as the freezing line, not a rendering seam.
+              modifier:
+                value === 0 ? " precip-legend__label--freezing" : undefined,
+            })),
+          )}
         </div>
       </div>
     `;
@@ -2065,14 +2101,12 @@ export class LayerComposer {
         <div class="precip-legend__title"><span class="precip-legend__unit">${t("unit.mmhr")}</span></div>
         <div class="precip-legend__scale">
           <div class="precip-legend__bar" style="background: linear-gradient(to top, ${gradient});"></div>
-          <div class="precip-legend__labels">
-            ${this.precipTicks
-              .map((value) => {
-                const percent = this.getPrecipStopPercent(value);
-                return `<div class="precip-legend__label" style="bottom: ${percent.toFixed(2)}%">${value}</div>`;
-              })
-              .join("")}
-          </div>
+${this.legendLabelsHtml(
+            this.precipTicks.map((value) => ({
+              text: String(value),
+              percent: this.getPrecipStopPercent(value),
+            })),
+          )}
         </div>
       </div>
     `;
@@ -2115,14 +2149,13 @@ export class LayerComposer {
       <div class="precip-legend">
         <div class="precip-legend__scale">
           <div class="precip-legend__bar" style="background: linear-gradient(to top, ${gradient});"></div>
-          <div class="precip-legend__labels">
-            ${this.cloudTickLabels
-              .map((label, i) => {
-                const bottom = (i * bandPct).toFixed(2);
-                return `<div class="precip-legend__label" style="bottom: ${bottom}%; font-size: 1.5em;">${label}</div>`;
-              })
-              .join("")}
-          </div>
+${this.legendLabelsHtml(
+            this.cloudTickLabels.map((label, i) => ({
+              text: label,
+              percent: i * bandPct,
+            })),
+            "1.5em",
+          )}
         </div>
       </div>
     `;
@@ -2184,15 +2217,12 @@ export class LayerComposer {
         <div class="precip-legend__title"><span class="precip-legend__unit">mm</span></div>
         <div class="precip-legend__scale">
           <div class="precip-legend__bar" style="background: linear-gradient(to top, ${gradient});"></div>
-          <div class="precip-legend__labels">
-            ${this.snowDepthTicks
-              .map((value, i) => {
-                const percent = this.getSnowDepthStopPercent(value);
-                const label = this.snowDepthTickLabels[i] ?? String(value);
-                return `<div class="precip-legend__label" style="bottom: ${percent.toFixed(2)}%">${label}</div>`;
-              })
-              .join("")}
-          </div>
+${this.legendLabelsHtml(
+            this.snowDepthTicks.map((value, i) => ({
+              text: this.snowDepthTickLabels[i] ?? String(value),
+              percent: this.getSnowDepthStopPercent(value),
+            })),
+          )}
         </div>
       </div>
     `;

@@ -6,7 +6,7 @@ import type { AppDom } from "./domRegistry";
 import type { PersistedStateV1, LayerMode } from "./viewerTypes";
 import { createPersistScheduler } from "./persistence";
 import { initWeather } from "./initWeather";
-import { DEFAULT_VIEW, getModelResolutionMeters } from "./modelConfig";
+import { getModelResolutionMeters } from "./modelConfig";
 import { LAYER_GROUPS } from "./inhouseTypes";
 import type { UiState, InhouseGroupId } from "./inhouseTypes";
 import { WavegramController } from "../controllers/WavegramController";
@@ -22,10 +22,22 @@ import { LayerGroupController } from "../controllers/LayerGroupController";
 import { LayerComposer } from "../controllers/LayerComposer";
 import { IconographyController } from "../controllers/IconographyController";
 import { attachMapEventHandlers } from "./mapEventHandlers";
+import { resolveWeatherBeforeId } from "./mapLayerOrder";
+import { applyPlaceLabelStyle } from "./placeLabelStyle";
+import { createPlaceLabeller } from "./placeLabeller";
+import { addCityLabelLayer } from "./cityLabelLayer";
+import {
+  createPlaceResolver,
+  type PlaceResolver,
+  type ResolvedPlace,
+} from "./resolveClickedPlace";
 import { resolveMapClickTarget } from "./mapClickRouting";
 import { setupLegendDrag } from "./legendDrag";
 import { initMobileDrawer } from "./mobileDrawer";
-import { initCenterReadout } from "./centerReadout";
+import { initCenterReadout, type CenterReadout } from "./centerReadout";
+import { isTransientCrosshairEnabled } from "./transientCrosshairFlag";
+import { isMobileControlsViewport } from "./mobileControlsViewport";
+import { shouldForceMobileMapControls } from "./mobileMapControls";
 import { getLocale, onLocaleChange, t } from "./i18n";
 import {
   readStoredLocation,
@@ -35,6 +47,7 @@ import {
   LOCATED_ZOOM,
 } from "./initialCamera";
 import { createDatasetLoadingOverlay } from "./datasetLoadingOverlay";
+import { createNewRunNotice } from "./newRunNotice";
 import { LanguageSwitcherController } from "../controllers/LanguageSwitcherController";
 import { isMeteogramEnabled } from "../features/meteogram/enabled";
 import type { MeteogramController } from "../features/meteogram/MeteogramController";
@@ -50,11 +63,35 @@ export interface ControllerFactoryConfig {
 export function createControllers(config: ControllerFactoryConfig) {
   const { map, dom, isDev, persistedState, localeIsUrlDriven } = config;
 
+  // --- Mobile: gesture-only zoom, no on-map control stack ---
+  // On phones the whole `.zoom-buttons` stack (+, −, grid, meteogram) is removed
+  // from the DOM rather than hidden, so it cannot intercept touches near the
+  // top-left corner. Zooming is by pinch / double-tap / two-finger tap /
+  // double-tap-drag — all native MapLibre handlers, all enabled by default (see
+  // main.ts). Desktop keeps the stack: it has no pinch gesture and still needs
+  // +/−. shouldForceMobileMapControls() is the accessibility escape hatch for
+  // anyone who cannot perform those gestures — see lib/mobileMapControls.ts.
+  //
+  // This runs before any controller is constructed, so nothing captures a
+  // reference to a button that is about to be detached.
+  if (
+    isTransientCrosshairEnabled() &&
+    isMobileControlsViewport() &&
+    !shouldForceMobileMapControls()
+  ) {
+    dom.mapWrap.querySelector(".zoom-buttons")?.remove();
+    dom.zoomIn = null;
+    dom.zoomOut = null;
+    dom.gridToggleButton = null;
+  }
+
   // --- Shared mutable state ---
   let mapReady = false;
   // Populated asynchronously (and only when the feature is enabled) by the
   // guarded dynamic import below; stays null in the default public build.
   let meteogramController: MeteogramController | null = null;
+  // Assigned synchronously further down, before any async work can observe it.
+  let centerReadout: CenterReadout | null = null;
   let timelineController: TimelineController | undefined;
   let timelineCurrentDatetime = "";
   let timelineLastFrameLoadHadErrors = false;
@@ -107,6 +144,50 @@ export function createControllers(config: ControllerFactoryConfig) {
   function updateLayers() {
     if (!layerComposer) return;
     layerComposer.updateLayers();
+  }
+
+  // --- Basemap presentation (draw order + place labels) ---
+  // MapLibre layer id the weather raster is anchored before, so the basemap's
+  // city labels paint on top of the weather imagery. Resolved by scanning the
+  // live style (never hardcoded — a MapTiler style update would silently break
+  // a hardcoded id and push the overlay back to the top).
+  let weatherBeforeId: string | undefined;
+  function onStyleReady() {
+    let next: string | undefined;
+    try {
+      next = resolveWeatherBeforeId(map.getStyle());
+    } catch {
+      // Style not ready yet; the styledata handler will retry.
+      return;
+    }
+    // Recolour labels, drop admin-region labels, keep city names at high zoom,
+    // and (re)add Mímir's own population-tiered city layer — a style swap drops
+    // both. All idempotent, so re-running on every styledata is harmless.
+    applyPlaceLabelStyle(map);
+    ensureCityLabels();
+    if (next === weatherBeforeId) return;
+    weatherBeforeId = next;
+    if (isDev) {
+      console.log(`[mapLayerOrder] weather overlay anchored before ${next}`);
+    }
+    // Re-emit the deck layers so the new anchor takes effect.
+    scheduleUpdateLayers();
+  }
+
+  /**
+   * Add the city-label layer once both halves are ready: the style (layers
+   * cannot be added before it loads) and the place dataset (fetched async).
+   * Whichever finishes last triggers the add; the call itself is idempotent.
+   */
+  function ensureCityLabels() {
+    if (!map.isStyleLoaded()) return;
+    const places = placeResolver.loadedPlaces();
+    if (places.length === 0) return;
+    try {
+      addCityLabelLayer(map, places);
+    } catch {
+      /* style swapped mid-call; the next styledata will retry */
+    }
   }
 
   const schedulePersistState = createPersistScheduler(() => {
@@ -228,19 +309,12 @@ export function createControllers(config: ControllerFactoryConfig) {
   const tooltipController = new TooltipController({
     dom: { tooltipHost: dom.tooltipHost },
     getWindUnitFormat: () => layerComposer.windUnitFormat,
-    formatDirection: (direction, directionType, directionFormat) =>
-      WeatherLayers.formatDirection(
-        direction,
-        directionType as WeatherLayers.DirectionType,
-        directionFormat as WeatherLayers.DirectionFormat,
-      ),
     formatValueWithUnit: (value, format) =>
       WeatherLayers.formatValueWithUnit(
         value,
         format as WeatherLayers.UnitFormat,
       ),
     directionTypeInward: WeatherLayers.DirectionType.INWARD,
-    directionFormatCardinal3: WeatherLayers.DirectionFormat.CARDINAL3,
     unitSystemMetric: WeatherLayers.UnitSystem.METRIC,
     createTooltipControl: (config) =>
       new WeatherLayers.TooltipControl(
@@ -276,6 +350,7 @@ export function createControllers(config: ControllerFactoryConfig) {
     jumpToMap: (view) => map.jumpTo(view),
     easeToMap: (options) => map.easeTo(options),
     setOverlayProps: (props) => overlay.setProps(props),
+    getWeatherBeforeId: () => weatherBeforeId,
     getUiState: () => uiState,
     isMapReady: () => mapReady,
     getCatalogController: () => catalogController,
@@ -325,15 +400,25 @@ export function createControllers(config: ControllerFactoryConfig) {
     setMapMaxZoom: (z) => map.setMaxZoom(z),
     getMapZoom: () => map.getZoom(),
     setMapZoom: (z) => map.setZoom(z),
+    getMapCenter: () => {
+      const c = map.getCenter();
+      return [c.lng, c.lat];
+    },
     easeToMap: (o) => map.easeTo(o),
     fitMapBounds: (b, o) => map.fitBounds(b, o),
     getCurrentDatetime: () =>
       timelineController?.currentDatetime ?? timelineCurrentDatetime,
     setCurrentDatetime: (dt) => {
+      const changed = timelineCurrentDatetime !== dt;
       timelineCurrentDatetime = dt;
       if (timelineController) {
         timelineController.currentDatetime = dt;
       }
+      // Timeline scrubbing (and playback) counts as an interaction: show the
+      // crosshair with the value for the new timestamp, then let it fade as
+      // usual. Guarded on an actual change so redundant sets don't keep
+      // restarting the hide timer.
+      if (changed) centerReadout?.notifyInteraction();
     },
     isRestoringFromPersisted: () => restoringFromPersisted,
     setRestoringFromPersisted: (v) => {
@@ -514,10 +599,71 @@ export function createControllers(config: ControllerFactoryConfig) {
   // --- DOM event handlers ---
   // Loading/error overlay shown while switching model or analysis (task B2).
   const datasetLoader = createDatasetLoadingOverlay(dom.mapWrap);
+
+  // Nothing in the app polls continuously. On returning to a tab, ask the
+  // server whether a newer run exists and let the reader update the forecast
+  // in place while preserving the map and nearest absolute forecast time.
+  const newRunNotice = createNewRunNotice(dom.mapWrap, {
+    message: () => t("status.newRun"),
+    actionLabel: () => t("action.updateForecast"),
+    dismissLabel: () => t("action.dismiss"),
+    onAction: () => void refreshLatestRun(),
+  });
+  // Flipping between tabs should not mean a request per flip.
+  const NEW_RUN_CHECK_INTERVAL_MS = 60_000;
+  let lastNewRunCheckMs = 0;
+  const checkForNewRun = async () => {
+    if (document.visibilityState !== "visible") return;
+    if (newRunNotice.isDismissed()) return;
+    const now = Date.now();
+    if (now - lastNewRunCheckMs < NEW_RUN_CHECK_INTERVAL_MS) return;
+    lastNewRunCheckMs = now;
+    const loaded = catalogController.inhouseSelectedAnalysis;
+    if (!loaded) return;
+    const latest = await catalogController.fetchLatestAnalysisId();
+    // Analysis ids are run stamps ("2026-05-25_00"), so they sort
+    // chronologically as plain strings and only a strictly later one is news.
+    // A reader who deliberately picked an older run from the dev analysis
+    // selector is therefore also told a newer one exists, which is true.
+    if (latest && latest > loaded) newRunNotice.show();
+  };
+  document.addEventListener("visibilitychange", () => void checkForNewRun());
+
   const setSelectorsBusy = (busy: boolean) => {
     dom.inhouseModelSelect.setAttribute("aria-busy", String(busy));
     dom.inhouseAnalysisSelect.setAttribute("aria-busy", String(busy));
   };
+
+  let latestRunRefreshInFlight = false;
+  async function refreshLatestRun(): Promise<void> {
+    if (latestRunRefreshInFlight) return;
+    const model = catalogController.inhouseSelectedModel;
+    if (!model) return;
+
+    latestRunRefreshInFlight = true;
+    const previousAnalysis = catalogController.inhouseSelectedAnalysis;
+    const mode = uiState.layerMode === "waves" ? "waves" : uiState.layerMode;
+    datasetLoader.begin(t("status.loadingDataset", { model }));
+    setSelectorsBusy(true);
+    try {
+      const refreshed = await catalogController.refreshLatestAnalysis();
+      if (!refreshed) return;
+
+      if (catalogController.inhouseSelectedAnalysis !== previousAnalysis) {
+        await catalogController.ensureInhouseGroupLayers(mode);
+        timelineController?.updateTimelineControlForMode(mode);
+        layerGroupController.syncTooltipAndLegendForMode(mode);
+        iconographyController?.onModelChange();
+        scheduleUpdateLayers();
+        schedulePersistState();
+      }
+      newRunNotice.hide();
+    } finally {
+      setSelectorsBusy(false);
+      datasetLoader.end();
+      latestRunRefreshInFlight = false;
+    }
+  }
 
   // Programmatic model switch, running the exact same flow as the model
   // `<select>`. Reused by the empty-model safety net and the locate button.
@@ -537,12 +683,6 @@ export function createControllers(config: ControllerFactoryConfig) {
       },
       getLayerMode: () => uiState.layerMode,
       renderLayerGroupList: () => layerGroupController.renderLayerGroupList(),
-      easeToDefaultView: () =>
-        map.easeTo({
-          center: DEFAULT_VIEW.center,
-          zoom: DEFAULT_VIEW.zoom,
-          duration: 800,
-        }),
       updateTimelineControlForMode: (mode: LayerMode) =>
         timelineController?.updateTimelineControlForMode(mode),
       syncWindControls: () => windStyleController.syncControls(),
@@ -721,10 +861,10 @@ export function createControllers(config: ControllerFactoryConfig) {
   dom.opacityValue.textContent = uiState.opacity.toFixed(2);
   layerGroupController.attachToggleHandlers();
 
-  dom.zoomIn.addEventListener("click", () => {
+  dom.zoomIn?.addEventListener("click", () => {
     map.zoomIn({ duration: 200 });
   });
-  dom.zoomOut.addEventListener("click", () => {
+  dom.zoomOut?.addEventListener("click", () => {
     map.zoomOut({ duration: 200 });
   });
   dom.infoButton.addEventListener("click", () => {
@@ -780,10 +920,20 @@ export function createControllers(config: ControllerFactoryConfig) {
           getSelectedModel: () => catalogController.inhouseSelectedModel,
           getLayerMode: () => uiState.layerMode,
           getLocale,
+          // The coordinate the crosshair actually sampled its displayed value
+          // at, so the button can never open a point a frame of movement away
+          // from what the readout showed. Falls back to a live read when there
+          // is no captured sample yet (or on the legacy always-on crosshair).
           getMapCenter: () => {
+            const captured = centerReadout?.getActionPoint();
+            if (captured) return captured;
             const c = map.getCenter();
             return { lng: c.lng, lat: c.lat };
           },
+          mountTriggerInCrosshair: (el, isAvailable) =>
+            centerReadout?.mountAction(el, isAvailable) ?? false,
+          // Keep the crosshair from fading out behind an open meteogram.
+          onOpenStateChange: (open) => centerReadout?.setMeteogramOpen(open),
           isMeteogramTarget: () =>
             resolveMapClickTarget({
               selectedModel: catalogController.inhouseSelectedModel,
@@ -802,6 +952,8 @@ export function createControllers(config: ControllerFactoryConfig) {
                 }
               : null;
           },
+          getPlaceLabel: (lng: number, lat: number) =>
+            placeLabeller.labelAt(lng, lat),
           showPin,
           removePin,
           isDev,
@@ -824,7 +976,48 @@ export function createControllers(config: ControllerFactoryConfig) {
       });
   }
 
+  // --- Click → named place ---
+  // Basemap label hit-test first, bundled Natural Earth dataset as fallback.
+  // Both paths are local: no geocoding / reverse-geocoding request, and no tile
+  // request beyond the basemap and weather imagery already loaded.
+  const placeResolver: PlaceResolver = createPlaceResolver({
+    map,
+    getLocale,
+    // The model-specific station lists the iconography already loads are much
+    // denser than Natural Earth in the areas the app cares about most.
+    getExtraPlaces: () => iconographyController?.namedPlaces ?? [],
+    isDev,
+  });
+
+  // The city-label layer is drawn from the same dataset, so it goes up as soon
+  // as the fetch lands (or as soon as the style does, whichever is later).
+  void placeResolver.preload().then(ensureCityLabels);
+
+  // Labels map points with the resolved place name, so the meteogram panel
+  // shows "Reykjavík" rather than "64.143, -21.937".
+  const placeLabeller = createPlaceLabeller();
+
   attachMapEventHandlers(map, {
+    getPlaceResolver: () => placeResolver,
+    onPlaceResolved: (
+      place: ResolvedPlace | null,
+      lngLat: { lng: number; lat: number },
+    ) => {
+      placeLabeller.remember(place, lngLat);
+      if (isDev) {
+        console.log("[placeClick]", place);
+      }
+      // Published as a DOM event so downstream features can consume the result
+      // without this factory having to know about them.
+      map
+        .getContainer()
+        .dispatchEvent(
+          new CustomEvent<ResolvedPlace | null>("mimir:placeclick", {
+            detail: place,
+          }),
+        );
+    },
+    onStyleReady,
     getOverlay: () => overlay,
     getLayerComposer: () => layerComposer,
     getCatalogController: () => catalogController,
@@ -858,7 +1051,10 @@ export function createControllers(config: ControllerFactoryConfig) {
   }
   initMobileDrawer();
 
-  initCenterReadout({
+  // Assigned synchronously here, so the meteogram feature's dynamic import —
+  // kicked off earlier in this same function body — always finds it in its
+  // `.then()`, which cannot run before this body returns.
+  centerReadout = initCenterReadout({
     map,
     getCatalogController: () => catalogController,
     getViewMode: () => layerGroupController.viewMode,

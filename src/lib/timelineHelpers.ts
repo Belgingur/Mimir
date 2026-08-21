@@ -1,19 +1,58 @@
 import { t } from "./i18n";
 
+// Forecast timestamps travel as ISO 8601 UTC instants, but the timeline is read
+// by a person standing in some particular place, so every label below is
+// rendered through the browser's own zone (the local getters do the conversion
+// for us). Nothing about the underlying instants changes — only how they read.
+
 /** Translated short weekday from the active locale (keys day.0 … day.6). */
-const weekday = (date: Date) => t(`day.${date.getUTCDay()}`);
+const weekday = (date: Date) => t(`day.${date.getDay()}`);
 
 export const formatTimelineDayLabel = (datetime: string) => {
   const date = new Date(datetime);
-  return `${weekday(date)} ${date.getUTCDate()}`;
+  return `${weekday(date)} ${date.getDate()}`;
 };
 
 export const formatTimelineBubbleLabel = (datetime: string) => {
   const date = new Date(datetime);
-  const hh = String(date.getUTCHours()).padStart(2, "0");
-  const mm = String(date.getUTCMinutes()).padStart(2, "0");
-  return `${weekday(date)} ${date.getUTCDate()} - ${hh}:${mm}`;
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mm = String(date.getMinutes()).padStart(2, "0");
+  return `${weekday(date)} ${date.getDate()} - ${hh}:${mm}`;
 };
+
+/**
+ * Compact marker for the zone the labels above are drawn in — "UTC", "UTC-3",
+ * "UTC+5:30". Derived from the offset of the given instant rather than of
+ * "now", so a forecast that crosses a daylight-saving boundary is still
+ * labelled with the offset actually in force at that step.
+ *
+ * Computed from getTimezoneOffset() instead of Intl's `timeZoneName` so the
+ * output stays a fixed, translation-free shape the tiny timeline chrome can
+ * budget space for.
+ */
+export const formatTimelineZoneLabel = (datetime: string) => {
+  const date = new Date(datetime);
+  // getTimezoneOffset() counts minutes to ADD to local time to reach UTC, i.e.
+  // it runs backwards from how offsets are written — hence the negation.
+  const offsetMinutes = -date.getTimezoneOffset();
+  if (!Number.isFinite(offsetMinutes) || offsetMinutes === 0) return "UTC";
+  const sign = offsetMinutes < 0 ? "-" : "+";
+  const total = Math.abs(offsetMinutes);
+  const hours = Math.floor(total / 60);
+  const minutes = total % 60;
+  return minutes
+    ? `UTC${sign}${hours}:${String(minutes).padStart(2, "0")}`
+    : `UTC${sign}${hours}`;
+};
+
+/**
+ * Same reading as the rail tab, plus the zone marker. Used for the roomier
+ * on-map bubble, where there is space to say which clock this is — without it
+ * a viewer abroad has no way to tell local time from the UTC the data is
+ * published in.
+ */
+export const formatTimelineBubbleLabelWithZone = (datetime: string) =>
+  `${formatTimelineBubbleLabel(datetime)} ${formatTimelineZoneLabel(datetime)}`;
 
 export const buildTimelineDayBlocks = (datetimes: string[]) => {
   const blocks: Array<{ label: string; start: number; end: number }> = [];
@@ -44,6 +83,41 @@ export const matchNearestTimeIndex = (times: string[], target: string) => {
     }
   });
   return best;
+};
+
+/**
+ * Where the present moment sits on the timeline rail, as a 0–1 fraction of the
+ * rail's width — or null when now falls outside the run, in which case the rail
+ * draws no tick at all. Pinning one to an edge instead would claim the forecast
+ * covers this moment when it does not.
+ *
+ * The rail's x-axis is *index*-linear, not time-linear: every step gets the same
+ * width, so a run that starts hourly and continues three-hourly does not
+ * compress on screen. The position is therefore interpolated in index space —
+ * find the pair of steps bracketing now, then offset within that pair. Deriving
+ * it from the raw timestamps instead would drift away from the step it names
+ * wherever the spacing changes.
+ */
+export const nowRailRatio = (
+  datetimes: string[],
+  nowMs: number,
+): number | null => {
+  if (datetimes.length < 2 || !Number.isFinite(nowMs)) return null;
+  const ms = datetimes.map((d) => Date.parse(d));
+  if (ms.some((value) => !Number.isFinite(value))) return null;
+  // Ascending order is what the manifests publish; a descending or scrambled
+  // list simply finds no bracketing pair below and yields no tick.
+  if (nowMs < ms[0] || nowMs > ms[ms.length - 1]) return null;
+  for (let i = 0; i < ms.length - 1; i += 1) {
+    const from = ms[i];
+    const to = ms[i + 1];
+    if (nowMs >= from && nowMs <= to) {
+      const span = to - from;
+      const withinStep = span > 0 ? (nowMs - from) / span : 0;
+      return (i + withinStep) / (ms.length - 1);
+    }
+  }
+  return null;
 };
 
 export type DatetimeRange = {

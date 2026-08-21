@@ -13,8 +13,11 @@
   }
 
   .legend-stack-card {
-    right: 12px;
-    bottom: calc(var(--bottom-bar-height) + var(--safe-area-bottom) + 8px);
+    /* Left, like the base rule — this block also pins .model-card to the right,
+       which is the collision the legend was moved away from. */
+    left: 12px;
+    right: auto;
+    bottom: calc(var(--bottom-bar-height) + var(--safe-area-bottom) + 38px);
     width: fit-content;
     max-width: calc(100vw - 24px);
   }

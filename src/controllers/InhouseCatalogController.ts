@@ -10,7 +10,7 @@ import {
   GWES_MODEL_ID,
 } from "../lib/selectionRules";
 import {
-  resolveInhouseUnit,
+  resolveDisplayUnit,
   formatIndex,
   resolveManifestTimes,
 } from "../lib/inhouseCatalogHelpers";
@@ -94,11 +94,11 @@ export function createCloudForecastProvider(
 import {
   DEFAULT_MODEL_MAX_ZOOM,
   WEB_MERCATOR_METERS_PER_PIXEL_AT_Z0,
-  GLOBAL_MODELS,
-  DEFAULT_VIEW,
   DEFAULT_NON_WAVES_MODEL,
   MODEL_RESOLUTION_METERS,
   shouldCenterOnBounds,
+  modelCoversPoint,
+  MODEL_REFOCUS_VIEW,
   getModelResolutionMeters,
   getModelDefaultCenter,
   getMetersPerPixelAtLatitude,
@@ -148,6 +148,9 @@ export interface InhouseCatalogDeps {
   getMapContainer: () => { clientWidth: number; clientHeight: number };
   setMapMaxZoom: (zoom: number) => void;
   getMapZoom: () => number;
+  /** Current viewport centre as [lon, lat] — the point the coverage test asks
+   *  the newly selected model about. */
+  getMapCenter: () => [number, number];
   setMapZoom: (zoom: number) => void;
   easeToMap: (options: {
     center?: [number, number];
@@ -324,7 +327,9 @@ export class InhouseCatalogController {
   // --- Misc state ---
   private _precipCandidateIndex = 0;
   private _precipFallbackInFlight = false;
-  private _lastCenteredInhouseKey = "";
+  /** Model whose domain the camera was last framed for. Guards against
+   *  re-framing on variable changes and new analysis runs of the same model. */
+  private _lastCenteredModel = "";
   private _inhouseHoverLastTs = 0;
   readonly WIND_STREAMLINE_FLIP = false;
 
@@ -421,12 +426,102 @@ export class InhouseCatalogController {
     return `${root}/${FORECAST_DATA_SEGMENT}/${model}/${analysis}/${variable}`;
   }
 
-  async fetchJson<T>(url: string): Promise<T> {
-    const response = await fetch(url);
+  async fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+    const response = init ? await fetch(url, init) : await fetch(url);
     if (!response.ok) {
       throw new Error(`Failed to load ${url} (${response.status})`);
     }
     return (await response.json()) as T;
+  }
+
+  /**
+   * The newest analysis id the server currently advertises for the selected
+   * model, or null when it cannot be established.
+   *
+   * Bypasses the HTTP cache, which the ordinary fetchJson path does not: this is
+   * asked precisely when the copy in cache is suspected of being stale, and
+   * analyses.json carries no cache-busting of its own. Answers null rather than
+   * throwing — the caller is a background staleness check, and a failed poll
+   * should be silent, not a warning banner over a working map.
+   */
+  async fetchLatestAnalysisId(): Promise<string | null> {
+    const model = this._inhouseSelectedModel;
+    if (!model) return null;
+    const url = `${this.getInhouseRoot()}/${FORECAST_DATA_SEGMENT}/${model}/analyses.json`;
+    try {
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) return null;
+      const norm = normalizeIdList(await response.json(), "latest");
+      const ids = Array.isArray(norm) ? norm : norm.ids;
+      const defaultId = Array.isArray(norm) ? "" : norm.defaultId;
+      return pickDefaultId(ids, defaultId) || null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Refresh the selected model's catalog and move to its latest advertised
+   * analysis without tearing down the map or the rest of the application.
+   *
+   * State is committed only after both catalog requests succeed, so a failed
+   * refresh leaves the currently working run intact. Returns true when the
+   * server was checked successfully (including when this tab is already current).
+   */
+  async refreshLatestAnalysis(): Promise<boolean> {
+    const model = this._inhouseSelectedModel;
+    if (!model) return false;
+
+    const root = this.getInhouseRoot();
+    try {
+      const analysesRaw = await this.fetchJson<unknown>(
+        `${root}/${FORECAST_DATA_SEGMENT}/${model}/analyses.json`,
+        { cache: "no-store" },
+      );
+      const analysesNorm = normalizeIdList(analysesRaw, "latest");
+      const analyses = Array.isArray(analysesNorm)
+        ? analysesNorm
+        : analysesNorm.ids;
+      const latest = Array.isArray(analysesNorm)
+        ? (analyses[0] ?? "")
+        : pickDefaultId(analyses, analysesNorm.defaultId);
+      if (!latest) {
+        this.setInhouseWarning(`No analyses found for ${model}.`);
+        return false;
+      }
+
+      if (
+        this._inhouseSelectedAnalysis &&
+        latest <= this._inhouseSelectedAnalysis
+      ) {
+        this._inhouseAnalyses = analyses;
+        this.refreshInhouseSelectors();
+        return true;
+      }
+
+      const varsRaw = await this.fetchJson<unknown>(
+        `${root}/${FORECAST_DATA_SEGMENT}/${model}/${latest}/variables.json`,
+        { cache: "no-store" },
+      );
+      const varsNorm = normalizeVariableList(varsRaw);
+
+      this._inhouseAnalyses = analyses;
+      this._inhouseSelectedAnalysis = latest;
+      this._inhouseVariables = varsNorm.ids;
+      this._inhouseVariableMeta = varsNorm.meta;
+      this._inhouseSelectedVariable = pickDefaultId(
+        this._inhouseVariables,
+        varsNorm.defaultId,
+      );
+      this._precipCandidateIndex = 0;
+      this.refreshInhouseSelectors();
+      return true;
+    } catch (error) {
+      this.setInhouseWarning(
+        `Failed to refresh forecast: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return false;
+    }
   }
 
   getInhouseFrameUrl(layer: InhouseLayer, index: number): string {
@@ -515,53 +610,63 @@ export class InhouseCatalogController {
     return maxZoom;
   }
 
+  /**
+   * Move the camera only when the selected model cannot show what the user is
+   * already looking at.
+   *
+   * The map stays where the user left it — across variable changes, across model
+   * changes that keep their view in view, and across reloads. It moves when, and
+   * only when, staying would leave them looking at a region the new model has no
+   * data for; then it frames that model's domain.
+   *
+   * This method used to re-centre on nearly every call, which is why picking a
+   * different variable threw the view away: `ensureInhouseGroupLayers()` calls it
+   * and that runs on every layer rebuild. BEL-IS was worse — pinned to the
+   * Iceland overview above the persisted-state guard, so it also overrode the
+   * camera restored on reload.
+   */
   centerMapOnInhouseDomain(
     model: string,
-    analysis: string,
+    /** Kept for the call site's shape; framing no longer depends on the run. */
+    _analysis: string,
     bounds: [number, number, number, number],
   ): void {
     // First-visit geolocation owns the initial camera: skip auto-centre so it
     // can't clobber the located/Reykjavík view (task A1). Stays suppressed until
     // the user explicitly switches models (handleModelChange clears it).
     if (this.deps.isInitialAutoCenterSuppressed?.()) return;
-    // BEL-IS always opens at the Iceland overview, even when restoring persisted state.
-    // Use jumpTo (not easeTo) so it can't be cancelled by subsequent map events.
-    if (model === "BEL-IS") {
-      this._lastCenteredInhouseKey = `${model}:${analysis}`;
-      window.requestAnimationFrame(() => {
-        this.deps.easeToMap({ center: [-19, 65], zoom: 6.0, duration: 0 });
-      });
-      return;
-    }
+    // A reload restores the camera the user left; no model may override it.
     if (this.deps.isRestoringFromPersisted()) return;
-    if (model === "UWC-IG") {
-      this._lastCenteredInhouseKey = `${model}:${analysis}`;
-      this.deps.easeToMap({ center: [-36, 68.5], zoom: 3.5, duration: 800 });
+
+    // Same model as the last decision: a variable change, a fresh analysis run,
+    // a layer rebuild. The domain has not moved, so neither does the camera.
+    // `analysis` is deliberately not part of this key — a new forecast run for
+    // the model you are already watching is not a reason to be moved.
+    if (this._lastCenteredModel === model) return;
+    this._lastCenteredModel = model;
+
+    // The user is looking at ground this model covers: stay. Zoom is a separate
+    // question, clamped by applyModelZoomConstraints for the model's resolution.
+    if (modelCoversPoint(model, bounds, this.deps.getMapCenter())) return;
+
+    const preset = MODEL_REFOCUS_VIEW[model];
+    if (preset) {
+      // BEL-IS reframes on the next frame at duration 0: the Iceland overview is
+      // set up while other map events are still settling, and an animated ease
+      // there gets cancelled by them.
+      if (model === "BEL-IS") {
+        window.requestAnimationFrame(() => {
+          this.deps.easeToMap({ ...preset, duration: 0 });
+        });
+      } else {
+        this.deps.easeToMap({ ...preset, duration: 800 });
+      }
       return;
     }
-    if (model === "RAP") {
-      this._lastCenteredInhouseKey = `${model}:${analysis}`;
-      this.deps.easeToMap({ center: [-60, 62], zoom: 2.5, duration: 800 });
-      return;
-    }
-    if (model === "UWC-DINI") {
-      this._lastCenteredInhouseKey = `${model}:${analysis}`;
-      this.deps.easeToMap({ center: [-1.5, 53.8], zoom: 4.5, duration: 800 });
-      return;
-    }
-    if (GLOBAL_MODELS.has(model)) {
-      this._lastCenteredInhouseKey = "";
-      this.deps.easeToMap({
-        center: DEFAULT_VIEW.center as [number, number],
-        zoom: DEFAULT_VIEW.zoom,
-        duration: 800,
-      });
-      return;
-    }
+    // No branch for global models: modelCoversPoint() answers `true` for every
+    // one of them, so a global model has already returned above — it can show
+    // wherever the reader is standing and never needs reframing.
     if (!shouldCenterOnBounds(model, bounds)) return;
-    const key = `${model}:${analysis}`;
-    if (this._lastCenteredInhouseKey === key) return;
-    this._lastCenteredInhouseKey = key;
     this.deps.fitMapBounds(bounds, {
       padding: 40,
       duration: 800,
@@ -1113,25 +1218,6 @@ export class InhouseCatalogController {
           } else {
             layer.rawRange = null;
           }
-          // Pre-fetch adjacent frames
-          const prevIndex = Math.max(0, matchIndex - 1);
-          const nextIndex = Math.min(layer.times.length - 1, matchIndex + 1);
-          const prevName = layer.manifest.fileTemplate.replace(
-            "{index:03d}",
-            formatIndex(prevIndex, 3),
-          );
-          const nextName = layer.manifest.fileTemplate.replace(
-            "{index:03d}",
-            formatIndex(nextIndex, 3),
-          );
-          void this.loadInhouseTexture(
-            `${baseUrl}/${prevName}`,
-            undefined,
-          ).catch(() => undefined);
-          void this.loadInhouseTexture(
-            `${baseUrl}/${nextName}`,
-            undefined,
-          ).catch(() => undefined);
           return { layer, url };
         } catch (error) {
           throw { layer, error };
@@ -1521,10 +1607,6 @@ export class InhouseCatalogController {
     if (!this._inhouseModels.length) {
       this.setInhouseWarning("No in-house models found.");
     }
-    const layerMode = this.deps.getUiState().layerMode;
-    if (layerMode !== "waves") {
-      void this.ensureInhouseGroupLayers(layerMode as InhouseGroupId);
-    }
   }
 
   async loadInhouseAnalyses(model: string): Promise<void> {
@@ -1780,49 +1862,53 @@ export class InhouseCatalogController {
     const model = this._inhouseSelectedModel;
     const analysis = this._inhouseSelectedAnalysis;
     const previousDatetime = this.deps.getCurrentDatetime();
-    const nextLayers: InhouseLayer[] = [];
-    for (const spec of specs) {
-      const id = `${model}:${analysis}:${spec.variable}`;
-      const existing = this._inhouseLayers.find((layer) => layer.id === id);
-      if (existing) {
-        existing.visible = spec.visible;
-        existing.renderMode = spec.renderMode;
-        nextLayers.push(existing);
-        continue;
-      }
-      try {
-        const manifest = await this.loadInhouseManifest(
-          model,
-          analysis,
-          spec.variable,
-        );
-        if (!manifest) continue;
-        if (manifest.analysisTime !== analysis) {
-          this.setInhouseWarning(
-            `Manifest analysisTime mismatch for ${spec.variable}.`,
-          );
-          continue;
+    const loadedLayers = await Promise.all(
+      specs.map(async (spec): Promise<InhouseLayer | null> => {
+        const id = `${model}:${analysis}:${spec.variable}`;
+        const existing = this._inhouseLayers.find((layer) => layer.id === id);
+        if (existing) {
+          existing.visible = spec.visible;
+          existing.renderMode = spec.renderMode;
+          return existing;
         }
-        const times = resolveManifestTimes(manifest);
-        nextLayers.push({
-          id,
-          model,
-          analysis,
-          variable: spec.variable,
-          manifest,
-          times,
-          visible: spec.visible,
-          image: null,
-          scalar: null,
-          rasterScalar: null,
-          renderMode: spec.renderMode,
-        });
-      } catch (error) {
-        this.setInhouseWarning(
-          `Failed to load manifest: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      }
-    }
+        try {
+          const manifest = await this.loadInhouseManifest(
+            model,
+            analysis,
+            spec.variable,
+          );
+          if (!manifest) return null;
+          if (manifest.analysisTime !== analysis) {
+            this.setInhouseWarning(
+              `Manifest analysisTime mismatch for ${spec.variable}.`,
+            );
+            return null;
+          }
+          const times = resolveManifestTimes(manifest);
+          return {
+            id,
+            model,
+            analysis,
+            variable: spec.variable,
+            manifest,
+            times,
+            visible: spec.visible,
+            image: null,
+            scalar: null,
+            rasterScalar: null,
+            renderMode: spec.renderMode,
+          };
+        } catch (error) {
+          this.setInhouseWarning(
+            `Failed to load manifest: ${error instanceof Error ? error.message : String(error)}`,
+          );
+          return null;
+        }
+      }),
+    );
+    const nextLayers = loadedLayers.filter(
+      (layer): layer is InhouseLayer => layer !== null,
+    );
     this._inhouseLayers.length = 0;
     this._inhouseLayers.push(...nextLayers);
     const primaryLayer = this._inhouseLayers[0];
@@ -1844,7 +1930,7 @@ export class InhouseCatalogController {
         primaryLayer.manifest.bounds,
       );
     }
-    void this.loadInhouseFrameSet();
+    await this.loadInhouseFrameSet();
   }
 
   // ---------------------------------------------------------------------------
@@ -2064,7 +2150,7 @@ export class InhouseCatalogController {
   }
 
   formatInhouseTooltipValue(layer: InhouseLayer, value: number): string {
-    const unit = layer.manifest.unit ?? resolveInhouseUnit(layer.variable);
+    const unit = resolveDisplayUnit(layer.variable, layer.manifest.unit);
     const isAirTemp = layer.variable === "air_temperature_at_2m_agl";
     const displayValue = isAirTemp && value > 100 ? value - 273.15 : value;
     const formatted = isAirTemp
@@ -2341,7 +2427,6 @@ export class InhouseCatalogController {
       setLayerMode: (mode: InhouseGroupId) => void;
       getLayerMode: () => InhouseGroupId;
       renderLayerGroupList: () => void;
-      easeToDefaultView: () => void;
       updateTimelineControlForMode: (mode: InhouseGroupId) => void;
       syncWindControls: () => void;
       syncTooltipAndLegendForMode: (mode: InhouseGroupId) => void;
@@ -2361,18 +2446,18 @@ export class InhouseCatalogController {
       isGroupAvailableForModel: (groupId) =>
         this.isGroupAvailableForModel(groupId),
     });
-    // A deliberate user model switch always recentres on the new model's domain,
-    // even if the first-visit geolocation view was suppressing auto-centre (A1).
+    // A deliberate user model switch lets the coverage rule decide the camera
+    // again, even if the first-visit geolocation view was suppressing it (A1).
     this.deps.clearInitialAutoCenterSuppression?.();
-    // Reset the centering guard so the new model's domain is always centered.
-    // Without this, switching A→B→A could skip centering on A the second time if the
-    // same model+analysis key was already used, leaving the map at B's camera position.
-    this._lastCenteredInhouseKey = "";
+    // Reset the framing guard: a deliberate model switch gets a fresh coverage
+    // decision, so A→B→A can reframe on A again if B took the camera elsewhere.
+    this._lastCenteredModel = "";
     this.setInhouseWarning(t("status.loadingModel"));
     if (resolve.model === GWES_MODEL_ID) {
       callbacks.setLayerMode("waves");
       callbacks.renderLayerGroupList();
-      callbacks.easeToDefaultView();
+      // No easeToDefaultView(): GWES is global, so it can show wherever the
+      // reader already is. centerMapOnInhouseDomain owns the camera decision.
     } else if (resolve.appliedException === "LEAVE_GWES_BY_MODEL") {
       callbacks.setLayerMode("temperature");
       callbacks.renderLayerGroupList();

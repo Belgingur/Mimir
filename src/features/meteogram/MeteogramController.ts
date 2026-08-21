@@ -62,10 +62,20 @@ export interface MeteogramControllerDeps {
     analysisTimeISO?: string;
     generatedAt?: string;
   } | null;
+  /** Name of the place at a point — the city label clicked on the map, else the
+   *  nearest place from the bundled dataset — or undefined when nothing is close
+   *  enough to fairly label the point, in which case the raw coordinate is used.
+   *  See lib/resolveClickedPlace.ts. */
+  readonly getPlaceLabel?: (lng: number, lat: number) => string | undefined;
   /** Drop a pin at the clicked map point (map-panel layout). Optional so the
    *  controller still works headless / in tests without a live map. */
   readonly showPin?: (lng: number, lat: number, label: string) => void;
   readonly removePin?: () => void;
+  /** Called whenever the panel opens or closes. The transient centre crosshair
+   *  uses this to hold itself visible for as long as the meteogram it launched is
+   *  on screen. Only fired on an actual change, so repeated opens at the same
+   *  point don't churn. */
+  readonly onOpenStateChange?: (open: boolean) => void;
   readonly isDev: boolean;
 }
 
@@ -131,11 +141,47 @@ export class MeteogramController {
 
   close(): void {
     const { dom } = this.deps;
+    const wasOpen = this.isOpen;
     dom.modal.classList.remove("is-open");
     dom.modal.setAttribute("aria-hidden", "true");
     this.pendingOutOfBounds = false;
     this.deps.removePin?.();
     clearMapPanelPoint();
+    if (wasOpen) this.deps.onOpenStateChange?.(false);
+  }
+
+  /** Resolved place name for a point, or undefined when there isn't a usable one. */
+  private placeNameAt(lng: number, lat: number): string | undefined {
+    const name = this.deps.getPlaceLabel?.(lng, lat)?.trim();
+    return name ? name : undefined;
+  }
+
+  /**
+   * Label for a map point: the resolved place name where there is one, else the
+   * raw coordinate. The name is Mímir's own — the city label clicked on the map,
+   * or the nearest place from the bundled dataset — so the point being labelled
+   * is still exactly the point clicked, never snapped to a WOD station.
+   */
+  private pointLabel(lng: number, lat: number): string {
+    return this.placeNameAt(lng, lat) ?? `${lat.toFixed(3)}, ${lng.toFixed(3)}`;
+  }
+
+  /**
+   * Tell the widget what to call this point. `location-name` outranks the
+   * widget's own name resolution, so it is only set when a place actually
+   * resolved; otherwise it is removed so `prefer-coordinates` shows the raw
+   * coordinate as before (and a stale name from a previous point cannot leak).
+   * The widget drops the attribute itself when the user picks a station in its
+   * overlay, so this never fights a manual pick.
+   */
+  private applyLocationName(
+    widget: MeteogramWidget,
+    lng: number,
+    lat: number,
+  ): void {
+    const name = this.placeNameAt(lng, lat);
+    if (name) widget.setAttribute("location-name", name);
+    else widget.removeAttribute("location-name");
   }
 
   /**
@@ -210,7 +256,7 @@ export class MeteogramController {
     lat: number,
     lng: number,
   ): { clientName: string } {
-    const label = `${lat.toFixed(3)}, ${lng.toFixed(3)}`;
+    const label = this.pointLabel(lng, lat);
     // Show Mímir's own model name in the widget rather than the WOD config's
     // (e.g. "ISLAND-9" instead of "Ísafjörður - 2.5km"). See the widget's
     // `forecast-label` attribute.
@@ -219,6 +265,7 @@ export class MeteogramController {
       this.widget.setAttribute("language", this.widgetLanguage());
       this.widget.setAttribute("forecast-label", modelLabel);
       this.applyAnalysisAttrs(this.widget);
+      this.applyLocationName(this.widget, lng, lat);
       this.widget.loadChartLocation(lat, lng, label);
       return { clientName };
     }
@@ -230,6 +277,7 @@ export class MeteogramController {
     fresh.setAttribute("forecast-label", modelLabel);
     fresh.setAttribute("location-lat", String(lat));
     fresh.setAttribute("location-lon", String(lng));
+    this.applyLocationName(fresh, lng, lat);
     this.applyAnalysisAttrs(fresh);
     this.attachWidgetListeners(fresh);
     this.deps.dom.widgetHost.appendChild(fresh);
@@ -297,6 +345,12 @@ export class MeteogramController {
     // always shown on the map.
     widget.addEventListener("bel-meteogram-location", (event) => {
       if (this.widget !== widget) return;
+      // The widget resolves its point asynchronously, so this can land *after*
+      // the user has already closed the panel. Without this guard the late
+      // event re-drops the map pin — a stray "place · temp" label stuck on the
+      // map with nothing open — which is exactly what happens when the panel is
+      // dismissed quickly. close() has already removed the pin; leave it gone.
+      if (!this.isOpen) return;
       const detail = (event as CustomEvent<BelMeteogramLocationDetail>).detail;
       const label = formatPinLabel(detail);
       this.deps.dom.location.textContent = label;
@@ -308,10 +362,12 @@ export class MeteogramController {
     const { dom } = this.deps;
     const modelId = this.deps.getSelectedModel();
     const clientName = this.resolveClientNameForModel(modelId);
+    const wasOpen = this.isOpen;
     writeMapPanelPoint(lat, lng);
     dom.modal.classList.add("is-open");
     dom.modal.setAttribute("aria-hidden", "false");
-    const label = `${lat.toFixed(3)}, ${lng.toFixed(3)}`;
+    if (!wasOpen) this.deps.onOpenStateChange?.(true);
+    const label = this.pointLabel(lng, lat);
     dom.location.textContent = label;
     // Early out-of-domain hint: if the point is outside the selected model's
     // known bounds we say so immediately, before the widget's fetch resolves.

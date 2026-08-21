@@ -1,7 +1,19 @@
 /* ══════════════════════════════════════════════════════════════════
-   CENTER READOUT — fixed crosshair + value at the middle of the map.
+   CENTER READOUT — crosshair + value at the middle of the map.
    Touch / small screens only, forecast view only. The crosshair sits exactly
    on the map centre (map.getCenter()); the value pill floats just above it.
+
+   Two variants share this file, selected by the TRANSIENT_CROSSHAIR flag in
+   lib/centerReadout.ts:
+
+   - legacy `.center-readout`                  — always visible, pill only.
+   - transient `.center-readout--transient`    — hidden at rest, fades in while
+     the map is manipulated, and carries the meteogram button in a reserved slot
+     to the right of the pill.
+
+   Layout rules that only apply to one variant are scoped with :not() /
+   --transient so that turning the flag off restores the previous rendering
+   exactly.
    ══════════════════════════════════════════════════════════════════ */
 
 .center-readout {
@@ -10,9 +22,14 @@
   left: 50%;
   width: 0;
   height: 0;
-  z-index: 260;
+  /* Below the legend and bottom timeline bar (--z-chrome), above the map canvas,
+     deck layers and grid labels. */
+  z-index: var(--z-crosshair);
   pointer-events: none;
   display: none;
+  /* A drag that starts on the overlay must never select the readout text. */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* Show on touch devices / narrow viewports, but never in iconography view
@@ -26,12 +43,8 @@
 /* Soft target ring with a bright centre dot; the shadows keep it legible over
    both light and dark map areas without drawing too much attention. */
 .center-readout__cross {
-  position: absolute;
-  left: 0;
-  top: 0;
   width: 26px;
   height: 26px;
-  transform: translate(-50%, -50%);
   border-radius: 50%;
   border: 1.5px solid rgba(255, 255, 255, 0.85);
   box-shadow:
@@ -52,7 +65,16 @@
   box-shadow: 0 0 2px rgba(0, 0, 0, 0.65);
 }
 
-.center-readout__value {
+/* ── Legacy variant: absolutely-positioned pill + ring ──────────────────── */
+
+.center-readout:not(.center-readout--transient) .center-readout__cross {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+}
+
+.center-readout:not(.center-readout--transient) .center-readout__value {
   position: absolute;
   left: 0;
   top: -26px;
@@ -74,6 +96,295 @@
   transition: opacity 120ms ease;
 }
 
-.center-readout.has-value .center-readout__value {
+.center-readout:not(.center-readout--transient).has-value
+  .center-readout__value {
   opacity: 1;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   TRANSIENT VARIANT
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Kept in step with lib/crosshairTimings.ts — CSS cannot read TS constants, so
+   these two are the only duplicated values. */
+.center-readout--transient {
+  --crosshair-fade-in: 120ms;
+  --crosshair-fade-out: 260ms;
+  /* Visual height shared by the pill and the action chip so they read as one
+     control; the chip's 44px hit target is padded around it. */
+  --crosshair-pill-height: 28px;
+  --crosshair-hit: 44px;
+}
+
+/* ── The pill + action group ────────────────────────────────────────────── */
+
+/* Centred on the reticle *as a whole*, sitting clear of the ring. Because the
+   action slot always occupies its width, the pill itself sits slightly left of
+   the reticle — that is the point: the pill must not move sideways when the
+   button fades in. */
+.center-readout__group {
+  position: absolute;
+  left: 0;
+  /* Clear of the reticle's 44px hit box (22px above centre) so the two tap
+     regions never overlap and a tap is unambiguously one or the other. */
+  bottom: 24px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  /* No gap: the pill and the chip share an edge and read as one control. */
+  gap: 0;
+  /* Never clipped by a screen edge, even on a 320pt viewport with a long value
+     string. The group stays centred and the pill truncates instead. */
+  max-width: calc(
+    100vw - 32px - var(--safe-area-left) - var(--safe-area-right)
+  );
+  opacity: 0;
+  visibility: hidden;
+  /* Compositor-friendly: opacity only, on an element above the map canvas, so
+     the fade never provokes a map repaint. */
+  transition:
+    opacity var(--crosshair-fade-out) ease,
+    visibility var(--crosshair-fade-out);
+}
+
+.center-readout--transient.is-visible .center-readout__group {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity var(--crosshair-fade-in) ease,
+    visibility var(--crosshair-fade-in);
+}
+
+.center-readout--transient .center-readout__value {
+  display: inline-flex;
+  align-items: center;
+  height: var(--crosshair-pill-height);
+  padding: 0 10px;
+  border-radius: var(--radius-pill);
+  background: rgba(11, 15, 19, 0.82);
+  color: #f7f9fb;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  /* min-width:0 lets flex shrink it so the ellipsis can engage. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  /* Opacity only. border-radius must NOT transition: it is what joins the pill
+     to the chip, and animating it makes the pill visibly start rounded and then
+     snap square as the readout appears. */
+  transition: opacity var(--crosshair-fade-in) ease;
+}
+
+.center-readout--transient.has-value .center-readout__value {
+  opacity: 1;
+}
+
+/* Square off the shared edge whenever a chip is actually sitting next to the
+   pill, so the two read as one control from the very first frame.
+   Deliberately keyed ONLY to the button's availability — not to the crosshair
+   state — so that appearing, settling and hiding never change the radius. The
+   `.is-available` gate keeps the pill fully rounded when no chip is offered
+   (GWES / waves), instead of squared against an empty slot. */
+.center-readout--transient:has(.center-readout__action > button.is-available)
+  .center-readout__value {
+  border-radius: var(--radius-pill) 0 0 var(--radius-pill);
+}
+
+/* ── The action slot ────────────────────────────────────────────────────── */
+
+/* Visibility and hittability are deliberately decoupled here.
+ *
+ * The chip is VISIBLE for as long as the crosshair is (including mid-pan), so
+ * it does not blink in and out on every settle — it reads as a fixed part of
+ * the readout rather than something that keeps arriving.
+ *
+ * It only accepts POINTER EVENTS once the map has stopped. During ACTIVE it is
+ * a 44×44 pointer-events:none island, so reaching out to grab a map that is
+ * still coasting cannot be swallowed by the chip — or worse, open the meteogram
+ * instead of catching the map. */
+.center-readout__action {
+  flex: 0 0 var(--crosshair-hit);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--crosshair-hit);
+  height: var(--crosshair-hit);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--crosshair-fade-out) ease;
+}
+
+.center-readout--transient.is-visible .center-readout__action {
+  opacity: 1;
+  transition: opacity var(--crosshair-fade-in) ease;
+}
+
+/* Pointer events for MICE ONLY.
+ *
+ * On touch this rule would actively break the button. `.is-actionable` is
+ * dropped the instant a finger lands (the machine goes to ACTIVE), so the chip
+ * loses pointer-events *mid-gesture*; the browser then hit-tests touchend
+ * against the map canvas underneath and never synthesises the click. Taps on the
+ * chip silently did nothing, inconsistently across browsers.
+ *
+ * So on coarse pointers the chip stays pointer-events:none and every tap —
+ * pill or chip — goes through the geometric hit-test in centerReadout.ts, which
+ * is immune to the state flip and lets a pinch starting on the chip reach the
+ * map as well. Fine pointers keep the real button click, which is what the
+ * narrow-desktop layout relies on. */
+@media (pointer: fine) {
+  .center-readout--transient.is-actionable .center-readout__action {
+    pointer-events: auto;
+  }
+}
+
+/* The mounted button fills the full 44×44 hit target while its visible chrome
+   is only as tall as the pill — the extra height is padding, drawn by ::before
+   so it works whatever markup the trigger supplies. */
+.center-readout__action > button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--crosshair-hit);
+  height: var(--crosshair-hit);
+  min-width: var(--crosshair-hit);
+  min-height: var(--crosshair-hit);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #f7f9fb;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  /* The chip is the one pointer-events:auto island on the overlay, and
+     touch-action does not inherit from body — so declare it here or the browser
+     applies its double-tap-zoom heuristics (and the tap delay) to this button. */
+  touch-action: manipulation;
+}
+
+.center-readout__action > button::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc((var(--crosshair-hit) - var(--crosshair-pill-height)) / 2);
+  height: var(--crosshair-pill-height);
+  background: rgba(11, 15, 19, 0.82);
+  border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
+  /* Hairline divider: the seam that makes pill + chip one control. */
+  border-left: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(4px);
+}
+
+.center-readout__action > button:active::before {
+  background: rgba(24, 32, 40, 0.9);
+}
+
+.center-readout__action > button:focus-visible::before {
+  outline: 2px solid rgba(255, 255, 255, 0.35);
+  outline-offset: 1px;
+}
+
+.center-readout__action > button svg {
+  position: relative;
+  width: 16px;
+  height: 16px;
+}
+
+/* ── The reticle ────────────────────────────────────────────────────────── */
+
+/* A 44×44 box centred on the map centre. It carries NO pointer events on
+   purpose: a pinch that begins exactly on the reticle has to reach MapLibre, so
+   taps here are hit-tested geometrically in lib/crosshairTap.ts instead. */
+.center-readout__reticle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--crosshair-hit);
+  height: var(--crosshair-hit);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--crosshair-fade-out) ease,
+    visibility var(--crosshair-fade-out);
+}
+
+.center-readout--transient .center-readout__reticle .center-readout__cross {
+  position: relative;
+}
+
+/* Enter: fade + slight scale. The scale is an animation rather than a
+   transition so that leaving does NOT reverse it — the exit is a pure fade at
+   full size, as specified. */
+.center-readout--transient.is-visible .center-readout__reticle {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity var(--crosshair-fade-in) ease,
+    visibility var(--crosshair-fade-in);
+  animation: center-readout-pop var(--crosshair-fade-in) ease-out;
+}
+
+@keyframes center-readout-pop {
+  from {
+    transform: translate(-50%, -50%) scale(0.92);
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* Pinned reads as deliberately held: a slightly stronger ring. */
+.center-readout--transient[data-crosshair-state="PINNED"]
+  .center-readout__cross {
+  border-color: rgba(255, 255, 255, 0.98);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.28),
+    0 0 0 5px rgba(255, 255, 255, 0.16),
+    0 1px 6px rgba(0, 0, 0, 0.35);
+}
+
+/* ── Screen-reader announcement ─────────────────────────────────────────── */
+
+/* One polite announcement per settle (value + the button that just appeared),
+   rather than one per sampled frame during a pan. */
+.center-readout__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Reduced motion ─────────────────────────────────────────────────────── */
+
+/* Instant show/hide, no scale. The JS hide delays are untouched — only the
+   transitions go away. */
+@media (prefers-reduced-motion: reduce) {
+  .center-readout--transient .center-readout__group,
+  .center-readout--transient .center-readout__reticle,
+  .center-readout--transient .center-readout__value,
+  .center-readout--transient .center-readout__action,
+  .center-readout--transient.is-visible .center-readout__group,
+  .center-readout--transient.is-visible .center-readout__reticle,
+  .center-readout--transient.is-actionable .center-readout__action {
+    transition: none;
+    animation: none;
+  }
 }

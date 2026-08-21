@@ -2,6 +2,8 @@ import type * as WeatherLayers from "weatherlayers-gl";
 import {
   buildTimelineDayBlocks,
   formatTimelineBubbleLabel,
+  formatTimelineBubbleLabelWithZone,
+  nowRailRatio,
 } from "../lib/timelineHelpers";
 import { TimelineControlAdapter } from "./TimelineControlAdapter";
 import type { UiState } from "../lib/inhouseTypes";
@@ -72,6 +74,9 @@ export class TimelineController {
   private timelineRailEl: HTMLDivElement | null = null;
   private timelineProgressEl: HTMLDivElement | null = null;
   private timelineMarkerEl: HTMLDivElement | null = null;
+  /** Static tick showing where the present hour falls in the run. Absent from
+   *  the null-checks below: a rail without it still renders correctly. */
+  private timelineNowEl: HTMLDivElement | null = null;
   private timelineDaysEl: HTMLDivElement | null = null;
   private timelinePlayBtnEl: HTMLButtonElement | null = null;
   private requestedIndex: number | null = null;
@@ -279,10 +284,14 @@ export class TimelineController {
     const selectedIndex = this.getActiveTimelineIndex();
     const ratio =
       datetimes.length > 1 ? selectedIndex / (datetimes.length - 1) : 0;
-    const bubbleLabel = formatTimelineBubbleLabel(datetimes[selectedIndex]);
-    this.timelineBubbleTextEl.textContent = bubbleLabel;
+    const selectedDatetime = datetimes[selectedIndex];
+    // The rail tab is 8–9px and absolutely positioned, so it keeps the bare
+    // reading; the roomier on-map bubble carries the zone marker for both.
+    this.timelineBubbleTextEl.textContent =
+      formatTimelineBubbleLabel(selectedDatetime);
     if (this.mapTimeBubbleTextEl) {
-      this.mapTimeBubbleTextEl.textContent = bubbleLabel;
+      this.mapTimeBubbleTextEl.textContent =
+        formatTimelineBubbleLabelWithZone(selectedDatetime);
     }
     if (this.mapTimeBubbleEl) {
       this.mapTimeBubbleEl.hidden = false;
@@ -290,6 +299,16 @@ export class TimelineController {
     this.timelineBubbleEl.style.left = `${ratio * 100}%`;
     this.timelineProgressEl.style.width = `${ratio * 100}%`;
     this.timelineMarkerEl.style.left = `${ratio * 100}%`;
+    if (this.timelineNowEl) {
+      // Re-read the clock on every render rather than caching it: this is what
+      // keeps the tick honest once a tab has been open for hours, and it is a
+      // Date.now() against a list already in hand.
+      const nowRatio = nowRailRatio(datetimes, Date.now());
+      this.timelineNowEl.hidden = nowRatio === null;
+      if (nowRatio !== null) {
+        this.timelineNowEl.style.left = `${nowRatio * 100}%`;
+      }
+    }
     this.timelinePlayBtnEl.setAttribute(
       "aria-pressed",
       this._playbackState === "playing" ||
@@ -357,6 +376,7 @@ export class TimelineController {
         </button>
         <div class="timeline-rail">
           <div class="timeline-rail__progress"></div>
+          <div class="timeline-rail__now" hidden title="${t("timeline.now")}"></div>
           <div class="timeline-rail__marker"></div>
         </div>
         <div class="timeline-days"></div>
@@ -380,6 +400,9 @@ export class TimelineController {
     ) as HTMLDivElement;
     this.timelineMarkerEl = this.timelineCustomEl.querySelector(
       ".timeline-rail__marker",
+    ) as HTMLDivElement;
+    this.timelineNowEl = this.timelineCustomEl.querySelector(
+      ".timeline-rail__now",
     ) as HTMLDivElement;
     this.timelineDaysEl = this.timelineCustomEl.querySelector(
       ".timeline-days",
@@ -430,6 +453,12 @@ export class TimelineController {
     this.timelineRailEl.addEventListener("pointerdown", startScrub);
     this.timelineBubbleEl.addEventListener("pointerdown", startScrub);
     window.addEventListener("resize", () => this.renderCustomTimeline());
+    // Coming back to a tab that has been in the background is the one moment
+    // the now-tick is reliably wrong, and the only one worth spending a render
+    // on — nothing else here polls the clock.
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") this.renderCustomTimeline();
+    });
     this.renderCustomTimeline();
   }
 

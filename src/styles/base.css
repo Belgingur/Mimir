@@ -74,6 +74,16 @@ body.is-loading .loading-bar {
   z-index: var(--z-map);
 }
 
+/* Pointer affordance over the basemap's clickable city labels.
+   deck.gl owns the canvas cursor in interleaved mode and re-applies its
+   getCursor result as an inline style on every redraw, so a JS write is
+   reverted within a frame. An author !important rule outranks that inline
+   style, which makes this the only stable place to express the override.
+   The class is toggled in lib/mapEventHandlers.ts. */
+.maplibregl-canvas-container.mimir-place-label-hover .maplibregl-canvas {
+  cursor: pointer !important;
+}
+
 .deckgl-overlay,
 .deckgl-canvas-container,
 .deckgl-canvas {

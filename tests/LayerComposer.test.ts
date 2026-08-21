@@ -1457,6 +1457,201 @@ describe("LayerComposer", () => {
     });
   });
 
+  describe("temperature legend cropping", () => {
+    /** °C → the uint8 code the encoder writes for it on a [-50, 50] frame. */
+    const code = (celsius: number) => Math.round(((celsius + 50) / 100) * 255);
+
+    /**
+     * A frame covering the mocked viewport's neighbourhood, split down the
+     * middle: the western half sits at `west` °C and the eastern half at
+     * `east` °C. Lets a test pan between two temperature regimes.
+     */
+    const splitFrame = (west: number, east: number) => {
+      const width = 40;
+      const height = 20;
+      const data = new Uint8Array(width * height * 4);
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const i = (y * width + x) * 4;
+          data[i] = code(x < width / 2 ? west : east);
+          data[i + 3] = 255;
+        }
+      }
+      return { data, width, height };
+    };
+
+    const tempLayer = (image: unknown, rawRange: [number, number]) =>
+      ({
+        id: "t",
+        model: "BEL-IS",
+        analysis: "2026-08-13_00",
+        variable: "air_temperature_at_2m_agl",
+        rawRange,
+        image,
+        manifest: {
+          bounds: [-40, 40, 20, 75],
+          shape: { width: 40, height: 20 },
+          srcMin: -50,
+          srcMax: 50,
+        },
+      }) as unknown as InhouseLayer;
+
+    const palette = (composer: LayerComposer) =>
+      (composer as unknown as { temperatureScaleCValue: unknown })
+        .temperatureScaleCValue;
+
+    const observe = (
+      composer: LayerComposer,
+      layer: InhouseLayer,
+      unscale: [number, number] = [-50, 50],
+    ) =>
+      callPrivate(
+        composer,
+        "updateTempLegendWindow",
+        layer,
+        unscale,
+        palette(composer),
+      );
+
+    const labels = (host: HTMLDivElement) =>
+      [...host.querySelectorAll(".precip-legend__label")].map((el) =>
+        Number(el.textContent),
+      );
+
+    /** Deps whose map viewport covers `view` = [west, south, east, north]. */
+    const depsLookingAt = (view: [number, number, number, number]) => {
+      const deps = makeDeps();
+      deps.getMapBounds = () => ({
+        getWest: () => view[0],
+        getSouth: () => view[1],
+        getEast: () => view[2],
+        getNorth: () => view[3],
+      });
+      return deps;
+    };
+
+    it("shows the whole ramp until a frame has been composited", () => {
+      const deps = makeDeps();
+      const composer = new LayerComposer(deps);
+      composer.initLegends();
+      expect(labels(deps.dom.legendHost)).toEqual([
+        -50, -40, -30, -20, -10, 0, 10, 20, 30, 40, 50,
+      ]);
+    });
+
+    it("crops to the temperatures inside the current viewport", () => {
+      // Stops short of the midpoint: the pixel rect is ceil-ed so it covers
+      // partial pixels, and a viewport ending exactly on the seam would pull in
+      // the first column of the other half.
+      const deps = depsLookingAt([-40, 40, -25, 75]); // western half only
+      const composer = new LayerComposer(deps);
+      composer.initLegends();
+      observe(composer, tempLayer(splitFrame(5, 30), [code(5), code(30)]));
+      expect(labels(deps.dom.legendHost)).toEqual([-5, 0, 5, 10, 15]);
+    });
+
+    it("follows the map: panning to a hotter region moves the bar up", () => {
+      const cold = depsLookingAt([-40, 40, -25, 75]);
+      const hot = depsLookingAt([-5, 40, 20, 75]);
+      const frame = splitFrame(5, 30);
+      const range: [number, number] = [code(5), code(30)];
+
+      const a = new LayerComposer(cold);
+      a.initLegends();
+      observe(a, tempLayer(frame, range));
+
+      const b = new LayerComposer(hot);
+      b.initLegends();
+      observe(b, tempLayer(frame, range));
+
+      expect(Math.max(...labels(hot.dom.legendHost))).toBeGreaterThan(
+        Math.max(...labels(cold.dom.legendHost)),
+      );
+    });
+
+    it("comes back down after a hot frame instead of staying high", () => {
+      // The bug this replaced: the window unioned across the run, so one hot
+      // afternoon pinned the scale high for the rest of the forecast.
+      const deps = depsLookingAt([-40, 40, 20, 75]);
+      const composer = new LayerComposer(deps);
+      composer.initLegends();
+
+      observe(composer, tempLayer(splitFrame(25, 30), [code(25), code(30)]));
+      const hot = labels(deps.dom.legendHost);
+
+      observe(composer, tempLayer(splitFrame(2, 6), [code(2), code(6)]));
+      const mild = labels(deps.dom.legendHost);
+
+      expect(Math.max(...mild)).toBeLessThan(Math.max(...hot));
+      expect(Math.min(...mild)).toBeLessThan(Math.min(...hot));
+    });
+
+    it("falls back to the whole frame when the map looks away from the model", () => {
+      const deps = depsLookingAt([120, -40, 150, -10]); // nowhere near the frame
+      const composer = new LayerComposer(deps);
+      composer.initLegends();
+      observe(composer, tempLayer(splitFrame(5, 9), [code(5), code(9)]));
+      expect(labels(deps.dom.legendHost)).toEqual([-5, 0, 5, 10, 15]);
+    });
+
+    it("never recolours: a reading keeps the ramp's own colour", () => {
+      const deps = depsLookingAt([-40, 40, -25, 75]);
+      const composer = new LayerComposer(deps);
+      composer.initLegends();
+      const full = deps.dom.legendHost.innerHTML;
+      observe(composer, tempLayer(splitFrame(5, 9), [code(5), code(9)]));
+      const cropped = deps.dom.legendHost.innerHTML;
+      // #48a322 is the 8°C band in TEMPERATURE_SCALE; it survives the crop
+      // unchanged, and so does every other colour still on the bar.
+      expect(full).toContain("rgba(72, 163, 34, 1)");
+      expect(cropped).toContain("rgba(72, 163, 34, 1)");
+      // ...while a colour outside the window is simply not drawn any more.
+      expect(full).toContain("rgba(96, 0, 96, 1)"); // -40°C
+      expect(cropped).not.toContain("rgba(96, 0, 96, 1)");
+    });
+
+    it("keeps 0°C labelled, and marks it as the freezing line", () => {
+      const deps = depsLookingAt([-40, 40, 20, 75]);
+      const composer = new LayerComposer(deps);
+      composer.initLegends();
+      observe(composer, tempLayer(splitFrame(-4, 11), [code(-4), code(11)]));
+      expect(labels(deps.dom.legendHost)).toContain(0);
+      expect(
+        deps.dom.legendHost.querySelector(".precip-legend__label--freezing")
+          ?.textContent,
+      ).toBe("0");
+    });
+
+    it("leaves the bar alone when the window has not moved", () => {
+      const deps = depsLookingAt([-40, 40, 20, 75]);
+      const composer = new LayerComposer(deps);
+      composer.initLegends();
+      observe(composer, tempLayer(splitFrame(5, 9), [code(5), code(9)]));
+      const first = deps.dom.legendHost.innerHTML;
+      // A degree of drift is inside the 5°C snap, so nothing should redraw.
+      observe(composer, tempLayer(splitFrame(6, 9), [code(6), code(9)]));
+      expect(deps.dom.legendHost.innerHTML).toBe(first);
+    });
+
+    it("uses one ramp for every model, including BEL-BR", () => {
+      const deps = depsLookingAt([-40, 40, 20, 75]);
+      const composer = new LayerComposer(deps);
+      composer.initLegends();
+      const layer = tempLayer(splitFrame(20, 30), [code(20), code(30)]);
+      observe(composer, layer);
+      const standard = deps.dom.legendHost.innerHTML;
+
+      const tropicsDeps = depsLookingAt([-40, 40, 20, 75]);
+      const tropics = new LayerComposer(tropicsDeps);
+      tropics.initLegends();
+      observe(tropics, {
+        ...layer,
+        model: "BEL-BR",
+      } as unknown as InhouseLayer);
+      expect(tropicsDeps.dom.legendHost.innerHTML).toBe(standard);
+    });
+  });
+
   describe("renderPrecipLegend", () => {
     it("creates precip legend DOM elements", () => {
       const composer = new LayerComposer(makeDeps());

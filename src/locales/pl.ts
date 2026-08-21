@@ -128,6 +128,9 @@ export const pl: Record<string, string> = {
   "status.loadingDataset": "Wczytywanie {{model}}…",
   "status.datasetFailed": "Nie udało się wczytać {{model}}. Może teraz nie mieć danych.",
   "action.backToModel": "Powrót do {{model}}",
+  "status.newRun": "Dostępna jest nowsza prognoza.",
+  "action.updateForecast": "Aktualizuj prognozę",
+  "action.dismiss": "Zamknij",
   "status.loadingWavegram": "Wczytywanie wykresu falowania…",
   "status.loadingMeteogram": "Wczytywanie meteogramu…",
   "status.noData": "Brak dostępnych danych.",
@@ -196,6 +199,7 @@ export const pl: Record<string, string> = {
   // ── Timeline ─────────────────────────────────────────────────────────
   "timeline.play": "Odtwórz oś czasu",
   "timeline.selectedTime": "Wybrany czas",
+  "timeline.now": "Teraz",
 
   // ── Error messages ───────────────────────────────────────────────────
   "error.updateLayers": "Nie udało się zaktualizować warstw",

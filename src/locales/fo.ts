@@ -117,6 +117,9 @@ export const fo: Record<string, string> = {
   "status.loadingDataset": "Sæki {{model}}…",
   "status.datasetFailed": "Kundi ikki sótt {{model}}. Tað kann vera uttan dáta nú.",
   "action.backToModel": "Aftur til {{model}}",
+  "status.newRun": "Nýggjari spá er tøk.",
+  "action.updateForecast": "Dagfør veðurforsøgn",
+  "action.dismiss": "Lat aftur",
   "status.loadingWavegram": "Hleð bylgjurit…",
   "status.loadingMeteogram": "Hleð veðurriti…",
   "status.noData": "Vantar gögn.",
@@ -188,6 +191,7 @@ export const fo: Record<string, string> = {
   // ── Timeline ─────────────────────────────────────────────────────────
   "timeline.play": "Spila tímalínu",
   "timeline.selectedTime": "Valinn tími",
+  "timeline.now": "Nú",
 
   // ── Error messages ───────────────────────────────────────────────────
   "error.updateLayers": "Tókst ekki að uppfæra lag",

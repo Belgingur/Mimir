@@ -1,4 +1,4 @@
-import { translateDOM } from "../../lib/i18n";
+import { t } from "../../lib/i18n";
 
 export interface MeteogramTrigger {
   readonly el: HTMLButtonElement;
@@ -8,24 +8,42 @@ export interface MeteogramTrigger {
 }
 
 /**
- * An icon-only button added to the on-map zoom/grid control stack, shown on
- * touch / small screens only. Touch maps have no hover pointer, and tapping the
- * map to open a popup fights with pan/zoom gestures — so on mobile the meteogram
- * is opened for the centre-crosshair point via this control instead. Visibility
- * is governed by CSS (mobile viewport + forecast view) combined with the
- * `is-available` class, which reflects whether a map click would resolve to a
- * meteogram (i.e. not GWES/waves). No text label: it reads as one of the +/-/grid
- * buttons; the localized name is exposed via aria-label/title only.
+ * Where the trigger is mounted, which decides how it is styled.
+ *
+ * - `"stack"` — the legacy on-map `.zoom-buttons` +/−/grid control stack.
+ * - `"crosshair"` — the action slot immediately right of the centre-readout
+ *   value pill, so the pill and the button read as one control. This is the
+ *   layout used when TRANSIENT_CROSSHAIR is on, where the top-left stack no
+ *   longer exists on mobile at all.
+ */
+export type MeteogramTriggerVariant = "stack" | "crosshair";
+
+/**
+ * An icon-only button that opens the meteogram for the centre-crosshair point,
+ * shown on touch / small screens only. Touch maps have no hover pointer, and
+ * tapping the map to open a popup fights with pan/zoom gestures — so on mobile
+ * the meteogram is opened for the crosshair point via this control instead.
+ *
+ * Visibility is governed by CSS (mobile viewport + forecast view) combined with
+ * the `is-available` class, which reflects whether a map click would resolve to a
+ * meteogram (i.e. not GWES/waves). No text label: the localized name is exposed
+ * via aria-label/title only.
  */
 export function createMeteogramTrigger(opts: {
-  /** The `.zoom-buttons` control stack the button is appended to. */
+  /** The element the button is appended to (control stack or crosshair slot). */
   mount: HTMLElement;
+  /** Defaults to `"stack"` for backwards compatibility. */
+  variant?: MeteogramTriggerVariant;
   isMeteogramTarget: () => boolean;
   onActivate: () => void;
 }): MeteogramTrigger {
+  const variant = opts.variant ?? "stack";
   const btn = document.createElement("button");
   btn.type = "button";
-  btn.className = "zoom-buttons__meteogram forecast-only";
+  btn.className =
+    variant === "crosshair"
+      ? "center-readout__meteogram forecast-only"
+      : "zoom-buttons__meteogram forecast-only";
   btn.setAttribute("data-i18n", "meteogram.openAtCenter");
   btn.setAttribute("data-i18n-attr", "aria-label,title");
   btn.innerHTML = `
@@ -36,10 +54,19 @@ export function createMeteogramTrigger(opts: {
     </svg>
   `;
 
+  // Set the accessible name directly rather than via translateDOM(btn):
+  // translateDOM walks `root.querySelectorAll("[data-i18n]")`, which excludes
+  // the root itself, so passing the button translated nothing and the control
+  // shipped with no accessible name until the next locale change. The data-i18n
+  // attributes above are kept so setLocale()'s document-wide pass still keeps
+  // this in step when the language changes at runtime.
+  const label = t("meteogram.openAtCenter");
+  btn.setAttribute("aria-label", label);
+  btn.setAttribute("title", label);
+
   const onClick = () => opts.onActivate();
   btn.addEventListener("click", onClick);
   opts.mount.appendChild(btn);
-  translateDOM(btn);
 
   const refresh = () => {
     btn.classList.toggle("is-available", opts.isMeteogramTarget());

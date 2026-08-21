@@ -55,6 +55,51 @@ export const MODEL_RESOLUTION_METERS: Record<string, number> = {
   "UWC-DINI": 2000,
 };
 
+/**
+ * Where to frame each model whose domain does not fit its bounds box well —
+ * used only when the user's view is outside the model's coverage, so it is a
+ * "you were looking somewhere else, here is this model" view, never an override
+ * of where the reader already was.
+ */
+export const MODEL_REFOCUS_VIEW: Record<
+  string,
+  { center: [number, number]; zoom: number }
+> = {
+  "BEL-IS": { center: [-19, 65], zoom: 6.0 },
+  "UWC-IG": { center: [-36, 68.5], zoom: 3.5 },
+  RAP: { center: [-60, 62], zoom: 2.5 },
+  "UWC-DINI": { center: [-1.5, 53.8], zoom: 4.5 },
+};
+
+/**
+ * Whether a model has data where the user is currently looking.
+ *
+ * This is the one question that decides if a model switch is allowed to move the
+ * camera: the map stays where the user left it unless staying would show them a
+ * region the new model does not cover. Global models cover everything, so they
+ * never move it.
+ *
+ * The test is the viewport's CENTRE, not its full extent — the cheap, legible
+ * definition of "where you are looking". A view centred just outside a domain
+ * counts as uncovered even if a corner of the domain is still on screen, which
+ * is the behaviour you want: that reader is looking somewhere else.
+ */
+export const modelCoversPoint = (
+  model: string,
+  bounds: [number, number, number, number] | null | undefined,
+  center: [number, number],
+): boolean => {
+  if (GLOBAL_MODELS.has(model)) return true;
+  if (!bounds) return false;
+  const [west, south, east, north] = bounds;
+  const [lon, lat] = center;
+  if (lat < Math.min(south, north) || lat > Math.max(south, north)) return false;
+  // A domain spanning the antimeridian arrives with east < west.
+  return east < west
+    ? lon >= west || lon <= east
+    : lon >= Math.min(west, east) && lon <= Math.max(west, east);
+};
+
 export const shouldCenterOnBounds = (
   model: string,
   bounds: [number, number, number, number],

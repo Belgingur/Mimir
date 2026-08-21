@@ -101,8 +101,8 @@
   /* ── 5. Legend: don't overlap model card ─────────────────── */
 
   .legend-stack-card {
-    right: 8px;
-    left: auto;
+    left: calc(8px + var(--safe-area-left, 0px));
+    right: auto;
     bottom: calc(var(--bottom-bar-height) + var(--safe-area-bottom) + 56px);
     width: fit-content;
     max-width: calc(100vw - 16px);

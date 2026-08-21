@@ -1,0 +1,1209 @@
+{
+  "name": "GFS 2m temperature (Climate Reanalyzer style)",
+  "units": "degC",
+  "source": "Colour values sampled from a Climate Reanalyzer GFS 2m temperature colourbar (Climate Change Institute, University of Maine). Credit the data source if you reproduce their imagery; the ramp itself is a functional lookup table.",
+  "domain": {
+    "min": -60,
+    "max": 50,
+    "band_width": 1,
+    "band_count": 110
+  },
+  "overflow": {
+    "below_min": "#FFFFFF",
+    "above_max": "#8B8B8B"
+  },
+  "notes": [
+    "Canonical form is the discrete 110-band table: band i covers [lower, upper).",
+    "There is a deliberate hard discontinuity at 0 C (cyan -> green) marking the freezing line. Do not smooth across it.",
+    "The continuous knot list is a convenience for smooth shading. It reproduces the band table to within ~4/255 per channel except below -55 C, where the source ramp is coarsely stepped and error reaches ~19/255 in pale lavender.",
+    "This is a rainbow-family scale: not colourblind-safe and it creates apparent edges at hue transitions. That is accepted here because meteorology audiences read this convention fluently."
+  ],
+  "bands": [
+    {
+      "lower": -60,
+      "upper": -59,
+      "hex": "#F4F9F8",
+      "rgb": [
+        244,
+        249,
+        248
+      ]
+    },
+    {
+      "lower": -59,
+      "upper": -58,
+      "hex": "#F4F9F8",
+      "rgb": [
+        244,
+        249,
+        248
+      ]
+    },
+    {
+      "lower": -58,
+      "upper": -57,
+      "hex": "#E3D3E3",
+      "rgb": [
+        227,
+        211,
+        227
+      ]
+    },
+    {
+      "lower": -57,
+      "upper": -56,
+      "hex": "#E3D3E3",
+      "rgb": [
+        227,
+        211,
+        227
+      ]
+    },
+    {
+      "lower": -56,
+      "upper": -55,
+      "hex": "#E3D3E3",
+      "rgb": [
+        227,
+        211,
+        227
+      ]
+    },
+    {
+      "lower": -55,
+      "upper": -54,
+      "hex": "#CEB0CE",
+      "rgb": [
+        206,
+        176,
+        206
+      ]
+    },
+    {
+      "lower": -54,
+      "upper": -53,
+      "hex": "#CEB0CE",
+      "rgb": [
+        206,
+        176,
+        206
+      ]
+    },
+    {
+      "lower": -53,
+      "upper": -52,
+      "hex": "#C29EC2",
+      "rgb": [
+        194,
+        158,
+        194
+      ]
+    },
+    {
+      "lower": -52,
+      "upper": -51,
+      "hex": "#B68CB6",
+      "rgb": [
+        182,
+        140,
+        182
+      ]
+    },
+    {
+      "lower": -51,
+      "upper": -50,
+      "hex": "#B68CB6",
+      "rgb": [
+        182,
+        140,
+        182
+      ]
+    },
+    {
+      "lower": -50,
+      "upper": -49,
+      "hex": "#A873A8",
+      "rgb": [
+        168,
+        115,
+        168
+      ]
+    },
+    {
+      "lower": -49,
+      "upper": -48,
+      "hex": "#A873A8",
+      "rgb": [
+        168,
+        115,
+        168
+      ]
+    },
+    {
+      "lower": -48,
+      "upper": -47,
+      "hex": "#9D619D",
+      "rgb": [
+        157,
+        97,
+        157
+      ]
+    },
+    {
+      "lower": -47,
+      "upper": -46,
+      "hex": "#914F91",
+      "rgb": [
+        145,
+        79,
+        145
+      ]
+    },
+    {
+      "lower": -46,
+      "upper": -45,
+      "hex": "#914F91",
+      "rgb": [
+        145,
+        79,
+        145
+      ]
+    },
+    {
+      "lower": -45,
+      "upper": -44,
+      "hex": "#863C87",
+      "rgb": [
+        134,
+        60,
+        135
+      ]
+    },
+    {
+      "lower": -44,
+      "upper": -43,
+      "hex": "#7E317E",
+      "rgb": [
+        126,
+        49,
+        126
+      ]
+    },
+    {
+      "lower": -43,
+      "upper": -42,
+      "hex": "#762476",
+      "rgb": [
+        118,
+        36,
+        118
+      ]
+    },
+    {
+      "lower": -42,
+      "upper": -41,
+      "hex": "#6F186F",
+      "rgb": [
+        111,
+        24,
+        111
+      ]
+    },
+    {
+      "lower": -41,
+      "upper": -40,
+      "hex": "#680C68",
+      "rgb": [
+        104,
+        12,
+        104
+      ]
+    },
+    {
+      "lower": -40,
+      "upper": -39,
+      "hex": "#600060",
+      "rgb": [
+        96,
+        0,
+        96
+      ]
+    },
+    {
+      "lower": -39,
+      "upper": -38,
+      "hex": "#6F006F",
+      "rgb": [
+        111,
+        0,
+        111
+      ]
+    },
+    {
+      "lower": -38,
+      "upper": -37,
+      "hex": "#7E007E",
+      "rgb": [
+        126,
+        0,
+        126
+      ]
+    },
+    {
+      "lower": -37,
+      "upper": -36,
+      "hex": "#8C008C",
+      "rgb": [
+        140,
+        0,
+        140
+      ]
+    },
+    {
+      "lower": -36,
+      "upper": -35,
+      "hex": "#9B009B",
+      "rgb": [
+        155,
+        0,
+        155
+      ]
+    },
+    {
+      "lower": -35,
+      "upper": -34,
+      "hex": "#AA00AA",
+      "rgb": [
+        170,
+        0,
+        170
+      ]
+    },
+    {
+      "lower": -34,
+      "upper": -33,
+      "hex": "#B900B9",
+      "rgb": [
+        185,
+        0,
+        185
+      ]
+    },
+    {
+      "lower": -33,
+      "upper": -32,
+      "hex": "#C800C8",
+      "rgb": [
+        200,
+        0,
+        200
+      ]
+    },
+    {
+      "lower": -32,
+      "upper": -31,
+      "hex": "#D600D6",
+      "rgb": [
+        214,
+        0,
+        214
+      ]
+    },
+    {
+      "lower": -31,
+      "upper": -30,
+      "hex": "#E500E5",
+      "rgb": [
+        229,
+        0,
+        229
+      ]
+    },
+    {
+      "lower": -30,
+      "upper": -29,
+      "hex": "#F400F4",
+      "rgb": [
+        244,
+        0,
+        244
+      ]
+    },
+    {
+      "lower": -29,
+      "upper": -28,
+      "hex": "#DE04E9",
+      "rgb": [
+        222,
+        4,
+        233
+      ]
+    },
+    {
+      "lower": -28,
+      "upper": -27,
+      "hex": "#C807DE",
+      "rgb": [
+        200,
+        7,
+        222
+      ]
+    },
+    {
+      "lower": -27,
+      "upper": -26,
+      "hex": "#B20BD4",
+      "rgb": [
+        178,
+        11,
+        212
+      ]
+    },
+    {
+      "lower": -26,
+      "upper": -25,
+      "hex": "#9C0EC9",
+      "rgb": [
+        156,
+        14,
+        201
+      ]
+    },
+    {
+      "lower": -25,
+      "upper": -24,
+      "hex": "#8612BE",
+      "rgb": [
+        134,
+        18,
+        190
+      ]
+    },
+    {
+      "lower": -24,
+      "upper": -23,
+      "hex": "#7016B3",
+      "rgb": [
+        112,
+        22,
+        179
+      ]
+    },
+    {
+      "lower": -23,
+      "upper": -22,
+      "hex": "#5A19A8",
+      "rgb": [
+        90,
+        25,
+        168
+      ]
+    },
+    {
+      "lower": -22,
+      "upper": -21,
+      "hex": "#441D9E",
+      "rgb": [
+        68,
+        29,
+        158
+      ]
+    },
+    {
+      "lower": -21,
+      "upper": -20,
+      "hex": "#2E2093",
+      "rgb": [
+        46,
+        32,
+        147
+      ]
+    },
+    {
+      "lower": -20,
+      "upper": -19,
+      "hex": "#182488",
+      "rgb": [
+        24,
+        36,
+        136
+      ]
+    },
+    {
+      "lower": -19,
+      "upper": -18,
+      "hex": "#213395",
+      "rgb": [
+        33,
+        51,
+        149
+      ]
+    },
+    {
+      "lower": -18,
+      "upper": -17,
+      "hex": "#2B42A1",
+      "rgb": [
+        43,
+        66,
+        161
+      ]
+    },
+    {
+      "lower": -17,
+      "upper": -16,
+      "hex": "#3451AE",
+      "rgb": [
+        52,
+        81,
+        174
+      ]
+    },
+    {
+      "lower": -16,
+      "upper": -15,
+      "hex": "#3D60BB",
+      "rgb": [
+        61,
+        96,
+        187
+      ]
+    },
+    {
+      "lower": -15,
+      "upper": -14,
+      "hex": "#476EC7",
+      "rgb": [
+        71,
+        110,
+        199
+      ]
+    },
+    {
+      "lower": -14,
+      "upper": -13,
+      "hex": "#507DD4",
+      "rgb": [
+        80,
+        125,
+        212
+      ]
+    },
+    {
+      "lower": -13,
+      "upper": -12,
+      "hex": "#598CE1",
+      "rgb": [
+        89,
+        140,
+        225
+      ]
+    },
+    {
+      "lower": -12,
+      "upper": -11,
+      "hex": "#619BE7",
+      "rgb": [
+        97,
+        155,
+        231
+      ]
+    },
+    {
+      "lower": -11,
+      "upper": -10,
+      "hex": "#6CAAFA",
+      "rgb": [
+        108,
+        170,
+        250
+      ]
+    },
+    {
+      "lower": -10,
+      "upper": -9,
+      "hex": "#619BE7",
+      "rgb": [
+        97,
+        155,
+        231
+      ]
+    },
+    {
+      "lower": -9,
+      "upper": -8,
+      "hex": "#548CC9",
+      "rgb": [
+        84,
+        140,
+        201
+      ]
+    },
+    {
+      "lower": -8,
+      "upper": -7,
+      "hex": "#487EB1",
+      "rgb": [
+        72,
+        126,
+        177
+      ]
+    },
+    {
+      "lower": -7,
+      "upper": -6,
+      "hex": "#3C6F98",
+      "rgb": [
+        60,
+        111,
+        152
+      ]
+    },
+    {
+      "lower": -6,
+      "upper": -5,
+      "hex": "#306080",
+      "rgb": [
+        48,
+        96,
+        128
+      ]
+    },
+    {
+      "lower": -5,
+      "upper": -4,
+      "hex": "#437C99",
+      "rgb": [
+        67,
+        124,
+        153
+      ]
+    },
+    {
+      "lower": -4,
+      "upper": -3,
+      "hex": "#5698B3",
+      "rgb": [
+        86,
+        152,
+        179
+      ]
+    },
+    {
+      "lower": -3,
+      "upper": -2,
+      "hex": "#6AB4CC",
+      "rgb": [
+        106,
+        180,
+        204
+      ]
+    },
+    {
+      "lower": -2,
+      "upper": -1,
+      "hex": "#7DD0E6",
+      "rgb": [
+        125,
+        208,
+        230
+      ]
+    },
+    {
+      "lower": -1,
+      "upper": 0,
+      "hex": "#90ECFF",
+      "rgb": [
+        144,
+        236,
+        255
+      ]
+    },
+    {
+      "lower": 0,
+      "upper": 1,
+      "hex": "#98E6B0",
+      "rgb": [
+        152,
+        230,
+        176
+      ]
+    },
+    {
+      "lower": 1,
+      "upper": 2,
+      "hex": "#7AD28D",
+      "rgb": [
+        122,
+        210,
+        141
+      ]
+    },
+    {
+      "lower": 2,
+      "upper": 3,
+      "hex": "#5BBD6A",
+      "rgb": [
+        91,
+        189,
+        106
+      ]
+    },
+    {
+      "lower": 3,
+      "upper": 4,
+      "hex": "#3DA946",
+      "rgb": [
+        61,
+        169,
+        70
+      ]
+    },
+    {
+      "lower": 4,
+      "upper": 5,
+      "hex": "#1E9423",
+      "rgb": [
+        30,
+        148,
+        35
+      ]
+    },
+    {
+      "lower": 5,
+      "upper": 6,
+      "hex": "#008000",
+      "rgb": [
+        0,
+        128,
+        0
+      ]
+    },
+    {
+      "lower": 6,
+      "upper": 7,
+      "hex": "#188C0B",
+      "rgb": [
+        24,
+        140,
+        11
+      ]
+    },
+    {
+      "lower": 7,
+      "upper": 8,
+      "hex": "#309816",
+      "rgb": [
+        48,
+        152,
+        22
+      ]
+    },
+    {
+      "lower": 8,
+      "upper": 9,
+      "hex": "#48A322",
+      "rgb": [
+        72,
+        163,
+        34
+      ]
+    },
+    {
+      "lower": 9,
+      "upper": 10,
+      "hex": "#60AF2D",
+      "rgb": [
+        96,
+        175,
+        45
+      ]
+    },
+    {
+      "lower": 10,
+      "upper": 11,
+      "hex": "#78BB38",
+      "rgb": [
+        120,
+        187,
+        56
+      ]
+    },
+    {
+      "lower": 11,
+      "upper": 12,
+      "hex": "#90C743",
+      "rgb": [
+        144,
+        199,
+        67
+      ]
+    },
+    {
+      "lower": 12,
+      "upper": 13,
+      "hex": "#A8D34E",
+      "rgb": [
+        168,
+        211,
+        78
+      ]
+    },
+    {
+      "lower": 13,
+      "upper": 14,
+      "hex": "#C0DE5A",
+      "rgb": [
+        192,
+        222,
+        90
+      ]
+    },
+    {
+      "lower": 14,
+      "upper": 15,
+      "hex": "#D8EA65",
+      "rgb": [
+        216,
+        234,
+        101
+      ]
+    },
+    {
+      "lower": 15,
+      "upper": 16,
+      "hex": "#F0F670",
+      "rgb": [
+        240,
+        246,
+        112
+      ]
+    },
+    {
+      "lower": 16,
+      "upper": 17,
+      "hex": "#F1E265",
+      "rgb": [
+        241,
+        226,
+        101
+      ]
+    },
+    {
+      "lower": 17,
+      "upper": 18,
+      "hex": "#F1CF59",
+      "rgb": [
+        241,
+        207,
+        89
+      ]
+    },
+    {
+      "lower": 18,
+      "upper": 19,
+      "hex": "#F2BB4E",
+      "rgb": [
+        242,
+        187,
+        78
+      ]
+    },
+    {
+      "lower": 19,
+      "upper": 20,
+      "hex": "#F3A843",
+      "rgb": [
+        243,
+        168,
+        67
+      ]
+    },
+    {
+      "lower": 20,
+      "upper": 21,
+      "hex": "#F39437",
+      "rgb": [
+        243,
+        148,
+        55
+      ]
+    },
+    {
+      "lower": 21,
+      "upper": 22,
+      "hex": "#F4812C",
+      "rgb": [
+        244,
+        129,
+        44
+      ]
+    },
+    {
+      "lower": 22,
+      "upper": 23,
+      "hex": "#F56D21",
+      "rgb": [
+        245,
+        109,
+        33
+      ]
+    },
+    {
+      "lower": 23,
+      "upper": 24,
+      "hex": "#F55A15",
+      "rgb": [
+        245,
+        90,
+        21
+      ]
+    },
+    {
+      "lower": 24,
+      "upper": 25,
+      "hex": "#F6460A",
+      "rgb": [
+        246,
+        70,
+        10
+      ]
+    },
+    {
+      "lower": 25,
+      "upper": 26,
+      "hex": "#F02906",
+      "rgb": [
+        240,
+        41,
+        6
+      ]
+    },
+    {
+      "lower": 26,
+      "upper": 27,
+      "hex": "#E42405",
+      "rgb": [
+        228,
+        36,
+        5
+      ]
+    },
+    {
+      "lower": 27,
+      "upper": 28,
+      "hex": "#D72005",
+      "rgb": [
+        215,
+        32,
+        5
+      ]
+    },
+    {
+      "lower": 28,
+      "upper": 29,
+      "hex": "#CB1B04",
+      "rgb": [
+        203,
+        27,
+        4
+      ]
+    },
+    {
+      "lower": 29,
+      "upper": 30,
+      "hex": "#BE1703",
+      "rgb": [
+        190,
+        23,
+        3
+      ]
+    },
+    {
+      "lower": 30,
+      "upper": 31,
+      "hex": "#B21203",
+      "rgb": [
+        178,
+        18,
+        3
+      ]
+    },
+    {
+      "lower": 31,
+      "upper": 32,
+      "hex": "#A50E02",
+      "rgb": [
+        165,
+        14,
+        2
+      ]
+    },
+    {
+      "lower": 32,
+      "upper": 33,
+      "hex": "#990901",
+      "rgb": [
+        153,
+        9,
+        1
+      ]
+    },
+    {
+      "lower": 33,
+      "upper": 34,
+      "hex": "#8C0501",
+      "rgb": [
+        140,
+        5,
+        1
+      ]
+    },
+    {
+      "lower": 34,
+      "upper": 35,
+      "hex": "#800000",
+      "rgb": [
+        128,
+        0,
+        0
+      ]
+    },
+    {
+      "lower": 35,
+      "upper": 36,
+      "hex": "#8D1917",
+      "rgb": [
+        141,
+        25,
+        23
+      ]
+    },
+    {
+      "lower": 36,
+      "upper": 37,
+      "hex": "#99322E",
+      "rgb": [
+        153,
+        50,
+        46
+      ]
+    },
+    {
+      "lower": 37,
+      "upper": 38,
+      "hex": "#A64A46",
+      "rgb": [
+        166,
+        74,
+        70
+      ]
+    },
+    {
+      "lower": 38,
+      "upper": 39,
+      "hex": "#B3635D",
+      "rgb": [
+        179,
+        99,
+        93
+      ]
+    },
+    {
+      "lower": 39,
+      "upper": 40,
+      "hex": "#C07C74",
+      "rgb": [
+        192,
+        124,
+        116
+      ]
+    },
+    {
+      "lower": 40,
+      "upper": 41,
+      "hex": "#CC958B",
+      "rgb": [
+        204,
+        149,
+        139
+      ]
+    },
+    {
+      "lower": 41,
+      "upper": 42,
+      "hex": "#D9AEA2",
+      "rgb": [
+        217,
+        174,
+        162
+      ]
+    },
+    {
+      "lower": 42,
+      "upper": 43,
+      "hex": "#E6C6BA",
+      "rgb": [
+        230,
+        198,
+        186
+      ]
+    },
+    {
+      "lower": 43,
+      "upper": 44,
+      "hex": "#F2DFD1",
+      "rgb": [
+        242,
+        223,
+        209
+      ]
+    },
+    {
+      "lower": 44,
+      "upper": 45,
+      "hex": "#FFF8E8",
+      "rgb": [
+        255,
+        248,
+        232
+      ]
+    },
+    {
+      "lower": 45,
+      "upper": 46,
+      "hex": "#EEE7D9",
+      "rgb": [
+        238,
+        231,
+        217
+      ]
+    },
+    {
+      "lower": 46,
+      "upper": 47,
+      "hex": "#E7D8CA",
+      "rgb": [
+        231,
+        216,
+        202
+      ]
+    },
+    {
+      "lower": 47,
+      "upper": 48,
+      "hex": "#D1C7B7",
+      "rgb": [
+        209,
+        199,
+        183
+      ]
+    },
+    {
+      "lower": 48,
+      "upper": 49,
+      "hex": "#ACB8AD",
+      "rgb": [
+        172,
+        184,
+        173
+      ]
+    },
+    {
+      "lower": 49,
+      "upper": 50,
+      "hex": "#9FA498",
+      "rgb": [
+        159,
+        164,
+        152
+      ]
+    }
+  ],
+  "knots_continuous": {
+    "below_zero": [
+      {
+        "t": -60,
+        "hex": "#F4F9F8"
+      },
+      {
+        "t": -57,
+        "hex": "#E3D3E3"
+      },
+      {
+        "t": -54,
+        "hex": "#CEB0CE"
+      },
+      {
+        "t": -51,
+        "hex": "#B68CB6"
+      },
+      {
+        "t": -48,
+        "hex": "#A873A8"
+      },
+      {
+        "t": -45,
+        "hex": "#914F91"
+      },
+      {
+        "t": -42,
+        "hex": "#762476"
+      },
+      {
+        "t": -40,
+        "hex": "#600060"
+      },
+      {
+        "t": -30,
+        "hex": "#F400F4"
+      },
+      {
+        "t": -20,
+        "hex": "#182488"
+      },
+      {
+        "t": -10,
+        "hex": "#6CAAFA"
+      },
+      {
+        "t": -5,
+        "hex": "#306080"
+      },
+      {
+        "t": 0,
+        "hex": "#90ECFF"
+      }
+    ],
+    "zero_and_above": [
+      {
+        "t": 0,
+        "hex": "#98E6B0"
+      },
+      {
+        "t": 5,
+        "hex": "#008000"
+      },
+      {
+        "t": 15,
+        "hex": "#F0F670"
+      },
+      {
+        "t": 25,
+        "hex": "#F6460A"
+      },
+      {
+        "t": 35,
+        "hex": "#800000"
+      },
+      {
+        "t": 45,
+        "hex": "#FFF8E8"
+      },
+      {
+        "t": 50,
+        "hex": "#9FA498"
+      }
+    ]
+  }
+}
