@@ -407,6 +407,83 @@ describe("InhouseCatalogController", () => {
     });
   });
 
+  describe("refreshLatestAnalysis", () => {
+    const selectRun = (analysis = "2026-03-04_00") => {
+      const state = ctrl as unknown as InhouseInternals;
+      state._inhouseSelectedModel = "gfs-1";
+      state._inhouseSelectedAnalysis = analysis;
+      state._inhouseAnalyses = [analysis];
+      state._inhouseVariables = ["air_temperature_at_2m_agl"];
+      state._inhouseSelectedVariable = "air_temperature_at_2m_agl";
+    };
+
+    it("updates the selected run and selectors without using cached catalogs", async () => {
+      selectRun();
+      const fetchMock = stubFetch({
+        "analyses.json": {
+          analyses: ["2026-03-04_00", "2026-03-05_00"],
+          latest: "2026-03-05_00",
+        },
+        "variables.json": {
+          variables: [{ id: "wind_speed", unit: "m/s" }],
+          default: "wind_speed",
+        },
+      });
+
+      await expect(ctrl.refreshLatestAnalysis()).resolves.toBe(true);
+
+      expect(ctrl.inhouseSelectedAnalysis).toBe("2026-03-05_00");
+      expect(ctrl.inhouseVariables).toEqual(["wind_speed"]);
+      expect(dom.inhouseAnalysisSelect.value).toBe("2026-03-05_00");
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        1,
+        expect.stringContaining("/gfs-1/analyses.json"),
+        expect.objectContaining({ cache: "no-store" }),
+      );
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining("/2026-03-05_00/variables.json"),
+        expect.objectContaining({ cache: "no-store" }),
+      );
+    });
+
+    it("keeps the working run intact when the refresh fails", async () => {
+      selectRun();
+      stubFetch({
+        "analyses.json": {
+          analyses: ["2026-03-04_00", "2026-03-05_00"],
+          latest: "2026-03-05_00",
+        },
+      });
+
+      await expect(ctrl.refreshLatestAnalysis()).resolves.toBe(false);
+
+      expect(ctrl.inhouseSelectedAnalysis).toBe("2026-03-04_00");
+      expect(ctrl.inhouseVariables).toEqual(["air_temperature_at_2m_agl"]);
+      expect(dom.inhouseWarningEl.textContent).toContain(
+        "Failed to refresh forecast",
+      );
+    });
+
+    it("refreshes the analysis list without rebuilding an already current run", async () => {
+      selectRun("2026-03-05_00");
+      const fetchMock = stubFetch({
+        "analyses.json": {
+          analyses: ["2026-03-04_00", "2026-03-05_00"],
+          latest: "2026-03-05_00",
+        },
+      });
+
+      await expect(ctrl.refreshLatestAnalysis()).resolves.toBe(true);
+
+      expect(ctrl.inhouseAnalyses).toEqual([
+        "2026-03-04_00",
+        "2026-03-05_00",
+      ]);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe("getInhouseFrameUrl", () => {
     it("builds frame URL with zero-padded index", () => {
       const layer = makeLayer();
@@ -1114,6 +1191,24 @@ describe("InhouseCatalogController", () => {
       expect(ctrl.inhouseVariables).toContain("air_temperature_at_2m_agl");
     });
 
+    it("loads metadata only so initWeather owns the single layer bootstrap", async () => {
+      stubFetch({
+        "models.json": { models: [{ id: "gfs-1", default: true }] },
+        "analyses.json": {
+          analyses: ["2026-03-04_00"],
+          latest: "2026-03-04_00",
+        },
+        "variables.json": {
+          variables: [{ id: "air_temperature_at_2m_agl" }],
+        },
+      });
+      const ensure = vi.spyOn(ctrl, "ensureInhouseGroupLayers");
+
+      await ctrl.loadInhouseCatalog();
+
+      expect(ensure).not.toHaveBeenCalled();
+    });
+
     it("uses persisted model if available", async () => {
       const d = makeDeps({ dom, persistedModelId: "GWES" });
       const c = new InhouseCatalogController(d);
@@ -1334,6 +1429,74 @@ describe("InhouseCatalogController", () => {
       const vars = ctrl.inhouseLayers.map((l) => l.variable);
       expect(vars).toContain("wind_speed");
       expect(vars).toContain("wind_uv_10m");
+    });
+
+    it("loads independent manifests concurrently while preserving layer order", async () => {
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedModel = "gfs-1";
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedAnalysis =
+        "2026-03-04_00";
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = [
+        "wind_speed",
+        "wind_uv_10m",
+      ];
+
+      const started: string[] = [];
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      vi.spyOn(ctrl, "loadInhouseManifest").mockImplementation(
+        async (_model, analysis, variable) => {
+          started.push(variable);
+          await gate;
+          return makeManifest({ analysisTime: analysis });
+        },
+      );
+      vi.spyOn(ctrl, "loadInhouseFrameSet").mockResolvedValue();
+
+      const pending = ctrl.ensureInhouseGroupLayers("wind");
+      expect(started).toEqual(["wind_speed", "wind_uv_10m"]);
+      release();
+      await pending;
+
+      expect(ctrl.inhouseLayers.map((layer) => layer.variable)).toEqual([
+        "wind_speed",
+        "wind_uv_10m",
+      ]);
+    });
+
+    it("resolves only after the active frame is loaded and keeps the viewed time", async () => {
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedModel = "gfs-1";
+      (ctrl as unknown as InhouseInternals)._inhouseSelectedAnalysis =
+        "2026-03-04_00";
+      (ctrl as unknown as InhouseInternals)._inhouseVariables = [
+        "air_temperature_at_2m_agl",
+      ];
+      vi.spyOn(ctrl, "loadInhouseManifest").mockResolvedValue(makeManifest());
+
+      let releaseFrame!: () => void;
+      const frameGate = new Promise<void>((resolve) => {
+        releaseFrame = resolve;
+      });
+      const loadFrame = vi
+        .spyOn(ctrl, "loadInhouseFrameSet")
+        .mockReturnValue(frameGate);
+
+      let settled = false;
+      const pending = ctrl
+        .ensureInhouseGroupLayers("temperature")
+        .then(() => {
+          settled = true;
+        });
+      await vi.waitFor(() => expect(loadFrame).toHaveBeenCalledTimes(1));
+
+      expect(settled).toBe(false);
+      expect(deps.setCurrentDatetime).toHaveBeenCalledWith(
+        "2026-03-04T00:00:00Z",
+      );
+      releaseFrame();
+      await pending;
+      expect(settled).toBe(true);
     });
 
     it("clears layers when no primary variable found", async () => {
@@ -1948,9 +2111,12 @@ describe("InhouseCatalogController", () => {
         width: 100,
         height: 4,
       };
-      vi.spyOn(ctrl, "loadInhouseTexture").mockResolvedValue(mockTexture);
+      const loadTexture = vi
+        .spyOn(ctrl, "loadInhouseTexture")
+        .mockResolvedValue(mockTexture);
 
       await ctrl.loadInhouseFrameSet();
+      expect(loadTexture).toHaveBeenCalledTimes(1);
       expect(deps.scheduleUpdateLayers).toHaveBeenCalled();
     });
 

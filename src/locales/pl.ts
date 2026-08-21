@@ -129,7 +129,7 @@ export const pl: Record<string, string> = {
   "status.datasetFailed": "Nie udało się wczytać {{model}}. Może teraz nie mieć danych.",
   "action.backToModel": "Powrót do {{model}}",
   "status.newRun": "Dostępna jest nowsza prognoza.",
-  "action.reload": "Odśwież",
+  "action.updateForecast": "Aktualizuj prognozę",
   "action.dismiss": "Zamknij",
   "status.loadingWavegram": "Wczytywanie wykresu falowania…",
   "status.loadingMeteogram": "Wczytywanie meteogramu…",

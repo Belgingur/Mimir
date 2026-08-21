@@ -118,7 +118,7 @@ export const en: Record<string, string> = {
   "status.datasetFailed": "Couldn't load {{model}}. It may have no data right now.",
   "action.backToModel": "Back to {{model}}",
   "status.newRun": "A newer forecast run is available.",
-  "action.reload": "Reload",
+  "action.updateForecast": "Update forecast",
   "action.dismiss": "Dismiss",
   "status.loadingWavegram": "Loading wavegram…",
   "status.loadingMeteogram": "Loading meteogram…",

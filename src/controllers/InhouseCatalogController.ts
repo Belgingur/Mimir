@@ -426,8 +426,8 @@ export class InhouseCatalogController {
     return `${root}/${FORECAST_DATA_SEGMENT}/${model}/${analysis}/${variable}`;
   }
 
-  async fetchJson<T>(url: string): Promise<T> {
-    const response = await fetch(url);
+  async fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+    const response = init ? await fetch(url, init) : await fetch(url);
     if (!response.ok) {
       throw new Error(`Failed to load ${url} (${response.status})`);
     }
@@ -457,6 +457,70 @@ export class InhouseCatalogController {
       return pickDefaultId(ids, defaultId) || null;
     } catch {
       return null;
+    }
+  }
+
+  /**
+   * Refresh the selected model's catalog and move to its latest advertised
+   * analysis without tearing down the map or the rest of the application.
+   *
+   * State is committed only after both catalog requests succeed, so a failed
+   * refresh leaves the currently working run intact. Returns true when the
+   * server was checked successfully (including when this tab is already current).
+   */
+  async refreshLatestAnalysis(): Promise<boolean> {
+    const model = this._inhouseSelectedModel;
+    if (!model) return false;
+
+    const root = this.getInhouseRoot();
+    try {
+      const analysesRaw = await this.fetchJson<unknown>(
+        `${root}/${FORECAST_DATA_SEGMENT}/${model}/analyses.json`,
+        { cache: "no-store" },
+      );
+      const analysesNorm = normalizeIdList(analysesRaw, "latest");
+      const analyses = Array.isArray(analysesNorm)
+        ? analysesNorm
+        : analysesNorm.ids;
+      const latest = Array.isArray(analysesNorm)
+        ? (analyses[0] ?? "")
+        : pickDefaultId(analyses, analysesNorm.defaultId);
+      if (!latest) {
+        this.setInhouseWarning(`No analyses found for ${model}.`);
+        return false;
+      }
+
+      if (
+        this._inhouseSelectedAnalysis &&
+        latest <= this._inhouseSelectedAnalysis
+      ) {
+        this._inhouseAnalyses = analyses;
+        this.refreshInhouseSelectors();
+        return true;
+      }
+
+      const varsRaw = await this.fetchJson<unknown>(
+        `${root}/${FORECAST_DATA_SEGMENT}/${model}/${latest}/variables.json`,
+        { cache: "no-store" },
+      );
+      const varsNorm = normalizeVariableList(varsRaw);
+
+      this._inhouseAnalyses = analyses;
+      this._inhouseSelectedAnalysis = latest;
+      this._inhouseVariables = varsNorm.ids;
+      this._inhouseVariableMeta = varsNorm.meta;
+      this._inhouseSelectedVariable = pickDefaultId(
+        this._inhouseVariables,
+        varsNorm.defaultId,
+      );
+      this._precipCandidateIndex = 0;
+      this.refreshInhouseSelectors();
+      return true;
+    } catch (error) {
+      this.setInhouseWarning(
+        `Failed to refresh forecast: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return false;
     }
   }
 
@@ -1154,25 +1218,6 @@ export class InhouseCatalogController {
           } else {
             layer.rawRange = null;
           }
-          // Pre-fetch adjacent frames
-          const prevIndex = Math.max(0, matchIndex - 1);
-          const nextIndex = Math.min(layer.times.length - 1, matchIndex + 1);
-          const prevName = layer.manifest.fileTemplate.replace(
-            "{index:03d}",
-            formatIndex(prevIndex, 3),
-          );
-          const nextName = layer.manifest.fileTemplate.replace(
-            "{index:03d}",
-            formatIndex(nextIndex, 3),
-          );
-          void this.loadInhouseTexture(
-            `${baseUrl}/${prevName}`,
-            undefined,
-          ).catch(() => undefined);
-          void this.loadInhouseTexture(
-            `${baseUrl}/${nextName}`,
-            undefined,
-          ).catch(() => undefined);
           return { layer, url };
         } catch (error) {
           throw { layer, error };
@@ -1562,10 +1607,6 @@ export class InhouseCatalogController {
     if (!this._inhouseModels.length) {
       this.setInhouseWarning("No in-house models found.");
     }
-    const layerMode = this.deps.getUiState().layerMode;
-    if (layerMode !== "waves") {
-      void this.ensureInhouseGroupLayers(layerMode as InhouseGroupId);
-    }
   }
 
   async loadInhouseAnalyses(model: string): Promise<void> {
@@ -1821,49 +1862,53 @@ export class InhouseCatalogController {
     const model = this._inhouseSelectedModel;
     const analysis = this._inhouseSelectedAnalysis;
     const previousDatetime = this.deps.getCurrentDatetime();
-    const nextLayers: InhouseLayer[] = [];
-    for (const spec of specs) {
-      const id = `${model}:${analysis}:${spec.variable}`;
-      const existing = this._inhouseLayers.find((layer) => layer.id === id);
-      if (existing) {
-        existing.visible = spec.visible;
-        existing.renderMode = spec.renderMode;
-        nextLayers.push(existing);
-        continue;
-      }
-      try {
-        const manifest = await this.loadInhouseManifest(
-          model,
-          analysis,
-          spec.variable,
-        );
-        if (!manifest) continue;
-        if (manifest.analysisTime !== analysis) {
-          this.setInhouseWarning(
-            `Manifest analysisTime mismatch for ${spec.variable}.`,
-          );
-          continue;
+    const loadedLayers = await Promise.all(
+      specs.map(async (spec): Promise<InhouseLayer | null> => {
+        const id = `${model}:${analysis}:${spec.variable}`;
+        const existing = this._inhouseLayers.find((layer) => layer.id === id);
+        if (existing) {
+          existing.visible = spec.visible;
+          existing.renderMode = spec.renderMode;
+          return existing;
         }
-        const times = resolveManifestTimes(manifest);
-        nextLayers.push({
-          id,
-          model,
-          analysis,
-          variable: spec.variable,
-          manifest,
-          times,
-          visible: spec.visible,
-          image: null,
-          scalar: null,
-          rasterScalar: null,
-          renderMode: spec.renderMode,
-        });
-      } catch (error) {
-        this.setInhouseWarning(
-          `Failed to load manifest: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      }
-    }
+        try {
+          const manifest = await this.loadInhouseManifest(
+            model,
+            analysis,
+            spec.variable,
+          );
+          if (!manifest) return null;
+          if (manifest.analysisTime !== analysis) {
+            this.setInhouseWarning(
+              `Manifest analysisTime mismatch for ${spec.variable}.`,
+            );
+            return null;
+          }
+          const times = resolveManifestTimes(manifest);
+          return {
+            id,
+            model,
+            analysis,
+            variable: spec.variable,
+            manifest,
+            times,
+            visible: spec.visible,
+            image: null,
+            scalar: null,
+            rasterScalar: null,
+            renderMode: spec.renderMode,
+          };
+        } catch (error) {
+          this.setInhouseWarning(
+            `Failed to load manifest: ${error instanceof Error ? error.message : String(error)}`,
+          );
+          return null;
+        }
+      }),
+    );
+    const nextLayers = loadedLayers.filter(
+      (layer): layer is InhouseLayer => layer !== null,
+    );
     this._inhouseLayers.length = 0;
     this._inhouseLayers.push(...nextLayers);
     const primaryLayer = this._inhouseLayers[0];
@@ -1885,7 +1930,7 @@ export class InhouseCatalogController {
         primaryLayer.manifest.bounds,
       );
     }
-    void this.loadInhouseFrameSet();
+    await this.loadInhouseFrameSet();
   }
 
   // ---------------------------------------------------------------------------

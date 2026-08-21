@@ -1,11 +1,10 @@
 /**
  * "A newer forecast run is available" pill.
  *
- * Deliberately a prompt rather than a live swap. The timeline's step list comes
- * off the loaded run's manifest, and the persisted scrub position is an ordinal
- * into that list — so exchanging the run underneath a reader would move the hour
- * they are looking at, without them asking. Offering a reload keeps the choice
- * with the reader and costs none of the cache invalidation a live swap needs.
+ * Deliberately a prompt rather than an automatic swap. Accepting it refreshes
+ * only the forecast catalog and active layers; the controller keeps the map
+ * alive and matches the reader's current absolute time to the nearest step in
+ * the new run.
  *
  * Follows the same shape as createDatasetLoadingOverlay: build the DOM once,
  * append to a parent, return a small imperative handle.
