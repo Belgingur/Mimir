@@ -27,7 +27,7 @@
     "d3-contour": "^4.0.2",
     "d3-time-format": "^4.1.0",
     "geotiff": "^3.0.0",
-    "maplibre-gl": "^5.2.0",
+    "maplibre-gl": "^6.4.1",
     "weatherlayers-gl": "2026.5.1"
   },
   "devDependencies": {
