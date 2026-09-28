@@ -30,6 +30,11 @@ export interface TimelineDeps {
   getInhouseLayers: () => { times?: string[] }[];
   syncInhouseTimeToTimeline: () => void;
   loadInhouseFrameSet: () => Promise<void>;
+  /** Warm the frames just after `index`, in playback order. */
+  prefetchAheadForPlayback?: (index: number) => void;
+  /** Whether a frame's textures are all cached, i.e. it will appear without a
+   *  network round trip. Drives the timeline's buffered-range fill. */
+  isFrameBuffered?: (index: number) => boolean;
   isWavegramOpen: () => boolean;
   renderGridLabels: (step: number, visible: boolean) => void;
   getGridStepForZoom: () => number;
@@ -73,6 +78,8 @@ export class TimelineController {
   private timelineBubbleTextEl: HTMLSpanElement | null = null;
   private timelineRailEl: HTMLDivElement | null = null;
   private timelineProgressEl: HTMLDivElement | null = null;
+  /** Fill showing how far ahead of the playhead frames are already in hand. */
+  private timelineBufferedEl: HTMLDivElement | null = null;
   private timelineMarkerEl: HTMLDivElement | null = null;
   /** Static tick showing where the present hour falls in the run. Absent from
    *  the null-checks below: a rail without it still renders correctly. */
@@ -298,6 +305,7 @@ export class TimelineController {
     }
     this.timelineBubbleEl.style.left = `${ratio * 100}%`;
     this.timelineProgressEl.style.width = `${ratio * 100}%`;
+    this.renderBufferedRange(selectedIndex, datetimes.length);
     this.timelineMarkerEl.style.left = `${ratio * 100}%`;
     if (this.timelineNowEl) {
       // Re-read the clock on every render rather than caching it: this is what
@@ -375,6 +383,7 @@ export class TimelineController {
           <span class="timeline-bubble__text"></span>
         </button>
         <div class="timeline-rail">
+          <div class="timeline-rail__buffered"></div>
           <div class="timeline-rail__progress"></div>
           <div class="timeline-rail__now" hidden title="${t("timeline.now")}"></div>
           <div class="timeline-rail__marker"></div>
@@ -392,6 +401,9 @@ export class TimelineController {
     this.timelineBubbleTextEl = this.timelineCustomEl.querySelector(
       ".timeline-bubble__text",
     ) as HTMLSpanElement;
+    this.timelineBufferedEl = this.timelineCustomEl.querySelector(
+      ".timeline-rail__buffered",
+    ) as HTMLDivElement;
     this.timelineRailEl = this.timelineCustomEl.querySelector(
       ".timeline-rail",
     ) as HTMLDivElement;
@@ -468,6 +480,40 @@ export class TimelineController {
   ): void {
     if (!this.timelineLoadingEl) return;
     this.timelineLoadingEl.style.display = "none";
+  }
+
+  /**
+   * How far ahead of the playhead the forecast is already in hand.
+   *
+   * Playback used to give the reader nothing at all while it waited on a frame:
+   * `setTimelineLoading` is a no-op, so a stall on a slow connection looked like
+   * the app had simply frozen. A spinner is the wrong answer — it appears at the
+   * moment of the stall, says only "wait", and draws the eye away from the map.
+   *
+   * A buffered fill behind the playhead is the idiom every video scrubber uses,
+   * and it answers the real question: it is visible before the stall (the buffer
+   * shrinking is the warning), it says how much runway is left, and when it sits
+   * well ahead of the playhead it silently confirms that playback is healthy.
+   *
+   * Runs to the first frame that is NOT in hand, so what it shows is a
+   * guaranteed-smooth run rather than a count of cached frames scattered about.
+   */
+  private renderBufferedRange(selectedIndex: number, total: number): void {
+    const el = this.timelineBufferedEl;
+    if (!el) return;
+    const isBuffered = this.deps.isFrameBuffered;
+    const playing =
+      this._playbackState === "playing" ||
+      this._playbackState === "waitingForFrame";
+    if (!isBuffered || !playing || total <= 1) {
+      el.style.width = "0%";
+      el.classList.remove("is-visible");
+      return;
+    }
+    let last = selectedIndex;
+    while (last + 1 < total && isBuffered(last + 1)) last += 1;
+    el.style.width = `${(last / (total - 1)) * 100}%`;
+    el.classList.toggle("is-visible", last > selectedIndex);
   }
 
   updateTimelineDebug(): void {
@@ -713,8 +759,16 @@ export class TimelineController {
     const signal = this.playbackAbort.signal;
     let idx = this._activeTimelineDatetimes.indexOf(this._currentDatetime);
     if (idx < 0) idx = 0;
+    // Start filling the buffer before the first frame is even requested, so the
+    // run begins with something in hand rather than a frame's round trip.
+    this.deps.prefetchAheadForPlayback?.(idx);
     while (!signal.aborted) {
       this.setPlaybackState("waitingForFrame");
+      // Keep the queue ahead of the metronome. Playback only walks forward, so
+      // asking for the frames after this one costs nothing that a scrub would
+      // have wanted, and on a slow link it is the difference between a steady
+      // run and a stall every few frames.
+      this.deps.prefetchAheadForPlayback?.(idx);
       try {
         await this.setSelectedIndex(idx, "playback");
       } catch (error) {
