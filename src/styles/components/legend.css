@@ -120,11 +120,27 @@ body.view-iconography .legend-stack-card {
   margin-top: 5px;
 }
 
+/*
+ * The colour ramp arrives as an inline `background: linear-gradient(...)`. This
+ * declaration is only what shows if that one is ever missing or malformed — and
+ * it used to be solid white, which on a phone read as a perfectly plausible
+ * (if baffling) all-white temperature scale rather than as a fault. A muted
+ * neutral cannot be mistaken for a real ramp, so a failure looks like one.
+ *
+ * The renderer no longer emits an invalid gradient (see
+ * LayerComposer.temperatureGradient), so this should stay unseen.
+ */
 .precip-legend__bar {
   width: 24px;
   border-radius: 0;
   border: 0;
-  background: #fff;
+  background: repeating-linear-gradient(
+    45deg,
+    #d9dee1,
+    #d9dee1 4px,
+    #e7ebed 4px,
+    #e7ebed 8px
+  );
 }
 
 .precip-legend__labels {

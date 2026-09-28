@@ -2027,22 +2027,22 @@ ${this.legendLabelsHtml(
     ][];
     // Until a frame has been composited there is nothing on screen to crop to,
     // so the bar shows the whole ramp.
-    const window =
-      this.tempLegendWindow ?? resolveLegendWindow(null, paletteDomain(scale));
+    const full = resolveLegendWindow(null, paletteDomain(scale));
+    const window = this.tempLegendWindow ?? full;
 
-    const stops = cropStopsToWindow(scale, window).map(([value, color]) => ({
-      percent: stopPercent(value, window),
-      color: this.toRgbaCss(color),
-    }));
-
-    const gradient = stops
-      .flatMap((stop, index) => {
-        const next = stops[Math.min(index + 1, stops.length - 1)];
-        const start = stop.percent.toFixed(2);
-        const end = next.percent.toFixed(2);
-        return [`${stop.color} ${start}%`, `${stop.color} ${end}%`];
-      })
-      .join(", ");
+    // A cropping window that yields no usable stops must never reach the DOM.
+    // The colours arrive as an INLINE gradient over a CSS base, so an empty or
+    // malformed gradient string makes the browser drop the whole declaration
+    // and paint the base — which is how a reader on a phone was shown a blank
+    // bar that looked like a legitimate all-white temperature scale. Falling
+    // back to the entire ramp is both honest and self-evidently not a crop.
+    let resolved = window;
+    let gradient = this.temperatureGradient(scale, resolved);
+    if (!gradient) {
+      resolved = full;
+      gradient = this.temperatureGradient(scale, resolved);
+    }
+    if (!gradient) return; // palette itself is empty — leave the host untouched
 
     host.innerHTML = `
       <div class="precip-legend">
@@ -2050,9 +2050,9 @@ ${this.legendLabelsHtml(
         <div class="precip-legend__scale">
           <div class="precip-legend__bar" style="background: linear-gradient(to top, ${gradient});"></div>
 ${this.legendLabelsHtml(
-            legendTicks(window).map((value) => ({
+            legendTicks(resolved).map((value) => ({
               text: String(value),
-              percent: stopPercent(value, window),
+              percent: stopPercent(value, resolved),
               // The ramp breaks hard from cyan to green at 0°C; the marker makes
               // that read as the freezing line, not a rendering seam.
               modifier:
@@ -2062,6 +2062,33 @@ ${this.legendLabelsHtml(
         </div>
       </div>
     `;
+  }
+
+  /**
+   * The hard-stepped CSS gradient for a temperature window, or "" when the
+   * window crops the palette down to nothing usable.
+   *
+   * Returning "" rather than a partial string is the point: the caller can then
+   * choose a real fallback, instead of handing the browser a gradient it will
+   * silently refuse and leaving the bar painted in its CSS base colour.
+   */
+  private temperatureGradient(
+    scale: [number, [number, number, number, number]][],
+    window: TemperatureLegendWindow,
+  ): string {
+    const stops = cropStopsToWindow(scale, window).map(([value, color]) => ({
+      percent: stopPercent(value, window),
+      color: this.toRgbaCss(color),
+    }));
+    if (stops.length < 2) return "";
+    return stops
+      .flatMap((stop, index) => {
+        const next = stops[Math.min(index + 1, stops.length - 1)];
+        const start = stop.percent.toFixed(2);
+        const end = next.percent.toFixed(2);
+        return [`${stop.color} ${start}%`, `${stop.color} ${end}%`];
+      })
+      .join(", ");
   }
 
   private getPrecipStopPercent(value: number): number {
