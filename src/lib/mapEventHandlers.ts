@@ -1,4 +1,4 @@
-import type maplibregl from "maplibre-gl";
+import type * as maplibregl from "maplibre-gl";
 import type { MapboxOverlay } from "@deck.gl/mapbox";
 import type { PersistedStateV1 } from "./viewerTypes";
 import type { UiState } from "./inhouseTypes";

@@ -17,7 +17,7 @@
  * they cover small places far below this dataset's resolution.
  */
 
-import type maplibregl from "maplibre-gl";
+import type * as maplibregl from "maplibre-gl";
 import type { PlaceTuple } from "./nearestPlace";
 
 export const CITY_LABEL_SOURCE_ID = "mimir-places";
