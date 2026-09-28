@@ -199,7 +199,7 @@ export const fo: Record<string, string> = {
   "error.windData": "Tókst ekki að hlaða vindgögnum.",
   "error.precipData": "Tókst ekki að hlaða úrkomugögnum.",
   "error.precipUnavail": "Úrkomugagnasafn ekki tiltækt.",
-  "error.styleFallback": "Fer aftur í MapLibre sýnikort: {{message}}", // TODO
+  "error.styleFallback": "Nýti einfalt útlínukort sum eykaloysn: {{message}}",
 
   // ── Wind style fallback (console + UI) ───────────────────────────────
   "wind.particleFallback": "Agnalag ekki tiltækt, fer aftur í örvar.",

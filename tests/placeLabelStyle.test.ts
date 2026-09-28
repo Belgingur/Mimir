@@ -55,15 +55,15 @@ function paintFor(setPaintProperty: ReturnType<typeof vi.fn>, layerId: string) {
 }
 
 describe("applyPlaceLabelStyle", () => {
-  it("recolours every settlement layer to dark text on a white halo", () => {
+  it("recolours every settlement layer to light text on a dark halo", () => {
     const { map, setPaintProperty } = makeMap();
     applyPlaceLabelStyle(map);
     for (const id of KEPT_SETTLEMENT_LAYER_IDS) {
       const paint = paintFor(setPaintProperty, id);
       expect(paint["text-color"]).toBe(SETTLEMENT_TEXT_COLOR);
       expect(paint["text-halo-color"]).toBe(LABEL_HALO_COLOR);
-      // The washed-out default was a light halo *and* light text; the halo has
-      // to be wide enough to carry dark text over dark weather.
+      // The dark halo must remain wide enough to separate light type from both
+      // warm and cold forecast colours without looking like a white sticker.
       expect(paint["text-halo-width"]).toBeGreaterThan(1);
     }
   });
@@ -150,6 +150,18 @@ describe("applyPlaceLabelStyle", () => {
     expect(KEPT_SETTLEMENT_LAYER_IDS).not.toContain("place_city");
     expect(KEPT_SETTLEMENT_LAYER_IDS).toContain("place_town");
     expect(KEPT_SETTLEMENT_LAYER_IDS).toContain("place_village");
+  });
+
+  it("keeps basemap cities visible until the custom layer is ready", () => {
+    const { map, setLayoutProperty } = makeMap();
+    applyPlaceLabelStyle(map, { replaceCityLabels: false });
+    for (const id of REPLACED_CITY_LAYER_IDS) {
+      expect(setLayoutProperty).toHaveBeenCalledWith(
+        id,
+        "visibility",
+        "visible",
+      );
+    }
   });
 
   it("skips layers the current style does not have", () => {

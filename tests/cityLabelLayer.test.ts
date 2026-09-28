@@ -197,7 +197,7 @@ describe("addCityLabelLayer", () => {
 
   it("adds the source and both layers on first call", () => {
     const { raw, map } = makeMap();
-    addCityLabelLayer(map, PLACES);
+    expect(addCityLabelLayer(map, PLACES)).toBe(true);
     expect(raw.addSource).toHaveBeenCalledTimes(1);
     const added = raw.addLayer.mock.calls.map(([l]) => (l as { id: string }).id);
     expect(added).toEqual([CITY_DOT_LAYER_ID, CITY_LABEL_LAYER_ID]);
@@ -233,7 +233,7 @@ describe("addCityLabelLayer", () => {
 
   it("does nothing when the dataset failed to load", () => {
     const { raw, map } = makeMap();
-    addCityLabelLayer(map, []);
+    expect(addCityLabelLayer(map, [])).toBe(false);
     expect(raw.addSource).not.toHaveBeenCalled();
     expect(raw.addLayer).not.toHaveBeenCalled();
   });

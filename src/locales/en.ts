@@ -196,7 +196,7 @@ export const en: Record<string, string> = {
   "error.windData": "Failed to load wind data.",
   "error.precipData": "Failed to load precipitation data.",
   "error.precipUnavail": "Precipitation dataset unavailable.",
-  "error.styleFallback": "Falling back to MapLibre demo style: {{message}}",
+  "error.styleFallback": "Using outline-only fallback map: {{message}}",
 
   // ── Wind style fallback (console + UI) ───────────────────────────────
   "wind.particleFallback":

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   attachMapEventHandlers,
+  OUTLINE_FALLBACK_STYLE,
   type MapEventDeps,
 } from "../src/lib/mapEventHandlers";
 
@@ -59,30 +60,21 @@ afterEach(() => {
 
 describe("attachMapEventHandlers startup", () => {
   it("initialises exactly once after deferred attachment and waits for forecast data", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
     const { map, emit } = createMap(true);
     let finishWeather!: () => void;
     const weatherReady = new Promise<void>((resolve) => {
       finishWeather = resolve;
     });
     const initWeather = vi.fn(() => weatherReady);
-    const loadCountryOutlines = vi.fn().mockResolvedValue(undefined);
     const setMapReady = vi.fn();
-    let idleWork: (() => void) | null = null;
 
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
       callback(0);
       return 1;
     });
-    vi.stubGlobal(
-      "requestIdleCallback",
-      (callback: () => void) => {
-        idleWork = callback;
-        return 1;
-      },
-    );
 
     const layerComposer = {
-      loadCountryOutlines,
       setLastStableView: vi.fn(),
       setGridLabelsDirty: vi.fn(),
       scheduleLabelRender: vi.fn(),
@@ -131,17 +123,26 @@ describe("attachMapEventHandlers startup", () => {
 
     expect(initWeather).toHaveBeenCalledTimes(1);
     expect(document.body.classList.contains("is-loading")).toBe(true);
-    expect(loadCountryOutlines).not.toHaveBeenCalled();
+    emit("error", { error: { message: "missing optional sprite" } });
+    expect(map.setStyle).not.toHaveBeenCalled();
 
     finishWeather();
     await vi.waitFor(() =>
       expect(document.body.classList.contains("is-loading")).toBe(false),
     );
     expect(setMapReady).toHaveBeenCalledTimes(1);
-    expect(loadCountryOutlines).not.toHaveBeenCalled();
+  });
 
-    expect(idleWork).not.toBeNull();
-    (idleWork as unknown as () => void)();
-    expect(loadCountryOutlines).toHaveBeenCalledTimes(1);
+  it("uses a neutral outline-only style for initial style failures", () => {
+    expect(
+      OUTLINE_FALLBACK_STYLE.layers.every(
+        (layer) => layer.type === "background" || layer.type === "line",
+      ),
+    ).toBe(true);
+    expect(
+      OUTLINE_FALLBACK_STYLE.layers.some((layer) => layer.type === "symbol"),
+    ).toBe(false);
+    expect(OUTLINE_FALLBACK_STYLE.glyphs).toBeUndefined();
+    expect(OUTLINE_FALLBACK_STYLE.sprite).toBeUndefined();
   });
 });
