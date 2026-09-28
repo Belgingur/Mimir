@@ -72,3 +72,14 @@
   background: rgba(0, 0, 0, 0.07);
   color: var(--text, #1f1f1f);
 }
+
+/* Transient variant: one sentence, no controls, removes itself. Sits a little
+   lower than the "new run" pill so the two never overlap if both are up. */
+.transient-notice {
+  padding: 7px 14px;
+  top: 56px;
+}
+
+.new-run-notice:not([hidden]) ~ .transient-notice:not([hidden]) {
+  top: 100px;
+}

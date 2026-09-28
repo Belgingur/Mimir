@@ -1,7 +1,7 @@
 import type * as maplibregl from "maplibre-gl";
 import type { MapboxOverlay } from "@deck.gl/mapbox";
 import type { PersistedStateV1 } from "./viewerTypes";
-import type { UiState } from "./inhouseTypes";
+import type { InhouseGroupId, UiState } from "./inhouseTypes";
 import { resolveMapClickTarget } from "./mapClickRouting";
 import { applyInitialCamera } from "./initialCamera";
 import { getPresentSettlementLayerIds, pickPlaceLabel } from "./placeLabelPick";
@@ -47,6 +47,10 @@ export interface MapEventDeps {
   /** Applied once the style has loaded (and again after any style swap): the
    *  weather overlay's draw-order anchor and the place-label presentation. */
   onStyleReady?: () => void;
+  /** Brief, self-clearing message for an action that was declined — used when a
+   *  click lands where the forecast has no data, so the click never just goes
+   *  nowhere. Optional: headless callers simply get silence. */
+  showTransientNotice?: (message: string) => void;
   setMapReady: (ready: boolean) => void;
   initWeather: () => Promise<void>;
   scheduleUpdateLayers: () => void;
@@ -209,6 +213,30 @@ export function attachMapEventHandlers(
       viewMode: deps.getLayerGroupController().viewMode,
       meteogramEnabled: deps.meteogramEnabled,
     });
+    // Don't open a panel we already know will come back empty.
+    //
+    // The forecast raster on screen carries a domain mask, so whether this point
+    // has data is knowable before any request — and clicking sea ice off the
+    // edge of a rotated-pole grid, or open land in a wave model, used to open a
+    // panel, fetch, 404, and leave an error where a forecast should be. Saying
+    // "nothing here" straight away is both faster and truthful.
+    //
+    // Only a definite "none" refuses. While a frame is still decoding the answer
+    // is "unknown" and the click goes through, with the fetch as the authority —
+    // exactly as before.
+    if (clickTarget === "wavegram" || clickTarget === "meteogram") {
+      const availability = deps
+        .getCatalogController()
+        .dataAvailabilityAt(
+          target.lng,
+          target.lat,
+          deps.getUiState().layerMode as InhouseGroupId,
+        );
+      if (availability === "none") {
+        deps.showTransientNotice?.(t("map.noForecastHere"));
+        return;
+      }
+    }
     if (clickTarget === "wavegram") {
       deps.getWavegramController().open([target.lng, target.lat]);
       return;
