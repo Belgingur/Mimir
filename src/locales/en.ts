@@ -42,7 +42,7 @@ export const en: Record<string, string> = {
   "layer.wind": "Wind",
   "layer.precip": "Precipitation",
   "layer.cloud": "Cloud Cover",
-  "layer.snow": "Snow Depth",
+  "layer.snow": "Snow (water eq.)",
   "layer.waves": "Waves",
 
   // ── Wind style options ───────────────────────────────────────────────

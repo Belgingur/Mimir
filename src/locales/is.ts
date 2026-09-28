@@ -48,7 +48,7 @@ export const is: Record<string, string> = {
   "layer.wind": "Vindur",
   "layer.precip": "Úrkoma",
   "layer.cloud": "Skýjahula",
-  "layer.snow": "Snjódýpt",
+  "layer.snow": "Snjór (vatnsgildi)",
   "layer.waves": "Ölduhæð",
 
   // ── Wind style options ───────────────────────────────────────────────
