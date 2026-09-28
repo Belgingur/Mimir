@@ -28,6 +28,11 @@ export interface AppDom {
   wavegramDurationSelect: HTMLSelectElement;
   wavegramTechToggle: HTMLInputElement;
   wavegramImage: HTMLImageElement;
+  wavegramImageViewport: HTMLDivElement | null;
+  wavegramZoomIn: HTMLButtonElement | null;
+  wavegramZoomOut: HTMLButtonElement | null;
+  wavegramZoomReset: HTMLButtonElement | null;
+  wavegramZoomLevel: HTMLElement | null;
   wavegramDownload: HTMLButtonElement;
   wavegramPrint: HTMLButtonElement;
 
@@ -136,6 +141,12 @@ export function queryDom(): AppDom {
     wavegramDurationSelect: byId<HTMLSelectElement>("wavegram-duration"),
     wavegramTechToggle: byId<HTMLInputElement>("wavegram-tech-toggle"),
     wavegramImage: byId<HTMLImageElement>("wavegram-image"),
+    // Optional: the zoom chrome is absent from the trimmed DOM some tests build.
+    wavegramImageViewport: byIdOrNull<HTMLDivElement>("wavegram-viewport"),
+    wavegramZoomIn: byIdOrNull<HTMLButtonElement>("wavegram-zoom-in"),
+    wavegramZoomOut: byIdOrNull<HTMLButtonElement>("wavegram-zoom-out"),
+    wavegramZoomReset: byIdOrNull<HTMLButtonElement>("wavegram-zoom-reset"),
+    wavegramZoomLevel: byIdOrNull<HTMLElement>("wavegram-zoom-level"),
     wavegramDownload: byId<HTMLButtonElement>("wavegram-download"),
     wavegramPrint: byId<HTMLButtonElement>("wavegram-print"),
 

@@ -169,14 +169,79 @@
   font-size: 12px;
 }
 
+/* Gesture surface for the wavegram. `touch-action: none` is what lets this one
+   element receive raw pointer events for a pinch — the page's viewport meta
+   disables zoom everywhere so MapLibre can own two-finger gestures on the map,
+   and that also blocked magnifying this chart's small type on a phone. Scoping
+   the gesture here leaves the map untouched. */
+.wavegram-viewport {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #f5f7f9;
+  touch-action: none;
+  cursor: zoom-in;
+}
+
+.wavegram-viewport.is-zoomed {
+  cursor: grab;
+}
+
+.wavegram-viewport.is-zoomed:active {
+  cursor: grabbing;
+}
+
 .wavegram-image {
   width: 100%;
   max-width: 100%;
   display: block;
-  border-radius: var(--radius-sm);
-  border: 1px solid rgba(0, 0, 0, 0.08);
   background: #f5f7f9;
   min-height: 220px;
+  transform-origin: center center;
+  /* Dragged and pinched via a transform, so it must not animate under the
+     finger; the browser is told the transform will change so it gets a layer. */
+  will-change: transform;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* Zoom controls: a pinch is invisible, and a mouse has none at all. */
+.wavegram-zoom {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.wavegram-zoom button {
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.wavegram-zoom button:hover {
+  background: #f2f5f7;
+}
+
+.wavegram-zoom button:focus-visible {
+  outline: 2px solid var(--accent, #1e8e6b);
+  outline-offset: 2px;
+}
+
+#wavegram-zoom-reset {
+  min-width: 60px;
+  font-size: 12px;
 }
 
 .wavegram-image:not([src]),

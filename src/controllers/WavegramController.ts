@@ -1,4 +1,5 @@
 import { buildSpreadWavegramUrl } from "../lib/wavegramUrl";
+import { attachImageZoom, type ImageZoomController } from "../lib/imageZoom";
 import { t } from "../lib/i18n";
 
 export interface WavegramDomRefs {
@@ -9,6 +10,13 @@ export interface WavegramDomRefs {
   readonly durationSelect: HTMLSelectElement;
   readonly techToggle: HTMLInputElement;
   readonly image: HTMLImageElement;
+  /** Gesture surface wrapping the image (pinch + pan). Optional so tests and
+   *  older hosts that only provide the bare <img> keep working. */
+  readonly imageViewport?: HTMLElement | null;
+  readonly zoomIn?: HTMLElement | null;
+  readonly zoomOut?: HTMLElement | null;
+  readonly zoomReset?: HTMLElement | null;
+  readonly zoomLevel?: HTMLElement | null;
   readonly download: HTMLButtonElement;
   readonly print: HTMLButtonElement;
 }
@@ -35,9 +43,24 @@ export class WavegramController {
   private readonly boundOnTechToggleChange: () => void;
   private readonly boundOnDownloadClick: () => void;
   private readonly boundOnPrintClick: () => void;
+  private readonly zoom: ImageZoomController | null = null;
 
   constructor(private readonly deps: WavegramControllerDeps) {
     const { dom } = deps;
+    // The chart is a fixed-size PNG and the app disables page zoom, so without
+    // this its axis type is unreadable on a phone and cannot be magnified.
+    if (dom.imageViewport) {
+      this.zoom = attachImageZoom(dom.imageViewport, dom.image, {
+        zoomIn: dom.zoomIn,
+        zoomOut: dom.zoomOut,
+        reset: dom.zoomReset,
+        onZoom: (z) => {
+          if (dom.zoomLevel) {
+            dom.zoomLevel.textContent = `${Math.round(z * 100)}%`;
+          }
+        },
+      });
+    }
 
     this.boundOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape" && dom.modal.classList.contains("is-open")) {
@@ -99,6 +122,7 @@ export class WavegramController {
       duration: String(this.duration),
     });
     dom.image.src = "";
+    this.zoom?.reset();
     dom.download.disabled = true;
     dom.print.disabled = true;
     dom.modal.classList.add("is-open");
