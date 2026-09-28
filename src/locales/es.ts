@@ -122,6 +122,8 @@ export const es: Record<string, string> = {
   "status.datasetFailed": "No se pudo cargar {{model}}. Puede que no tenga datos ahora.",
   "action.backToModel": "Volver a {{model}}",
   "status.newRun": "Hay una previsión más reciente disponible.",
+  "status.modelOutsideView": "Este modelo no cubre la zona que estás viendo.",
+  "action.useCoveringModel": "Usar un modelo que sí la cubra",
   "action.updateForecast": "Actualizar previsión",
   "action.dismiss": "Descartar",
   "status.loadingWavegram": "Cargando gráfico de oleaje…",
