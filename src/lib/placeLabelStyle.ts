@@ -4,7 +4,8 @@
  * Positron authors its labels for a pale grey basemap: grey-blue text
  * (rgb(117,129,145)) with a near-white halo. Over a saturated weather raster
  * that reads as a washed-out "tint of white" and is hard to make out, so the
- * palette is overridden here. It also caps settlement labels at zoom 12–15,
+ * palette is overridden with light map type over a restrained dark halo. It
+ * also caps settlement labels at zoom 12–15,
  * which means city names *disappear* as you zoom in — the opposite of what a
  * weather map wants — and it labels admin regions (Tirol, Lower Silesian,
  * Norðurland Vestra) that compete with city names for the same screen space.
@@ -16,6 +17,23 @@
 
 import type * as maplibregl from "maplibre-gl";
 import { SETTLEMENT_LAYER_IDS } from "./placeLabelPick";
+import {
+  COUNTRY_HALO_WIDTH,
+  COUNTRY_TEXT_COLOR,
+  LABEL_HALO_BLUR,
+  LABEL_HALO_COLOR,
+  SETTLEMENT_HALO_WIDTH,
+  SETTLEMENT_TEXT_COLOR,
+} from "./mapLabelStyleTokens";
+
+export {
+  COUNTRY_HALO_WIDTH,
+  COUNTRY_TEXT_COLOR,
+  LABEL_HALO_BLUR,
+  LABEL_HALO_COLOR,
+  SETTLEMENT_HALO_WIDTH,
+  SETTLEMENT_TEXT_COLOR,
+} from "./mapLabelStyleTokens";
 
 /** Admin-region labels — hidden so city names win the collision. */
 export const REGION_LABEL_LAYER_IDS = ["place_state"] as const;
@@ -46,17 +64,6 @@ export const COUNTRY_LABEL_LAYER_IDS = [
   "place_country_minor",
   "place_country_other",
 ] as const;
-
-/** Near-black slate: high contrast against every hue in the weather palette. */
-export const SETTLEMENT_TEXT_COLOR = "#13202c";
-/** Countries sit one step back so they don't compete with settlement names. */
-export const COUNTRY_TEXT_COLOR = "#3b4d5e";
-/** An opaque white halo is what makes dark text legible over dark weather. */
-export const LABEL_HALO_COLOR = "rgba(255, 255, 255, 0.95)";
-export const SETTLEMENT_HALO_WIDTH = 2;
-export const COUNTRY_HALO_WIDTH = 1.8;
-/** No blur: a crisp halo edge separates the glyph from the raster cleanly. */
-export const LABEL_HALO_BLUR = 0;
 
 /** Bold face, matching the city layer. Verified present on MapTiler's glyph API. */
 export const SETTLEMENT_FONT = ["Metropolis Bold", "Noto Sans Bold"];
@@ -120,7 +127,11 @@ function withLayer(
  * Recolour place labels, hide admin-region labels, and let settlement names
  * persist at high zoom. Idempotent — safe to call on every style load.
  */
-export function applyPlaceLabelStyle(map: maplibregl.Map): void {
+export function applyPlaceLabelStyle(
+  map: maplibregl.Map,
+  options: { replaceCityLabels?: boolean } = {},
+): void {
+  const replaceCityLabels = options.replaceCityLabels ?? true;
   for (const id of KEPT_SETTLEMENT_LAYER_IDS) {
     withLayer(map, id, () => {
       map.setPaintProperty(id, "text-color", SETTLEMENT_TEXT_COLOR);
@@ -143,7 +154,11 @@ export function applyPlaceLabelStyle(map: maplibregl.Map): void {
 
   for (const id of REPLACED_CITY_LAYER_IDS) {
     withLayer(map, id, () => {
-      map.setLayoutProperty(id, "visibility", "none");
+      map.setLayoutProperty(
+        id,
+        "visibility",
+        replaceCityLabels ? "none" : "visible",
+      );
     });
   }
 
@@ -154,6 +169,7 @@ export function applyPlaceLabelStyle(map: maplibregl.Map): void {
       map.setPaintProperty(id, "text-halo-width", COUNTRY_HALO_WIDTH);
       map.setPaintProperty(id, "text-halo-blur", LABEL_HALO_BLUR);
       map.setLayoutProperty(id, "text-font", COUNTRY_FONT);
+      map.setLayoutProperty(id, "text-letter-spacing", 0.12);
     });
   }
 

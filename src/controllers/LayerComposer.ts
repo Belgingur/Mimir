@@ -227,7 +227,6 @@ export class LayerComposer {
   } | null = null;
 
   private readonly landMaskCache = new LRUMap<string, Uint8Array>(20);
-  private countryOutlineData: FeatureCollection | null = null;
   private windArrowRangeLogged = false;
 
   /**
@@ -636,21 +635,6 @@ export class LayerComposer {
     this.lastCompositeLayers = nextLayers;
   };
 
-  public async loadCountryOutlines(): Promise<void> {
-    try {
-      const url = `${import.meta.env.BASE_URL}data/world_countries_generalized.geojson`;
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Failed to load country outlines: ${response.status}`);
-      }
-      const collection = (await response.json()) as FeatureCollection;
-      this.countryOutlineData = collection;
-      this.scheduleUpdateLayers();
-    } catch (error) {
-      console.warn(t("error.countryOutlines"), error);
-    }
-  }
-
   public updateLayers(): void {
     if (!this.deps.isMapReady()) {
       return;
@@ -693,21 +677,6 @@ export class LayerComposer {
     const gridLines = uiState.showGrid
       ? this.getGridLinesForStep(gridStep)
       : [];
-
-    const outlineLayer = this.countryOutlineData
-      ? new GeoJsonLayer({
-          id: "country-outlines",
-          data: this.countryOutlineData,
-          filled: false,
-          stroked: true,
-          getLineColor: [25, 25, 25],
-          getLineWidth: 1,
-          lineWidthMinPixels: 0.6,
-          lineWidthMaxPixels: 2,
-          opacity: 0.6,
-          parameters: { depthTest: false },
-        })
-      : null;
 
     const inhouseRasterLayers = catalogController.inhouseLayers
       .filter(
@@ -1814,7 +1783,6 @@ export class LayerComposer {
       ...(windLabelLayer ? [windLabelLayer] : []),
       ...(waveArrowLayer ? [waveArrowLayer] : []),
       ...(waveClickMarkerLayer ? [waveClickMarkerLayer] : []),
-      ...(outlineLayer ? [outlineLayer] : []),
       ...gridLayers,
     ];
 

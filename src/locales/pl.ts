@@ -207,8 +207,7 @@ export const pl: Record<string, string> = {
   "error.windData": "Nie udało się wczytać danych o wietrze.",
   "error.precipData": "Nie udało się wczytać danych o opadach.",
   "error.precipUnavail": "Zbiór danych o opadach jest niedostępny.",
-  "error.styleFallback":
-    "Przełączono na styl demonstracyjny MapLibre: {{message}}",
+  "error.styleFallback": "Używanie zapasowej mapy konturowej: {{message}}",
 
   // ── Wind style fallback (console + UI) ───────────────────────────────
   "wind.particleFallback":

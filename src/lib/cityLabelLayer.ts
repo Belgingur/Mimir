@@ -19,6 +19,12 @@
 
 import type * as maplibregl from "maplibre-gl";
 import type { PlaceTuple } from "./nearestPlace";
+import {
+  LABEL_HALO_BLUR,
+  LABEL_HALO_COLOR,
+  SETTLEMENT_HALO_WIDTH,
+  SETTLEMENT_TEXT_COLOR,
+} from "./mapLabelStyleTokens";
 
 export const CITY_LABEL_SOURCE_ID = "mimir-places";
 export const CITY_LABEL_LAYER_ID = "mimir-city-labels";
@@ -80,9 +86,6 @@ export const NATIONAL_RANK_BY_ZOOM: [zoom: number, rank: number][] = [
   [10, 9999],
 ];
 
-const SETTLEMENT_TEXT_COLOR = "#13202c";
-const LABEL_HALO_COLOR = "rgba(255, 255, 255, 0.95)";
-
 /** `["step", ["zoom"], out0, z1, out1, ...]` from a stop table. */
 function zoomStep(stops: [number, number][]): unknown[] {
   const [, first] = stops[0];
@@ -128,8 +131,8 @@ export function buildCityGeoJSON(places: readonly PlaceTuple[]): {
 export function addCityLabelLayer(
   map: maplibregl.Map,
   places: readonly PlaceTuple[],
-): void {
-  if (places.length === 0) return;
+): boolean {
+  if (places.length === 0) return false;
   const data = buildCityGeoJSON(places);
 
   const existing = map.getSource(CITY_LABEL_SOURCE_ID);
@@ -160,9 +163,9 @@ export function addCityLabelLayer(
           ["linear"],
           ["zoom"],
           3,
-          2,
+          1.5,
           10,
-          3.5,
+          2.5,
         ],
         "circle-color": SETTLEMENT_TEXT_COLOR,
         "circle-stroke-color": LABEL_HALO_COLOR,
@@ -205,8 +208,8 @@ export function addCityLabelLayer(
       paint: {
         "text-color": SETTLEMENT_TEXT_COLOR,
         "text-halo-color": LABEL_HALO_COLOR,
-        "text-halo-width": 2,
-        "text-halo-blur": 0,
+        "text-halo-width": SETTLEMENT_HALO_WIDTH,
+        "text-halo-blur": LABEL_HALO_BLUR,
       },
     });
   } else {
@@ -215,4 +218,5 @@ export function addCityLabelLayer(
       filter as maplibregl.FilterSpecification,
     );
   }
+  return true;
 }

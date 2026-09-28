@@ -22,7 +22,10 @@ import { LayerGroupController } from "../controllers/LayerGroupController";
 import { LayerComposer } from "../controllers/LayerComposer";
 import { IconographyController } from "../controllers/IconographyController";
 import { attachMapEventHandlers } from "./mapEventHandlers";
-import { resolveWeatherBeforeId } from "./mapLayerOrder";
+import {
+  ensureForecastReferenceLayers,
+  resolveWeatherBeforeId,
+} from "./mapLayerOrder";
 import { applyPlaceLabelStyle } from "./placeLabelStyle";
 import { createPlaceLabeller } from "./placeLabeller";
 import { addCityLabelLayer } from "./cityLabelLayer";
@@ -154,18 +157,20 @@ export function createControllers(config: ControllerFactoryConfig) {
   // a hardcoded id and push the overlay back to the top).
   let weatherBeforeId: string | undefined;
   function onStyleReady() {
-    let next: string | undefined;
+    let labelBeforeId: string | undefined;
     try {
-      next = resolveWeatherBeforeId(map.getStyle());
+      labelBeforeId = resolveWeatherBeforeId(map.getStyle());
     } catch {
       // Style not ready yet; the styledata handler will retry.
       return;
     }
-    // Recolour labels, drop admin-region labels, keep city names at high zoom,
-    // and (re)add Mímir's own population-tiered city layer — a style swap drops
-    // both. All idempotent, so re-running on every styledata is harmless.
-    applyPlaceLabelStyle(map);
-    ensureCityLabels();
+    const next =
+      ensureForecastReferenceLayers(map, labelBeforeId) ?? labelBeforeId;
+    // Keep the basemap's capitals and large cities as a fallback until Mímir's
+    // population-tiered city layer is definitely present. A failed or stale
+    // places response must never leave the map with no major settlements.
+    const cityLabelsReady = ensureCityLabels();
+    applyPlaceLabelStyle(map, { replaceCityLabels: cityLabelsReady });
     if (next === weatherBeforeId) return;
     weatherBeforeId = next;
     if (isDev) {
@@ -179,14 +184,27 @@ export function createControllers(config: ControllerFactoryConfig) {
    * Add the city-label layer once both halves are ready: the style (layers
    * cannot be added before it loads) and the place dataset (fetched async).
    * Whichever finishes last triggers the add; the call itself is idempotent.
+   * A call that lands while tiles are still loading schedules a retry, so the
+   * basemap fallback labels are swapped out even if no later styledata comes.
    */
-  const ensureCityLabels = createStyleLoadedRunner(map, () => {
+  function ensureCityLabels(): boolean {
+    if (!map.isStyleLoaded()) {
+      retryCityLabelsOnceSettled();
+      return false;
+    }
     const places = placeResolver.loadedPlaces();
-    if (places.length === 0) return;
+    if (places.length === 0) return false;
     try {
-      addCityLabelLayer(map, places);
-    } catch {
-      /* style swapped mid-call; the next styledata will retry */
+      return addCityLabelLayer(map, places);
+    } catch (error) {
+      console.warn("Could not add city label layer", error);
+      return false;
+    }
+  }
+
+  const retryCityLabelsOnceSettled = createStyleLoadedRunner(map, () => {
+    if (ensureCityLabels()) {
+      applyPlaceLabelStyle(map, { replaceCityLabels: true });
     }
   });
 
@@ -991,7 +1009,12 @@ export function createControllers(config: ControllerFactoryConfig) {
 
   // The city-label layer is drawn from the same dataset, so it goes up as soon
   // as the fetch lands (or as soon as the style does, whichever is later).
-  void placeResolver.preload().then(ensureCityLabels);
+  void placeResolver.preload().then(() => {
+    const cityLabelsReady = ensureCityLabels();
+    if (cityLabelsReady) {
+      applyPlaceLabelStyle(map, { replaceCityLabels: true });
+    }
+  });
 
   // Labels map points with the resolved place name, so the meteogram panel
   // shows "Reykjavík" rather than "64.143, -21.937".

@@ -120,6 +120,15 @@ describe("NearestPlaceIndex", () => {
     expect(index.isLoaded).toBe(true);
   });
 
+  it("revalidates the stable public URL across deployments", async () => {
+    const fetchMock = stubFetch({ places: PLACES });
+    const index = new NearestPlaceIndex();
+    await index.load();
+    expect(fetchMock).toHaveBeenCalledWith("/data/places.json", {
+      cache: "no-cache",
+    });
+  });
+
   it("degrades quietly when the dataset cannot be fetched", async () => {
     stubFetch(null, false);
     const index = new NearestPlaceIndex();

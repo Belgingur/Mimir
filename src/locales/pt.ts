@@ -170,7 +170,7 @@ export const pt: Record<string, string> = {
   "error.precipData": "Falha ao carregar dados de precipitação.",
   "error.precipUnavail": "Conjunto de dados de precipitação indisponível.",
   "error.styleFallback":
-    "Usando estilo de demonstração do MapLibre como alternativa: {{message}}",
+    "A usar o mapa de contornos alternativo: {{message}}",
   // ── Wind style fallback (console + UI) ───────────────────────────────
   "wind.particleFallback":
     "Camada de partículas indisponível, usando setas como alternativa.",

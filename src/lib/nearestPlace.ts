@@ -116,7 +116,10 @@ export class NearestPlaceIndex {
 
   private async doLoad(): Promise<void> {
     try {
-      const resp = await fetch(this.url);
+      // This public asset keeps a stable URL across deployments. Revalidate it
+      // so a browser cannot keep an older tuple schema while loading new code;
+      // a valid cached response can still be reused after a 304.
+      const resp = await fetch(this.url, { cache: "no-cache" });
       if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
       const payload = (await resp.json()) as PlacesPayload;
       const places = payload.places ?? [];

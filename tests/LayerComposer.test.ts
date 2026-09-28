@@ -1172,40 +1172,6 @@ describe("LayerComposer", () => {
     });
   });
 
-  describe("loadCountryOutlines", () => {
-    it("fetches and stores data then schedules update", async () => {
-      const composer = new LayerComposer(makeDeps());
-      const scheduleSpy = vi
-        .spyOn(composer, "scheduleUpdateLayers")
-        .mockImplementation(() => {});
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async () => ({
-          ok: true,
-          json: async () => ({ type: "FeatureCollection", features: [] }),
-        })),
-      );
-
-      await composer.loadCountryOutlines();
-      expect(getPrivate<unknown>(composer, "countryOutlineData")).toEqual({
-        type: "FeatureCollection",
-        features: [],
-      });
-      expect(scheduleSpy).toHaveBeenCalledTimes(1);
-    });
-
-    it("handles fetch failure gracefully", async () => {
-      const composer = new LayerComposer(makeDeps());
-      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async () => ({ ok: false, status: 500 })),
-      );
-      await composer.loadCountryOutlines();
-      expect(warnSpy).toHaveBeenCalled();
-    });
-  });
-
   describe("sampling functions", () => {
     it("sampleScalarValue returns value from getRasterPoints", () => {
       const composer = new LayerComposer(makeDeps());
