@@ -171,3 +171,18 @@
   visibility: visible;
   opacity: 1;
 }
+
+/* Credits stack, one source per line — they are separate attributions, not one
+   run-on sentence. */
+.info-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  line-height: 1.35;
+}
+
+.info-panel a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
