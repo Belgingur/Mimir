@@ -1,7 +1,9 @@
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
+import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { queryDom } from "./lib/domRegistry";
 import { loadPersistedState } from "./lib/persistence";
 import { initEdgeHitWiring } from "./lib/edgeHitWiring";
+import { restoreMapTransformForDeck } from "./lib/deckMaplibreCompat";
 import { translateDOM, registerLocale, setLocale, hasLocale } from "./lib/i18n";
 import { is } from "./locales/is";
 import { pl } from "./locales/pl";
@@ -9,6 +11,11 @@ import { es } from "./locales/es";
 import { pt } from "./locales/pt";
 import { fo } from "./locales/fo";
 import "./styles/index.css";
+
+// maplibre-gl 6 locates its worker relative to its own module URL, which
+// breaks once Vite pre-bundles or chunks it. Hand it a self-contained
+// worker bundle instead, before the first Map is constructed.
+maplibregl.setWorkerUrl(maplibreWorkerUrl);
 
 registerLocale("is", is);
 registerLocale("pl", pl);
@@ -62,6 +69,8 @@ try {
   }
   throw err;
 }
+
+restoreMapTransformForDeck(map);
 
 // Keep two-finger pinch-zoom but strip the rotation it would otherwise apply,
 // so the map stays north-up while zooming on touch.

@@ -14,7 +14,7 @@
  *   lifecycle and crosshairTimings.ts for every delay.
  * - **legacy** (flag off): the previous always-visible crosshair, unchanged.
  */
-import type maplibregl from "maplibre-gl";
+import type * as maplibregl from "maplibre-gl";
 import type { InhouseCatalogController } from "../controllers/InhouseCatalogController";
 import type { UiState, InhouseGroupId, InhouseLayer } from "./inhouseTypes";
 import { INHOUSE_GROUP_VARIABLES } from "./inhouseTypes";

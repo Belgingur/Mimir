@@ -8,7 +8,7 @@
  * and weather imagery already in flight.
  */
 
-import type maplibregl from "maplibre-gl";
+import type * as maplibregl from "maplibre-gl";
 import { pickPlaceLabel } from "./placeLabelPick";
 import { distance } from "geokdbush";
 import {

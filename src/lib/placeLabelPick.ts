@@ -7,7 +7,7 @@
  * reverse-geocoding request is ever made.
  */
 
-import type maplibregl from "maplibre-gl";
+import type * as maplibregl from "maplibre-gl";
 import { PLACE_SOURCE_LAYER } from "./mapLayerOrder";
 import { CITY_LABEL_LAYER_ID } from "./cityLabelLayer";
 

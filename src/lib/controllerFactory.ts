@@ -1,4 +1,4 @@
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import * as WeatherLayers from "weatherlayers-gl";
 import * as WeatherLayersClient from "weatherlayers-gl/client";

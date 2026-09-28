@@ -14,7 +14,7 @@
  * looked up defensively because the style can be swapped at runtime.
  */
 
-import type maplibregl from "maplibre-gl";
+import type * as maplibregl from "maplibre-gl";
 import { SETTLEMENT_LAYER_IDS } from "./placeLabelPick";
 
 /** Admin-region labels — hidden so city names win the collision. */
@@ -63,7 +63,7 @@ export const SETTLEMENT_FONT = ["Metropolis Bold", "Noto Sans Bold"];
 export const COUNTRY_FONT = ["Metropolis Bold", "Noto Sans Bold"];
 
 /** Larger than positron's flat 10px, and growing as you zoom in. */
-export const SETTLEMENT_TEXT_SIZE = [
+export const SETTLEMENT_TEXT_SIZE: maplibregl.ExpressionSpecification = [
   "interpolate",
   ["linear"],
   ["zoom"],
