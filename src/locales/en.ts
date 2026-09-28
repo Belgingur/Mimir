@@ -118,6 +118,8 @@ export const en: Record<string, string> = {
   "status.datasetFailed": "Couldn't load {{model}}. It may have no data right now.",
   "action.backToModel": "Back to {{model}}",
   "status.newRun": "A newer forecast run is available.",
+  "status.modelOutsideView": "This forecast model doesn't cover the area you're viewing.",
+  "action.useCoveringModel": "Use a model that does",
   "action.updateForecast": "Update forecast",
   "action.dismiss": "Dismiss",
   "status.loadingWavegram": "Loading wavegram…",

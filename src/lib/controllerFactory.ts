@@ -52,6 +52,7 @@ import {
 } from "./initialCamera";
 import { createDatasetLoadingOverlay } from "./datasetLoadingOverlay";
 import { createNewRunNotice } from "./newRunNotice";
+import { modelIntersectsViewport } from "./selectModel";
 import { LanguageSwitcherController } from "../controllers/LanguageSwitcherController";
 import { isMeteogramEnabled } from "../features/meteogram/enabled";
 import type { MeteogramController } from "../features/meteogram/MeteogramController";
@@ -621,6 +622,59 @@ export function createControllers(config: ControllerFactoryConfig) {
   // Nothing in the app polls continuously. On returning to a tab, ask the
   // server whether a newer run exists and let the reader update the forecast
   // in place while preserving the map and nearest absolute forecast time.
+  /**
+   * "This model doesn't cover what you're looking at."
+   *
+   * The deployed catalog can default a first-time visitor to a regional model
+   * while the camera sits somewhere else entirely — a cleared browser lands on
+   * BEL-BR (Brazil) over Iceland — and the result is a blank map with nothing to
+   * explain it. The domain is knowable, so the app can say so and offer the
+   * model that does cover the view rather than leaving the reader to guess that
+   * data exists at all.
+   *
+   * Offered, never automatic: panning off a domain on purpose is a normal thing
+   * to do, and a map that changed model underneath you would be worse.
+   */
+  const coverageNotice = createNewRunNotice(dom.mapWrap, {
+    message: () => t("status.modelOutsideView"),
+    actionLabel: () => t("action.useCoveringModel"),
+    dismissLabel: () => t("action.dismiss"),
+    onAction: () => {
+      const target = coveringModelForView();
+      if (target) switchModelFn(target);
+      coverageNotice.hide();
+    },
+  });
+
+  /** The finest available model whose domain contains the map centre. */
+  const coveringModelForView = (): string | null => {
+    const centre = map.getCenter();
+    return catalogController.selectModelForLocation(centre.lat, centre.lng);
+  };
+
+  const syncCoverageNotice = (): void => {
+    if (coverageNotice.isDismissed()) return;
+    const model = catalogController.inhouseSelectedModel;
+    const coverage = model ? catalogController.getModelCoverage(model) : null;
+    if (!coverage) {
+      coverageNotice.hide();
+      return;
+    }
+    const b = map.getBounds();
+    const onScreen = modelIntersectsViewport(coverage, {
+      west: b.getWest(),
+      south: b.getSouth(),
+      east: b.getEast(),
+      north: b.getNorth(),
+    });
+    // Only worth saying when there is somewhere better to send them.
+    const target = onScreen ? null : coveringModelForView();
+    if (!onScreen && target && target !== model) coverageNotice.show();
+    else coverageNotice.hide();
+  };
+
+  map.on("moveend", syncCoverageNotice);
+
   const newRunNotice = createNewRunNotice(dom.mapWrap, {
     message: () => t("status.newRun"),
     actionLabel: () => t("action.updateForecast"),
@@ -729,6 +783,10 @@ export function createControllers(config: ControllerFactoryConfig) {
     } else {
       datasetLoader.end();
     }
+    // The model just changed, so whether it covers the view may have too. Only
+    // listening on moveend left a stale notice on screen accusing the model the
+    // reader had just switched TO.
+    syncCoverageNotice();
   };
   // Bind the forward reference so the catalog controller's safety net can switch.
   switchModelFn = (model: string) => void changeModel(model);

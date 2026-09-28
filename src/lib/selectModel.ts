@@ -113,3 +113,58 @@ function ringContains(ring: number[][], x: number, y: number): boolean {
   }
   return inside;
 }
+
+/** west, south, east, north — the map's visible extent. */
+export type ViewportBounds = {
+  west: number;
+  south: number;
+  east: number;
+  north: number;
+};
+
+/**
+ * Whether any part of a model's domain is on screen.
+ *
+ * A model whose domain lies entirely outside the view paints nothing, and the
+ * app used to say nothing about it either: the deployed config defaults new
+ * visitors to a regional model, so a first-time reader could land on an empty
+ * map with no indication that the data existed somewhere else entirely. This is
+ * the test behind telling them.
+ *
+ * A model with no bbox (a global one) is treated as covering everything, which
+ * is what it does.
+ */
+export function modelIntersectsViewport(
+  model: Pick<ModelCoverage, "bbox">,
+  view: ViewportBounds,
+): boolean {
+  const bbox = model.bbox;
+  if (!bbox) return true;
+  if (bbox.north < view.south || bbox.south > view.north) return false;
+
+  // Longitude is an angle, so overlap is a question about arcs, not intervals:
+  // compare the two spans' centres by the shortest way round the globe against
+  // the sum of their half-widths.
+  //
+  // An earlier version wrapped both edges of the domain relative to the view
+  // and compared them as plain numbers. That quietly broke the most important
+  // case: a GLOBAL domain (-180 to 180) has edges that are the same point on the
+  // globe, so wrapping collapsed it to a single longitude and any view not
+  // sitting on it was reported as uncovered. A global model would then be
+  // accused of not covering the map it was painting.
+  const spanOf = (west: number, east: number): number => {
+    const raw = east - west;
+    if (!Number.isFinite(raw)) return 360;
+    if (raw >= 360 || raw <= -360) return 360;
+    return raw < 0 ? raw + 360 : raw;
+  };
+  const bboxWidth = spanOf(bbox.west, bbox.east);
+  const viewWidth = spanOf(view.west, view.east);
+  if (bboxWidth >= 359.999 || viewWidth >= 359.999) return true;
+
+  const bboxCentre = bbox.west + bboxWidth / 2;
+  const viewCentre = view.west + viewWidth / 2;
+  // Shortest angular distance between the two centres, 0…180.
+  const apart = Math.abs((((bboxCentre - viewCentre) % 360) + 540) % 360 - 180);
+  return apart <= (bboxWidth + viewWidth) / 2;
+}

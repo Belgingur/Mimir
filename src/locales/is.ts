@@ -123,6 +123,8 @@ export const is: Record<string, string> = {
   "status.datasetFailed": "Tókst ekki að sækja {{model}}. Það kann að vera án gagna núna.",
   "action.backToModel": "Til baka í {{model}}",
   "status.newRun": "Nýrri spá er tilbúin.",
+  "status.modelOutsideView": "Þetta spálíkan nær ekki yfir svæðið sem þú skoðar.",
+  "action.useCoveringModel": "Nota líkan sem nær yfir",
   "action.updateForecast": "Uppfæra spá",
   "action.dismiss": "Loka",
   "status.loadingWavegram": "Hleð bylgjurit…",

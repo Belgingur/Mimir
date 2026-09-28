@@ -102,6 +102,8 @@ export const pt: Record<string, string> = {
   "status.datasetFailed": "Não foi possível carregar {{model}}. Pode não ter dados agora.",
   "action.backToModel": "Voltar para {{model}}",
   "status.newRun": "Está disponível uma previsão mais recente.",
+  "status.modelOutsideView": "Este modelo não cobre a área que está a ver.",
+  "action.useCoveringModel": "Usar um modelo que cubra",
   "action.updateForecast": "Atualizar previsão",
   "action.dismiss": "Dispensar",
   "status.loadingWavegram": "Carregando ondograma…",

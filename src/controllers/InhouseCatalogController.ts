@@ -1342,6 +1342,16 @@ export class InhouseCatalogController {
    * auto-select location when omitted. Returns a model id present in the
    * catalog, or null when nothing healthy covers the point.
    */
+  /** Coverage metadata for a model, or null when none is known. */
+  getModelCoverage(model: string): ModelCoverage | null {
+    return this._inhouseModelMeta.get(model) ?? null;
+  }
+
+  /** Every model's coverage metadata, for callers that need to rank them. */
+  get modelCoverages(): ModelCoverage[] {
+    return [...this._inhouseModelMeta.values()];
+  }
+
   selectModelForLocation(lat?: number, lon?: number): string | null {
     let point: { lat: number; lon: number } | null;
     if (typeof lat === "number" && typeof lon === "number") {
