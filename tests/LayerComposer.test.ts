@@ -105,7 +105,7 @@ vi.mock("weatherlayers-gl", () => ({
   LegendControl: mockLegendControl,
   getRasterPoints: mockGetRasterPoints,
   ImageType: { SCALAR: "SCALAR", VECTOR: "VECTOR" },
-  ImageInterpolation: { LINEAR: "LINEAR" },
+  ImageInterpolation: { LINEAR: "LINEAR", CUBIC: "CUBIC" },
   UnitSystem: { METRIC: "metric" },
 }));
 
@@ -1314,6 +1314,9 @@ describe("LayerComposer", () => {
 
       expect(deps.setOverlayProps).toHaveBeenCalledTimes(1);
       expect(mockRasterLayer).toHaveBeenCalledTimes(1);
+      expect(mockRasterLayer).toHaveBeenCalledWith(
+        expect.objectContaining({ imageInterpolation: "CUBIC" }),
+      );
       expect(mockLineLayer).toHaveBeenCalledTimes(1);
       const layers = (deps.setOverlayProps as ReturnType<typeof vi.fn>).mock
         .calls[0][0].layers as Array<{ id: string }>;

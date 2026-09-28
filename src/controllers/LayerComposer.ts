@@ -735,6 +735,10 @@ export class LayerComposer {
         const isSnowDepth =
           INHOUSE_GROUP_VARIABLES.snow.primary.includes(layer.variable) ||
           layer.variable.includes("snow_depth");
+        const imageInterpolation =
+          isPrecip || isCloud || isSnowDepth
+            ? WeatherLayers.ImageInterpolation.LINEAR
+            : WeatherLayers.ImageInterpolation.CUBIC;
         const palette = isAirTemp
           ? (this.temperatureScaleCValueStep as WeatherLayers.Palette)
           : isWindSpeed
@@ -836,7 +840,7 @@ export class LayerComposer {
           imageUnscale: rasterImageUnscale,
           imageMinValue,
           imageMaxValue,
-          imageInterpolation: WeatherLayers.ImageInterpolation.LINEAR,
+          imageInterpolation,
           imageSmoothing: 0,
           bounds: rasterBounds,
           palette,
