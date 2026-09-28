@@ -57,6 +57,10 @@ export async function initWeather(
         iconCtrl.onTimeChange();
       }
     },
+    prefetchAheadForPlayback: (index) =>
+      deps.getCatalogController().prefetchAheadForPlayback(index),
+    isFrameBuffered: (index) =>
+      deps.getCatalogController().isFrameBuffered(index),
     isWavegramOpen: () => deps.getWavegramController().isOpen,
     renderGridLabels: (step, visible) =>
       deps

@@ -302,6 +302,9 @@ export class InhouseCatalogController {
   /** Separate abort for background neighbor-frame prefetch, so it never
    *  cancels the foreground frame load and is dropped when the view moves (B1). */
   private _prefetchAbort: AbortController | null = null;
+  /** URLs a prefetch is currently fetching, so a repeat request is a no-op
+   *  instead of an abort-and-restart. */
+  private readonly _prefetchInFlight = new Set<string>();
   private _inhouseCatalogReady: Promise<void> | null = null;
   private readonly _inhouseLayers: InhouseLayer[] = [];
 
@@ -1039,9 +1042,11 @@ export class InhouseCatalogController {
     if (this._inhouseAbort) {
       this._inhouseAbort.abort();
     }
-    // Drop any in-flight neighbour prefetch so it doesn't compete with the new
-    // foreground load (task B1). A fresh prefetch is scheduled when this resolves.
-    this._prefetchAbort?.abort();
+    // The prefetch is deliberately NOT aborted here. It is fetching the frames
+    // just ahead of this one, which are still the frames we want — cancelling
+    // them on every step is what made the cache permanently cold during
+    // playback. It is dropped only when the URLs stop being relevant, via
+    // invalidatePrefetch().
     this._inhouseAbort = new AbortController();
     const controller = this._inhouseAbort;
     const warningMessages: string[] = [];
@@ -1455,32 +1460,115 @@ export class InhouseCatalogController {
   }
 
   /**
-   * Background-prefetch the frames adjacent to `centerIndex` into the texture
-   * cache (task B1). Uses a dedicated abort controller so it never cancels the
-   * foreground load and is dropped the moment the view moves again. Scheduled on
-   * idle; frames already cached are skipped.
+   * Background-prefetch frames around `centerIndex` into the texture cache.
+   *
+   * Two things about this used to make it almost never land, which is why
+   * playback stalled for seconds at a time on a high-latency connection:
+   *
+   *  - It was re-created on every call, aborting whatever was already in
+   *    flight. During playback that meant each completed frame killed the
+   *    download of the next one and started it again from zero.
+   *  - It ran on `requestIdleCallback`, so on a slow link the next foreground
+   *    load began before idle ever fired.
+   *
+   * Now one controller lives as long as the layer set does (see
+   * {@link invalidatePrefetch}), in-flight URLs are tracked so a repeated
+   * request is a no-op rather than a restart, and playback asks for a forward
+   * run of frames rather than a pair of neighbours.
    */
-  private schedulePrefetchNeighbors(centerIndex: number): void {
-    if (this._prefetchAbort) this._prefetchAbort.abort();
+  private schedulePrefetchNeighbors(
+    centerIndex: number,
+    opts?: { direction?: -1 | 0 | 1; depth?: number },
+  ): void {
     const base = this._inhouseLayers[0];
     if (!base || !base.times.length) return;
-    const controller = new AbortController();
-    this._prefetchAbort = controller;
+    if (!this._prefetchAbort || this._prefetchAbort.signal.aborted) {
+      this._prefetchAbort = new AbortController();
+    }
+    const controller = this._prefetchAbort;
     const maxIndex = base.times.length - 1;
+    const depth = opts?.depth ?? 2;
+    const direction = opts?.direction ?? 0;
+    // Scrubbing can go either way, so warm both sides; playback only ever walks
+    // forward, and spending the budget behind it buys nothing.
+    const offsets: number[] = [];
+    for (let d = 1; d <= depth; d++) {
+      if (direction >= 0) offsets.push(d);
+      if (direction <= 0) offsets.push(-d);
+    }
     const run = () => {
       if (controller.signal.aborted) return;
-      // Nearest neighbours first (most likely next scrub step).
-      for (const offset of [1, -1, 2, -2]) {
+      for (const offset of offsets) {
         const idx = centerIndex + offset;
         if (idx < 0 || idx > maxIndex) continue;
         void this.prefetchFrameIndex(idx, controller.signal);
       }
     };
+    // Playback is a queue that has to stay ahead of a 900ms metronome; waiting
+    // for idle is exactly the wrong trade there. Scrubbing can afford to wait.
+    if (direction !== 0) {
+      run();
+      return;
+    }
     const idle = (
       globalThis as { requestIdleCallback?: (cb: () => void, opts?: unknown) => void }
     ).requestIdleCallback;
     if (typeof idle === "function") idle(run, { timeout: 1500 });
     else setTimeout(run, 200);
+  }
+
+  /**
+   * Drop every in-flight prefetch. Called when the URLs they are fetching stop
+   * being the ones we want — a different model, analysis or variable set — and
+   * NOT when the timeline merely steps, which is the case the old code aborted
+   * on and the reason nothing was ever warm.
+   */
+  invalidatePrefetch(): void {
+    this._prefetchAbort?.abort();
+    this._prefetchAbort = null;
+    this._prefetchInFlight.clear();
+  }
+
+  /**
+   * How many frames ahead playback tries to keep warm.
+   *
+   * Deep enough to cover a few seconds of round trips from far away (the report
+   * that prompted this came from Brazil), shallow enough that a pause does not
+   * leave a dozen pointless requests running.
+   */
+  static readonly PLAYBACK_PREFETCH_DEPTH = 6;
+
+  /** Warm the next few frames in playback order. */
+  prefetchAheadForPlayback(centerIndex: number): void {
+    this.schedulePrefetchNeighbors(centerIndex, {
+      direction: 1,
+      depth: InhouseCatalogController.PLAYBACK_PREFETCH_DEPTH,
+    });
+  }
+
+  /**
+   * Whether every layer's texture for `index` is already in the cache — i.e.
+   * the frame will appear without touching the network.
+   */
+  isFrameBuffered(index: number): boolean {
+    const base = this._inhouseLayers[0];
+    if (!base) return false;
+    const targetTime = base.times[index];
+    if (!targetTime) return false;
+    return this._inhouseLayers.every((layer) => {
+      const matchIndex =
+        layer === base ? index : matchNearestTimeIndex(layer.times, targetTime);
+      const baseUrl = this.getVariableBaseUrl(
+        layer.model,
+        layer.analysis,
+        layer.variable,
+      );
+      const fileName = layer.manifest.fileTemplate.replace(
+        "{index:03d}",
+        formatIndex(matchIndex, 3),
+      );
+      return this._textureCache.has(`${baseUrl}/${fileName}`);
+    });
   }
 
   /**
@@ -1513,11 +1601,19 @@ export class InhouseCatalogController {
           formatIndex(matchIndex, 3),
         );
         const url = `${baseUrl}/${fileName}`;
-        if (this._textureCache.has(url)) return;
+        // Already cached, or already on its way: re-requesting would cancel and
+        // restart a download that is part-finished, which is precisely how the
+        // old prefetch managed to never deliver a frame during playback.
+        if (this._textureCache.has(url) || this._prefetchInFlight.has(url)) {
+          return;
+        }
+        this._prefetchInFlight.add(url);
         try {
           await this.loadInhouseTexture(url, signal);
         } catch {
           // Prefetch is best-effort — ignore aborts and load errors.
+        } finally {
+          this._prefetchInFlight.delete(url);
         }
       }),
     );
@@ -1816,6 +1912,7 @@ export class InhouseCatalogController {
       this.setInhouseWarning(
         `No ${groupId} variable found for ${this._inhouseSelectedModel}/${this._inhouseSelectedAnalysis}.`,
       );
+      this.invalidatePrefetch();
       this._inhouseLayers.length = 0;
       this.renderInhouseLayersList();
       this.deps.scheduleUpdateLayers();
@@ -1970,6 +2067,9 @@ export class InhouseCatalogController {
     const nextLayers = loadedLayers.filter(
       (layer): layer is InhouseLayer => layer !== null,
     );
+    // The frames being warmed belong to the outgoing layer set; their URLs are
+    // about to stop being the ones we want.
+    this.invalidatePrefetch();
     this._inhouseLayers.length = 0;
     this._inhouseLayers.push(...nextLayers);
     const primaryLayer = this._inhouseLayers[0];
@@ -2271,6 +2371,7 @@ export class InhouseCatalogController {
   // ---------------------------------------------------------------------------
 
   clearTextureCaches(): void {
+    this.invalidatePrefetch();
     this._textureCache.clear();
     this._textureDebugLogged.clear();
     this._rasterScalarCache.clear();

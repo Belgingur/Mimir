@@ -95,6 +95,33 @@
   cursor: pointer;
 }
 
+/* How far ahead of the playhead the forecast is already loaded — the same
+   device a video scrubber uses, and shown only while playing. It sits behind
+   .timeline-rail__progress (earlier in document order, same stacking context),
+   so the played portion always covers it and the visible band is exactly the
+   runway still to come. Dim on purpose: it is reassurance, not a control. */
+.timeline-rail__buffered {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.34);
+  opacity: 0;
+  transition:
+    width 220ms ease-out,
+    opacity 180ms ease;
+}
+
+.timeline-rail__buffered.is-visible {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timeline-rail__buffered {
+    transition: none;
+  }
+}
+
 .timeline-rail__progress {
   position: absolute;
   inset: 0 auto 0 0;
