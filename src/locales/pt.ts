@@ -25,6 +25,7 @@ export const pt: Record<string, string> = {
   "map.close": "Fechar",
   "map.myLocation": "Usar a minha localização",
   "map.locationUnavailable": "Não foi possível obter a sua localização.",
+  "map.noForecastHere": "Sem previsão aqui — o ponto está fora dos dados do modelo.",
   "map.variable": "Variável",
   "map.variables": "Variáveis",
   "map.menu": "Menu",

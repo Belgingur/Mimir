@@ -42,6 +42,7 @@ export const pl: Record<string, string> = {
   "map.close": "Zamknij",
   "map.myLocation": "Użyj mojej lokalizacji",
   "map.locationUnavailable": "Nie udało się ustalić Twojej lokalizacji.",
+  "map.noForecastHere": "Brak prognozy w tym miejscu — punkt jest poza danymi modelu.",
   "map.variable": "Zmienna",
   "map.variables": "Zmienne",
   "map.menu": "Menu",

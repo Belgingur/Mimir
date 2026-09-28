@@ -39,6 +39,7 @@ export const is: Record<string, string> = {
   "map.close": "Loka",
   "map.myLocation": "Nota staðsetningu mína",
   "map.locationUnavailable": "Náði ekki staðsetningu þinni.",
+  "map.noForecastHere": "Engin spá hér — punkturinn er utan gagna líkansins.",
   "map.variable": "Breyta",
   "map.variables": "Breytur",
   "map.menu": "Valmynd",

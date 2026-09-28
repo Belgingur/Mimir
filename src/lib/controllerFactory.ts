@@ -52,6 +52,7 @@ import {
 } from "./initialCamera";
 import { createDatasetLoadingOverlay } from "./datasetLoadingOverlay";
 import { createNewRunNotice } from "./newRunNotice";
+import { createTransientNotice } from "./transientNotice";
 import { modelIntersectsViewport } from "./selectModel";
 import { LanguageSwitcherController } from "../controllers/LanguageSwitcherController";
 import { isMeteogramEnabled } from "../features/meteogram/enabled";
@@ -1017,6 +1018,20 @@ export function createControllers(config: ControllerFactoryConfig) {
               viewMode: layerGroupController.viewMode,
               meteogramEnabled: true,
             }) === "meteogram",
+          // The crosshair button goes quiet over water the model has no data
+          // for, so the reader is never offered a panel that can only fail.
+          // "unknown" (frame still decoding) keeps the button, since refusing
+          // during a load would make the map feel dead after every change.
+          isMeteogramAvailableHere: () => {
+            const c = map.getCenter();
+            return (
+              catalogController.dataAvailabilityAt(
+                c.lng,
+                c.lat,
+                uiState.layerMode as InhouseGroupId,
+              ) !== "none"
+            );
+          },
           getModelBounds: () =>
             catalogController.inhouseLayers[0]?.manifest.bounds ?? null,
           getAnalysisInfo: () => {
@@ -1078,7 +1093,11 @@ export function createControllers(config: ControllerFactoryConfig) {
   // shows "Reykjavík" rather than "64.143, -21.937".
   const placeLabeller = createPlaceLabeller();
 
+  // Feedback for a click the app declines — see MapEventDeps.showTransientNotice.
+  const transientNotice = createTransientNotice(dom.mapWrap);
+
   attachMapEventHandlers(map, {
+    showTransientNotice: (message: string) => transientNotice.show(message),
     getPlaceResolver: () => placeResolver,
     onPlaceResolved: (
       place: ResolvedPlace | null,

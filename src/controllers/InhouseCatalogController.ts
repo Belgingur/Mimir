@@ -25,7 +25,10 @@ import {
 import { decodeScalarGrid } from "../lib/imageProcessing";
 import { selectModel } from "../lib/selectModel";
 import { processTexturePixels } from "../lib/textureProcessing";
-import { sampleInhouseScalarAtCoord } from "../lib/gridSampling";
+import {
+  sampleInhouseScalarAtCoord,
+  sampleNodataAlpha,
+} from "../lib/gridSampling";
 import { clamp } from "../lib/mathUtils";
 import {
   FORECAST_DATA_SEGMENT,
@@ -689,6 +692,54 @@ export class InhouseCatalogController {
         return layer;
     }
     return null;
+  }
+
+  /**
+   * Whether the displayed forecast actually has a value at a point.
+   *
+   * The authority is the decoded raster's own domain mask — the same sample the
+   * centre readout shows — so it answers for the real domain rather than for a
+   * bounding box round it. That distinction is the whole point: ICON-EU is a
+   * rotated-pole grid whose bbox covers a good deal of ocean it has no data
+   * for, and GWES covers the globe but carries nothing over land. A rectangle
+   * says "maybe" in both cases; the mask says yes or no.
+   *
+   * Three answers, not two. "unknown" means the frame has not decoded yet, and
+   * callers must treat it as permission: refusing during a load would make the
+   * map feel broken for the second or two after every model change.
+   */
+  dataAvailabilityAt(
+    lng: number,
+    lat: number,
+    groupId: InhouseGroupId,
+  ): "available" | "none" | "unknown" {
+    const group = INHOUSE_GROUP_VARIABLES[groupId];
+    if (!group) return "unknown";
+    const layer = this.findInhouseLayerByCandidates(group.primary);
+    // No layer at all: still loading if the catalog is empty, otherwise this
+    // variable genuinely has no raster for the current selection.
+    if (!layer) return this._inhouseLayers.length === 0 ? "unknown" : "none";
+
+    const bounds = layer.manifest.bounds;
+    const [minLon, minLat, maxLon, maxLat] = bounds;
+    if (lng < minLon || lng > maxLon || lat < minLat || lat > maxLat) {
+      return "none";
+    }
+
+    // The encoded alpha channel is the authority the manifest itself names
+    // (`nodata: "A==0"`), and it is present on the decoded image whether or not
+    // a float grid was built for this layer. Consulting it first is what makes
+    // this work for waves: that lane renders through contours rather than a
+    // sampled grid, so `scalar` can be absent and the check would otherwise
+    // answer "unknown" forever and never refuse anything.
+    const alpha = sampleNodataAlpha(layer, lng, lat);
+    if (alpha === 0) return "none";
+
+    if (!layer.scalar) return alpha === null ? "unknown" : "available";
+    const value = sampleInhouseScalarAtCoord(layer, [lng, lat], bounds);
+    return typeof value === "number" && Number.isFinite(value)
+      ? "available"
+      : "none";
   }
 
   findInhouseLayerByCandidates(candidates?: string[]): InhouseLayer | null {

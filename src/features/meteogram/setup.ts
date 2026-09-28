@@ -36,6 +36,15 @@ export interface SetupMeteogramDeps {
   readonly getMapCenter: () => { lng: number; lat: number };
   /** True when a map click at the centre would resolve to a meteogram. */
   readonly isMeteogramTarget: () => boolean;
+  /**
+   * Whether a meteogram at the crosshair would actually have data — the map's
+   * own domain mask, not a bounding box. Kept separate from
+   * {@link isMeteogramTarget}, which drives the panel's lifecycle: panning an
+   * OPEN meteogram over empty water must not close it, but the button that
+   * would open one there should go quiet rather than offer a dead end.
+   * Optional; without it the button is offered wherever the mode allows.
+   */
+  readonly isMeteogramAvailableHere?: () => boolean;
   /** Domain bounds of the selected model `[minLon, minLat, maxLon, maxLat]`,
    *  or null when unknown — for the early out-of-domain hint. */
   readonly getModelBounds: () => [number, number, number, number] | null;
@@ -148,16 +157,18 @@ export function setupMeteogram(deps: SetupMeteogramDeps): MeteogramController {
   // detached element is mounted by whichever host claims it — hence the throwaway
   // container, which is never inserted into the document itself.
   const staging = document.createElement("div");
+  const offersMeteogram = (): boolean =>
+    deps.isMeteogramTarget() && (deps.isMeteogramAvailableHere?.() ?? true);
   const trigger = createMeteogramTrigger({
     mount: staging,
     variant: "crosshair",
-    isMeteogramTarget: deps.isMeteogramTarget,
+    isMeteogramTarget: offersMeteogram,
     onActivate: () => {
       const center = deps.getMapCenter();
       void controller.openAt(center.lng, center.lat);
     },
   });
-  if (!deps.mountTriggerInCrosshair?.(trigger.el, deps.isMeteogramTarget)) {
+  if (!deps.mountTriggerInCrosshair?.(trigger.el, offersMeteogram)) {
     // Legacy layout: back into the +/−/grid stack, styled as one of its buttons.
     // Falls back to .map-wrap if the stack isn't present (shouldn't happen, but
     // keeps setup total).
