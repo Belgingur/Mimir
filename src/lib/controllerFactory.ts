@@ -26,6 +26,7 @@ import { resolveWeatherBeforeId } from "./mapLayerOrder";
 import { applyPlaceLabelStyle } from "./placeLabelStyle";
 import { createPlaceLabeller } from "./placeLabeller";
 import { addCityLabelLayer } from "./cityLabelLayer";
+import { createStyleLoadedRunner } from "./styleLoadedRunner";
 import {
   createPlaceResolver,
   type PlaceResolver,
@@ -179,8 +180,7 @@ export function createControllers(config: ControllerFactoryConfig) {
    * cannot be added before it loads) and the place dataset (fetched async).
    * Whichever finishes last triggers the add; the call itself is idempotent.
    */
-  function ensureCityLabels() {
-    if (!map.isStyleLoaded()) return;
+  const ensureCityLabels = createStyleLoadedRunner(map, () => {
     const places = placeResolver.loadedPlaces();
     if (places.length === 0) return;
     try {
@@ -188,7 +188,7 @@ export function createControllers(config: ControllerFactoryConfig) {
     } catch {
       /* style swapped mid-call; the next styledata will retry */
     }
-  }
+  });
 
   const schedulePersistState = createPersistScheduler(() => {
     const center = map.getCenter();
