@@ -487,11 +487,54 @@
               <div class="wavegram-caption">
                 Analysis time: see tech block on plot.
               </div>
-              <img
-                id="wavegram-image"
-                class="wavegram-image"
-                alt="Spread wavegram"
-              />
+              <!--
+                The wavegram is a server-rendered PNG at a fixed size, and the
+                app disables page zoom (maximum-scale=1 on the viewport) so
+                MapLibre can own two-finger gestures. That left the chart's
+                small type unreadable on a phone with no way to magnify it.
+                This viewport gives the image its own pinch-and-pan, scoped to
+                the element so the map's gestures are untouched.
+              -->
+              <div
+                id="wavegram-viewport"
+                class="wavegram-viewport"
+                data-zoom="1"
+              >
+                <img
+                  id="wavegram-image"
+                  class="wavegram-image"
+                  alt="Spread wavegram"
+                />
+              </div>
+              <div class="wavegram-zoom" role="group">
+                <button
+                  id="wavegram-zoom-out"
+                  type="button"
+                  data-i18n="wavegram.zoomOut"
+                  data-i18n-attr="aria-label"
+                  aria-label="Zoom out"
+                >
+                  −
+                </button>
+                <button
+                  id="wavegram-zoom-reset"
+                  type="button"
+                  data-i18n="wavegram.zoomReset"
+                  data-i18n-attr="aria-label"
+                  aria-label="Fit to width"
+                >
+                  <span id="wavegram-zoom-level">100%</span>
+                </button>
+                <button
+                  id="wavegram-zoom-in"
+                  type="button"
+                  data-i18n="wavegram.zoomIn"
+                  data-i18n-attr="aria-label"
+                  aria-label="Zoom in"
+                >
+                  +
+                </button>
+              </div>
             </div>
           </div>
         </div>
