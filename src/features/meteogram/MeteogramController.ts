@@ -110,6 +110,9 @@ export class MeteogramController {
 
   private attachDomListeners(): void {
     const { dom } = this.deps;
+    if (!dom.modal.classList.contains("is-open")) {
+      dom.modal.toggleAttribute("inert", true);
+    }
     dom.close.addEventListener("click", () => this.close());
     dom.modal.addEventListener("click", (event) => {
       if (event.target === dom.modal) {
@@ -142,6 +145,11 @@ export class MeteogramController {
   close(): void {
     const { dom } = this.deps;
     const wasOpen = this.isOpen;
+    const focused = document.activeElement;
+    if (focused instanceof HTMLElement && dom.modal.contains(focused)) {
+      focused.blur();
+    }
+    dom.modal.toggleAttribute("inert", true);
     dom.modal.classList.remove("is-open");
     dom.modal.setAttribute("aria-hidden", "true");
     this.pendingOutOfBounds = false;
@@ -364,6 +372,7 @@ export class MeteogramController {
     const clientName = this.resolveClientNameForModel(modelId);
     const wasOpen = this.isOpen;
     writeMapPanelPoint(lat, lng);
+    dom.modal.removeAttribute("inert");
     dom.modal.classList.add("is-open");
     dom.modal.setAttribute("aria-hidden", "false");
     if (!wasOpen) this.deps.onOpenStateChange?.(true);
