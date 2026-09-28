@@ -8,7 +8,7 @@ describe("buildSpreadWavegramUrl", () => {
     const url = buildSpreadWavegramUrl({ baseUrl, lat: 64.123, lon: -21.456 });
     expect(url).toContain("/api/v2/plot/point/upstream/gwes/");
     expect(url).toContain("/latlon/64.123,-21.456/");
-    expect(url).toContain("/duration/120/hours/");
+    expect(url).toContain("duration=120h");
     expect(url).toContain("spread_wavegram.png");
     expect(url).toContain("tz=UTC");
     expect(url).toContain("lang=en");
@@ -32,9 +32,19 @@ describe("buildSpreadWavegramUrl", () => {
       lat: 0,
       lon: 0,
       duration: 48,
-      durationUnit: "days",
+      durationUnit: "d",
     });
-    expect(url).toContain("/duration/48/days/");
+    expect(url).toContain("duration=48d");
+  });
+
+  // The API moved `duration` out of the path and into the query string; the old
+  // shape now 404s for every point, which read as "the wavegram is broken"
+  // rather than "the URL is wrong".
+  it("carries the duration as a query parameter, not as path segments", () => {
+    const url = buildSpreadWavegramUrl({ baseUrl, lat: 0, lon: 0 });
+    expect(url).not.toContain("/duration/");
+    expect(url).toContain("/latlon/0.000,0.000/spread_wavegram.png?");
+    expect(new URL(url).searchParams.get("duration")).toBe("120h");
   });
 
   it("uses custom tz and lang", () => {
