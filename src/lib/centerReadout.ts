@@ -151,7 +151,8 @@ function formatPrecipRate(layer: InhouseLayer, value: number): string {
   return `${formatted} ${unit}`;
 }
 
-function buildReadout(
+/** Exported for tests: the pure value→text step, with no DOM or map involved. */
+export function buildReadout(
   mode: InhouseGroupId,
   layer: InhouseLayer,
   value: number,
@@ -220,8 +221,16 @@ function buildReadout(
       const clamped = Math.max(0, Math.min(1, fraction));
       return `${Math.round(clamped * 100)} %`;
     }
-    case "snow":
-      return `${value.toFixed(2)} m`;
+    case "snow": {
+      // The manifest calls this "Water equivalent of accumulated snow depth" in
+      // MILLIMETRES, over a 0–20000 domain. This branch used to hardcode metres,
+      // so a 340mm reading was shown as "340.00 m" while the colour bar beside
+      // it — correctly labelled mm — said the same pixel was 340. Resolve the
+      // unit like every other mode instead of asserting one.
+      const unit = resolveDisplayUnit(layer.variable, layer.manifest.unit);
+      const formatted = value < 10 ? value.toFixed(1) : String(Math.round(value));
+      return `${formatted}${unit ? ` ${unit}` : ""}`;
+    }
     default:
       return null;
   }

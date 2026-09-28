@@ -6,9 +6,13 @@ vi.mock("../src/lib/gridSampling", () => ({
   sampleInhouseScalarAtCoord: () => 12,
 }));
 
-import { initCenterReadout, type CenterReadout } from "../src/lib/centerReadout";
+import {
+  buildReadout,
+  initCenterReadout,
+  type CenterReadout,
+} from "../src/lib/centerReadout";
 import type { InhouseCatalogController } from "../src/controllers/InhouseCatalogController";
-import type { UiState } from "../src/lib/inhouseTypes";
+import type { InhouseLayer, UiState } from "../src/lib/inhouseTypes";
 
 // ── Fakes ────────────────────────────────────────────────────────────────────
 
@@ -580,5 +584,40 @@ describe("centerReadout — flag off restores the previous behaviour", () => {
     expect(handle.getActionPoint()).toEqual({ lng: -21.9, lat: 64.14 });
     map.setCentre({ lng: 0, lat: 0 });
     expect(handle.getActionPoint()).toEqual({ lng: 0, lat: 0 });
+  });
+});
+
+describe("buildReadout — snow depth units", () => {
+  // The manifest calls this variable "Water equivalent of accumulated snow
+  // depth" in MILLIMETRES over a 0-20000 domain, and the colour bar beside the
+  // readout is labelled mm. This branch used to hardcode metres, so the same
+  // pixel read "340.00 m" here and "340 mm" on the legend.
+  const snowLayer = {
+    variable: "lwe_snow_depth",
+    manifest: { unit: "mm", bounds: [-26, 62, -11, 67] },
+  } as unknown as InhouseLayer;
+
+  const read = (value: number): string | null =>
+    buildReadout(
+      "snow",
+      snowLayer,
+      value,
+      [-21, 64],
+      [-26, 62, -11, 67],
+      {} as never,
+      () => null,
+    );
+
+  it("reports the manifest's own unit", () => {
+    expect(read(340)).toBe("340 mm");
+  });
+
+  it("never claims metres", () => {
+    // Endswith, not contains: "2000 mm" legitimately contains " m".
+    expect(read(2000)?.endsWith(" m")).toBe(false);
+  });
+
+  it("keeps a decimal where the value is small enough to need one", () => {
+    expect(read(2.4)).toBe("2.4 mm");
   });
 });
