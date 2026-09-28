@@ -251,6 +251,20 @@ describe("MeteogramController", () => {
     expect(controller.isOpen).toBe(false);
   });
 
+  it("releases focus and makes the hidden modal inert", async () => {
+    const { controller, dom } = buildController();
+    await controller.openAt(-20, 64);
+    expect(dom.modal.hasAttribute("inert")).toBe(false);
+    dom.close.focus();
+    expect(document.activeElement).toBe(dom.close);
+
+    controller.close();
+
+    expect(document.activeElement).not.toBe(dom.close);
+    expect(dom.modal.hasAttribute("inert")).toBe(true);
+    expect(dom.modal.getAttribute("aria-hidden")).toBe("true");
+  });
+
   it("removes the pin and clears the saved point when the panel closes", async () => {
     const removePin = vi.fn();
     const { controller, widget } = buildController({ removePin });
