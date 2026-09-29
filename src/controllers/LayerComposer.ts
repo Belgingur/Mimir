@@ -372,7 +372,7 @@ export class LayerComposer {
           catalogController.contourCache.set(key, paths);
           catalogController.contourPending.delete(key);
         }
-        this.updateLayers();
+        this.scheduleUpdateLayers();
       };
     }
     return this._contourWorkerInstance;
@@ -388,7 +388,7 @@ export class LayerComposer {
         };
         this.mslpContourCache.set(key, paths);
         this.mslpContourPending.delete(key);
-        this.updateLayers();
+        this.scheduleUpdateLayers();
       };
     }
     return this._mslpContourWorkerInstance;
@@ -405,7 +405,7 @@ export class LayerComposer {
         };
         this.windStreamlineCache.set(key, featureCollection);
         if (key === this.activeWindStreamlineKey) {
-          this.updateLayers();
+          this.scheduleUpdateLayers();
         }
       };
     }

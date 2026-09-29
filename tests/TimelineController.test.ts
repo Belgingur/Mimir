@@ -56,7 +56,6 @@ function createDeps(options?: {
     schedulePersistState: ReturnType<typeof vi.fn>;
     scheduleUpdateLayers: ReturnType<typeof vi.fn>;
     setStatus: ReturnType<typeof vi.fn>;
-    updateLayers: ReturnType<typeof vi.fn>;
     syncInhouseTimeToTimeline: ReturnType<typeof vi.fn>;
     loadInhouseFrameSet: ReturnType<typeof vi.fn>;
     createTimelineControl: ReturnType<typeof vi.fn>;
@@ -75,7 +74,6 @@ function createDeps(options?: {
   const schedulePersistState = vi.fn();
   const scheduleUpdateLayers = vi.fn();
   const setStatus = vi.fn();
-  const updateLayers = vi.fn();
   const syncInhouseTimeToTimeline = vi.fn();
   const loadInhouseFrameSet = vi.fn().mockResolvedValue(undefined);
   const createTimelineControl = vi.fn();
@@ -93,7 +91,6 @@ function createDeps(options?: {
     schedulePersistState,
     scheduleUpdateLayers,
     setStatus,
-    updateLayers,
     getInhouseLayers: () => state.inhouseLayers,
     syncInhouseTimeToTimeline,
     loadInhouseFrameSet,
@@ -112,7 +109,6 @@ function createDeps(options?: {
       schedulePersistState,
       scheduleUpdateLayers,
       setStatus,
-      updateLayers,
       syncInhouseTimeToTimeline,
       loadInhouseFrameSet,
       createTimelineControl,
@@ -394,7 +390,7 @@ describe("TimelineController", () => {
       firstSegment.click();
       vi.advanceTimersByTime(160);
       await flush();
-      expect(spies.updateLayers).toHaveBeenCalled();
+      expect(spies.scheduleUpdateLayers).toHaveBeenCalled();
       // Segments are cut on local days, so how these four UTC instants divide
       // depends on the runtime zone. The behaviour under test is "land on the
       // clicked block's midpoint", so read that block back rather than assuming
@@ -446,7 +442,7 @@ describe("TimelineController", () => {
       ctrl.activeTimelineDatetimes = ["a"];
       ctrl.ensureCustomTimeline(dom.timelineHost);
       ctrl.applyTimelineIndexFromPointer(30);
-      expect(spies.updateLayers).not.toHaveBeenCalled();
+      expect(spies.scheduleUpdateLayers).not.toHaveBeenCalled();
     });
 
     it("maps pointer x to nearest timeline index", async () => {
@@ -543,13 +539,13 @@ describe("TimelineController", () => {
   });
 
   describe("loadFrameForDatetimeCore/loadFrameForDatetime", () => {
-    it("updates currentDatetime and calls persist + updateLayers", async () => {
+    it("updates currentDatetime and calls persist + scheduleUpdateLayers", async () => {
       const { deps, spies } = createDeps();
       const ctrl = new TimelineController(deps);
       await ctrl.loadFrameForDatetimeCore("2026-03-20T00:00:00Z");
       expect(ctrl.currentDatetime).toBe("2026-03-20T00:00:00Z");
       expect(spies.schedulePersistState).toHaveBeenCalledTimes(1);
-      expect(spies.updateLayers).toHaveBeenCalledTimes(1);
+      expect(spies.scheduleUpdateLayers).toHaveBeenCalledTimes(1);
     });
 
     it("syncs and loads inhouse frame set when inhouse layers exist", async () => {
@@ -597,7 +593,7 @@ describe("TimelineController", () => {
         .mockImplementation(() => undefined);
       await ctrl.loadFrameForDatetime("a");
       expect(logSpy).toHaveBeenCalled();
-      expect(spies.updateLayers).toHaveBeenCalled();
+      expect(spies.scheduleUpdateLayers).toHaveBeenCalled();
       logSpy.mockRestore();
     });
   });
@@ -607,7 +603,7 @@ describe("TimelineController", () => {
       const { deps, spies } = createDeps();
       const ctrl = new TimelineController(deps);
       await ctrl.setSelectedIndex(0, "user");
-      expect(spies.updateLayers).not.toHaveBeenCalled();
+      expect(spies.scheduleUpdateLayers).not.toHaveBeenCalled();
     });
 
     it("clamps index and debounces user source by 140ms", async () => {
@@ -618,11 +614,11 @@ describe("TimelineController", () => {
       expect(ctrl.timelineUpdateHandle).not.toBeNull();
       vi.advanceTimersByTime(139);
       await flush();
-      expect(spies.updateLayers).not.toHaveBeenCalled();
+      expect(spies.scheduleUpdateLayers).not.toHaveBeenCalled();
       vi.advanceTimersByTime(2);
       await flush();
       expect(ctrl.currentDatetime).toBe("b");
-      expect(spies.updateLayers).toHaveBeenCalledTimes(1);
+      expect(spies.scheduleUpdateLayers).toHaveBeenCalledTimes(1);
     });
 
     it("cancels previous user debounce when called repeatedly", async () => {
@@ -633,7 +629,7 @@ describe("TimelineController", () => {
       void ctrl.setSelectedIndex(2, "user");
       vi.advanceTimersByTime(160);
       await flush();
-      expect(spies.updateLayers).toHaveBeenCalledTimes(1);
+      expect(spies.scheduleUpdateLayers).toHaveBeenCalledTimes(1);
       expect(ctrl.currentDatetime).toBe("c");
     });
 
@@ -643,7 +639,7 @@ describe("TimelineController", () => {
       ctrl.activeTimelineDatetimes = ["a", "b"];
       await ctrl.setSelectedIndex(1, "playback");
       expect(ctrl.currentDatetime).toBe("b");
-      expect(spies.updateLayers).toHaveBeenCalledTimes(1);
+      expect(spies.scheduleUpdateLayers).toHaveBeenCalledTimes(1);
       expect(ctrl.playbackState).toBe("waitingForFrame");
     });
 
@@ -752,7 +748,7 @@ describe("TimelineController", () => {
       ctrl.handleTimelineKeydown(
         new KeyboardEvent("keydown", { key: "Enter" }),
       );
-      expect(spies.updateLayers).not.toHaveBeenCalled();
+      expect(spies.scheduleUpdateLayers).not.toHaveBeenCalled();
     });
 
     it("handleTimelineKeydown ignores when modal blocks", () => {
@@ -764,7 +760,7 @@ describe("TimelineController", () => {
         new KeyboardEvent("keydown", { key: "ArrowRight", cancelable: true }),
       );
       vi.advanceTimersByTime(160);
-      expect(spies.updateLayers).not.toHaveBeenCalled();
+      expect(spies.scheduleUpdateLayers).not.toHaveBeenCalled();
     });
 
     it("handleTimelineKeydown ignores when target is editable", () => {
@@ -780,7 +776,7 @@ describe("TimelineController", () => {
         new KeyboardEvent("keydown", { key: "ArrowRight", cancelable: true }),
       );
       expect(ctrl.shouldIgnoreTimelineHotkeys(input)).toBe(true);
-      expect(spies.updateLayers).not.toHaveBeenCalled();
+      expect(spies.scheduleUpdateLayers).not.toHaveBeenCalled();
     });
 
     it("handleTimelineKeydown steps right and prevents default", async () => {
@@ -820,7 +816,7 @@ describe("TimelineController", () => {
       const { deps, spies } = createDeps();
       const ctrl = new TimelineController(deps);
       await ctrl.stepTimelineByKeyboard(1);
-      expect(spies.updateLayers).not.toHaveBeenCalled();
+      expect(spies.scheduleUpdateLayers).not.toHaveBeenCalled();
     });
 
     it("returns when waitingForFrame", async () => {
@@ -829,7 +825,7 @@ describe("TimelineController", () => {
       ctrl.activeTimelineDatetimes = ["a", "b"];
       ctrl.setPlaybackState("waitingForFrame");
       await ctrl.stepTimelineByKeyboard(1);
-      expect(spies.updateLayers).not.toHaveBeenCalled();
+      expect(spies.scheduleUpdateLayers).not.toHaveBeenCalled();
     });
 
     it("stops playback when currently playing", async () => {
@@ -851,10 +847,10 @@ describe("TimelineController", () => {
       ctrl.activeTimelineDatetimes = ["a", "b"];
       ctrl.currentDatetime = "a";
       await ctrl.stepTimelineByKeyboard(-1);
-      expect(spies.updateLayers).not.toHaveBeenCalled();
+      expect(spies.scheduleUpdateLayers).not.toHaveBeenCalled();
       ctrl.currentDatetime = "b";
       await ctrl.stepTimelineByKeyboard(1);
-      expect(spies.updateLayers).not.toHaveBeenCalled();
+      expect(spies.scheduleUpdateLayers).not.toHaveBeenCalled();
     });
   });
 

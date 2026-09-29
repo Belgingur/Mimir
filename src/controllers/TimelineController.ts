@@ -26,7 +26,6 @@ export interface TimelineDeps {
   schedulePersistState: () => void;
   scheduleUpdateLayers: () => void;
   setStatus: (message: string) => void;
-  updateLayers: () => void;
   getInhouseLayers: () => { times?: string[] }[];
   syncInhouseTimeToTimeline: () => void;
   loadInhouseFrameSet: () => Promise<void>;
@@ -550,7 +549,10 @@ export class TimelineController {
         this._adapter.setConfig({ ...currentConfig, datetime });
       }
     }
-    this.deps.updateLayers();
+    // Scheduled, not immediate: the frame load has already queued a redraw
+    // for the next animation frame, and drawing now as well built every layer
+    // twice per step.
+    this.deps.scheduleUpdateLayers();
     this.renderCustomTimeline();
   }
 

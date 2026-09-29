@@ -18,7 +18,6 @@ export interface InitWeatherDeps {
   getMapZoom: () => number;
   schedulePersistState: () => void;
   scheduleUpdateLayers: () => void;
-  updateLayers: () => void;
   getCatalogController: () => InhouseCatalogController;
   getLayerComposer: () => LayerComposer;
   getLayerGroupController: () => LayerGroupController;
@@ -46,7 +45,6 @@ export async function initWeather(
     schedulePersistState: deps.schedulePersistState,
     scheduleUpdateLayers: deps.scheduleUpdateLayers,
     setStatus: (_message: string) => {},
-    updateLayers: deps.updateLayers,
     getInhouseLayers: () => deps.getCatalogController().inhouseLayers,
     syncInhouseTimeToTimeline: () =>
       deps.getCatalogController().syncInhouseTimeToTimeline(),
