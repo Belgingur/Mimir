@@ -998,8 +998,12 @@ describe("InhouseCatalogController", () => {
     });
 
     it("fetches, decodes, and returns texture data", async () => {
-      stubTextureLoad(4, 2);
+      const { mockCanvas } = stubTextureLoad(4, 2);
       const result = await ctrl.loadInhouseTexture("/test/frame.webp");
+      // A CPU-backed canvas: reading a GPU one back is the slow path.
+      expect(mockCanvas.getContext).toHaveBeenCalledWith("2d", {
+        willReadFrequently: true,
+      });
       expect(result).not.toBeNull();
       expect(result!.width).toBe(4);
       expect(result!.height).toBe(2);
