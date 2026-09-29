@@ -147,11 +147,6 @@ export function createControllers(config: ControllerFactoryConfig) {
     layerComposer.scheduleUpdateLayers();
   }
 
-  function updateLayers() {
-    if (!layerComposer) return;
-    layerComposer.updateLayers();
-  }
-
   // --- Basemap presentation (draw order + place labels) ---
   // MapLibre layer id the weather raster is anchored before, so the basemap's
   // city labels paint on top of the weather imagery. Resolved by scanning the
@@ -904,7 +899,6 @@ export function createControllers(config: ControllerFactoryConfig) {
         getMapZoom: () => map.getZoom(),
         schedulePersistState,
         scheduleUpdateLayers,
-        updateLayers,
         getCatalogController: () => catalogController,
         getLayerComposer: () => layerComposer,
         getLayerGroupController: () => layerGroupController,

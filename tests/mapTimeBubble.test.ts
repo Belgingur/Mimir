@@ -9,7 +9,6 @@ function makeController() {
     schedulePersistState: () => {},
     scheduleUpdateLayers: () => {},
     setStatus: () => {},
-    updateLayers: () => {},
     getInhouseLayers: () => [],
     syncInhouseTimeToTimeline: () => {},
     loadInhouseFrameSet: async () => {},
