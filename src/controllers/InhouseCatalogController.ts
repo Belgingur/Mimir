@@ -305,9 +305,13 @@ export class InhouseCatalogController {
   /** Separate abort for background neighbor-frame prefetch, so it never
    *  cancels the foreground frame load and is dropped when the view moves (B1). */
   private _prefetchAbort: AbortController | null = null;
-  /** URLs a prefetch is currently fetching, so a repeat request is a no-op
-   *  instead of an abort-and-restart. */
-  private readonly _prefetchInFlight = new Set<string>();
+  /** Frame downloads in progress, by URL. A second request for the same frame
+   *  — playback catching up with its own prefetch, say — waits on the first
+   *  instead of downloading and decoding it again. */
+  private readonly _textureInFlight = new Map<
+    string,
+    Promise<WeatherLayers.TextureData | null>
+  >();
   private _inhouseCatalogReady: Promise<void> | null = null;
   private readonly _inhouseLayers: InhouseLayer[] = [];
 
@@ -948,6 +952,31 @@ export class InhouseCatalogController {
       }
       this._textureCache.delete(url);
     }
+    const pending = this._textureInFlight.get(url);
+    if (pending) {
+      try {
+        return await pending;
+      } catch (error) {
+        // The request we joined was cancelled (a dropped prefetch, or an older
+        // step). That says nothing about ours, so fetch it ourselves.
+        if (signal?.aborted) throw error;
+      }
+    }
+    const load = this.fetchAndDecodeTexture(url, signal);
+    this._textureInFlight.set(url, load);
+    try {
+      return await load;
+    } finally {
+      if (this._textureInFlight.get(url) === load) {
+        this._textureInFlight.delete(url);
+      }
+    }
+  }
+
+  private async fetchAndDecodeTexture(
+    url: string,
+    signal?: AbortSignal,
+  ): Promise<WeatherLayers.TextureData | null> {
     const response = await fetch(url, { signal });
     if (!response.ok) {
       throw new Error(`Failed to load frame ${url} (${response.status})`);
@@ -1469,8 +1498,8 @@ export class InhouseCatalogController {
    *    load began before idle ever fired.
    *
    * Now one controller lives as long as the layer set does (see
-   * {@link invalidatePrefetch}), in-flight URLs are tracked so a repeated
-   * request is a no-op rather than a restart, and playback asks for a forward
+   * {@link invalidatePrefetch}), a repeated request joins the download
+   * already in flight rather than restarting it, and playback asks for a forward
    * run of frames rather than a pair of neighbours.
    */
   private schedulePrefetchNeighbors(
@@ -1523,7 +1552,6 @@ export class InhouseCatalogController {
   invalidatePrefetch(): void {
     this._prefetchAbort?.abort();
     this._prefetchAbort = null;
-    this._prefetchInFlight.clear();
   }
 
   /**
@@ -1598,19 +1626,14 @@ export class InhouseCatalogController {
           formatIndex(matchIndex, 3),
         );
         const url = `${baseUrl}/${fileName}`;
-        // Already cached, or already on its way: re-requesting would cancel and
-        // restart a download that is part-finished, which is precisely how the
-        // old prefetch managed to never deliver a frame during playback.
-        if (this._textureCache.has(url) || this._prefetchInFlight.has(url)) {
-          return;
-        }
-        this._prefetchInFlight.add(url);
+        if (this._textureCache.has(url)) return;
         try {
+          // Joins a download already on its way rather than restarting it —
+          // restarting part-finished downloads is how the old prefetch
+          // managed to never deliver a frame during playback.
           await this.loadInhouseTexture(url, signal);
         } catch {
           // Prefetch is best-effort — ignore aborts and load errors.
-        } finally {
-          this._prefetchInFlight.delete(url);
         }
       }),
     );
