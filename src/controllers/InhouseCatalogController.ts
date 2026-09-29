@@ -148,7 +148,6 @@ export interface InhouseCatalogDeps {
   persistedModelId: string | null;
 
   // Map interactions
-  getMapContainer: () => { clientWidth: number; clientHeight: number };
   setMapMaxZoom: (zoom: number) => void;
   getMapZoom: () => number;
   /** Current viewport centre as [lon, lat] — the point the coverage test asks
@@ -224,6 +223,10 @@ export interface InhouseCatalogDeps {
     cache: LRUMap<string, { path: [number, number][]; value: number }[]>,
   ) => void;
 }
+
+/** Model cells that must span MAX_ZOOM_REFERENCE_PX at the deepest zoom. */
+const MAX_ZOOM_CELLS = 24;
+const MAX_ZOOM_REFERENCE_PX = 1024;
 
 // ---------------------------------------------------------------------------
 // Canonical variable definitions
@@ -547,14 +550,6 @@ export class InhouseCatalogController {
   // Zoom / centering
   // ---------------------------------------------------------------------------
 
-  private getViewportMinDimensionPx(): number {
-    const container = this.deps.getMapContainer();
-    return Math.max(
-      1,
-      Math.min(container.clientWidth || 0, container.clientHeight || 0),
-    );
-  }
-
   computeModelMaxZoom(
     model: string,
     options?: {
@@ -568,12 +563,15 @@ export class InhouseCatalogController {
     }
     const center = getModelDefaultCenter(model, options?.bounds);
     const latitude = clamp(center[1], -85, 85);
-    const targetSpanMeters = resolutionMeters * 35;
-    const minDimensionPx = this.getViewportMinDimensionPx();
+    // Cap where MAX_ZOOM_CELLS model cells span MAX_ZOOM_REFERENCE_PX pixels
+    // (~43 px per cell). A fixed reference, not the viewport: on-screen cell
+    // size depends only on zoom, so tying the cap to the viewport's short side
+    // gave phones ~1.4 zoom levels less than desktops for no visual reason.
+    const targetSpanMeters = resolutionMeters * MAX_ZOOM_CELLS;
     const numerator =
       WEB_MERCATOR_METERS_PER_PIXEL_AT_Z0 *
       Math.cos((latitude * Math.PI) / 180) *
-      minDimensionPx;
+      MAX_ZOOM_REFERENCE_PX;
     const rawZoom = Math.log2(
       Math.max(targetSpanMeters, 1) > 0 ? numerator / targetSpanMeters : 1,
     );
@@ -582,13 +580,12 @@ export class InhouseCatalogController {
     const maxZoom = clamp(rawZoom, minAllowed, 14);
     if (this.deps.isDev) {
       const spanAtZoom =
-        getMetersPerPixelAtLatitude(latitude, maxZoom) * minDimensionPx;
+        getMetersPerPixelAtLatitude(latitude, maxZoom) * MAX_ZOOM_REFERENCE_PX;
       console.debug("[model max zoom]", {
         model,
         resolutionMeters,
         targetSpanMeters,
         center,
-        viewportMinDimensionPx: minDimensionPx,
         finalMaxZoom: maxZoom,
         resultingSpanMeters: spanAtZoom,
       });

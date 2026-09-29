@@ -118,7 +118,6 @@ function makeDeps(
     isDev: false,
     inhouseRoot: "/test-root",
     persistedModelId: null,
-    getMapContainer: () => ({ clientWidth: 800, clientHeight: 600 }),
     setMapMaxZoom: vi.fn(),
     getMapZoom: () => 5,
     setMapZoom: vi.fn(),
@@ -513,6 +512,15 @@ describe("InhouseCatalogController", () => {
       const zoom = ctrl.computeModelMaxZoom("BEL-IS");
       expect(zoom).toBeGreaterThanOrEqual(1);
       expect(zoom).toBeLessThanOrEqual(14);
+    });
+
+    it("lets the 2 km BEL-IS model zoom past 9 over Iceland", () => {
+      const bounds: [number, number, number, number] = [
+        -25.6, 62.9, -12.4, 67.3,
+      ];
+      expect(ctrl.computeModelMaxZoom("BEL-IS", { bounds })).toBeGreaterThan(
+        9,
+      );
     });
   });
 
