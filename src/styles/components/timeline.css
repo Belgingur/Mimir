@@ -288,12 +288,6 @@
   cursor: grabbing;
 }
 
-/* The bubble describes the forecast raster, which isn't shown in iconography
-   view — hide it there, matching the legend card. */
-body.view-iconography .map-time-bubble {
-  display: none !important;
-}
-
 /* Touch devices: informational only. Let touches fall through to the map so
    pan/pinch keep working over the bubble (dragging is a mouse/pen affordance). */
 @media (hover: none) and (pointer: coarse) {
