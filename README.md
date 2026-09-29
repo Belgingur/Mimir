@@ -248,3 +248,5 @@ For questions or discussion, open a GitHub issue.
 ## License
 
 MIT - see [LICENSE](LICENSE). Note that the WeatherLayers GL dependency has its own commercial license terms; see [Dependency Licensing Note](#dependency-licensing-note) above.
+
+The MIT license covers Mímir's own code. The Yr weather icons in `public/weather-icons/` are © Yr/NRK under CC BY 4.0; see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

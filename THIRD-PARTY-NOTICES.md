@@ -7,35 +7,24 @@ require their notice to travel with the work are reproduced in full.
 
 ## Weather symbols — Yr
 
-The weather condition icons (`public/weather-icons/`) come from
-[`@yr/weather-symbols`](https://github.com/YR/weather-symbols), published by Yr
-(a joint service of the Norwegian Meteorological Institute and NRK).
+The weather condition icons (`public/weather-icons/`) are the Yr weather
+symbols © 2015 Yr/NRK (Yr is a joint service of the Norwegian Meteorological
+Institute and NRK), licensed under
+[Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
+The originals are at [nrkno/yr-weather-symbols](https://github.com/nrkno/yr-weather-symbols).
 
-Credited in the app's map info panel as "Weather icons © Yr (MIT)".
+Mímir ships them unmodified: the SVGs and the 48 px PNGs as distributed in the
+`@yr/weather-symbols` package (`dist/png/48/` for the PNGs).
 
-```
-The MIT License (MIT)
+Credited in the app's map info panel as "Weather icons © Yr/NRK, CC BY 4.0",
+with links to the source and the licence, as CC BY 4.0 requires.
 
-Copyright (c) 2015-2017 Yr
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
+Older copies of these symbols, including the `@yr/weather-symbols` package and
+MET Norway's [metno/weathericons](https://github.com/metno/weathericons) mirror,
+still say MIT. Upstream relicensed from MIT to CC BY 4.0 on 2023-09-25, so the
+upstream LICENSE is authoritative. The same symbols are also inlined in the
+vendored `bel-meteogram` widget, whose bundle carries its own attribution
+banner.
 
 ---
 
