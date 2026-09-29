@@ -769,6 +769,7 @@ export class TimelineController {
       // have wanted, and on a slow link it is the difference between a steady
       // run and a stall every few frames.
       this.deps.prefetchAheadForPlayback?.(idx);
+      const stepStart = performance.now();
       try {
         await this.setSelectedIndex(idx, "playback");
       } catch (error) {
@@ -786,9 +787,14 @@ export class TimelineController {
       if (idx >= this._activeTimelineDatetimes.length - 1) {
         break;
       }
-      await new Promise((resolve) =>
-        window.setTimeout(resolve, TimelineController.PLAYBACK_MIN_FRAME_MS),
-      );
+      // The period runs from when this step began, so loading the frame is
+      // part of it rather than added on top: a step takes max(load, period).
+      const remaining =
+        TimelineController.PLAYBACK_MIN_FRAME_MS -
+        (performance.now() - stepStart);
+      if (remaining > 0) {
+        await new Promise((resolve) => window.setTimeout(resolve, remaining));
+      }
       if (signal.aborted) return;
       idx += 1;
     }

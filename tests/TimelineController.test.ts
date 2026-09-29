@@ -996,6 +996,37 @@ describe("TimelineController", () => {
       expect(ctrl.timelineAutoPlay).toBe(false);
     });
 
+    it("startPlayback counts the frame's load time inside the period", async () => {
+      vi.spyOn(performance, "now").mockImplementation(() => Date.now());
+      const { deps, spies } = createDeps({
+        inhouseLayers: [{ times: ["a", "b", "c"] }],
+      });
+      const starts: number[] = [];
+      spies.loadInhouseFrameSet.mockImplementation(() => {
+        starts.push(Date.now());
+        return new Promise((resolve) => setTimeout(resolve, 600));
+      });
+      const ctrl = new TimelineController(deps);
+      const control = createControl({
+        datetimes: ["a", "b", "c"],
+        datetime: "a",
+      });
+      ctrl.setTimelineControl(
+        control as unknown as WeatherLayers.TimelineControl,
+      );
+      ctrl.activeTimelineDatetimes = ["a", "b", "c"];
+      ctrl.currentDatetime = "a";
+
+      const p = ctrl.startPlayback();
+      await vi.advanceTimersByTimeAsync(3000);
+      await p;
+
+      expect(starts).toHaveLength(3);
+      // A 600 ms load fits inside the 900 ms period instead of adding to it.
+      expect(starts[1] - starts[0]).toBe(900);
+      expect(starts[2] - starts[1]).toBe(900);
+    });
+
     it("startPlayback handles load errors and sets status", async () => {
       const { deps, spies } = createDeps({ inhouseLayers: [{ times: ["a"] }] });
       const ctrl = new TimelineController(deps);
