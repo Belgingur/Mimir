@@ -525,6 +525,10 @@ export function createControllers(config: ControllerFactoryConfig) {
       ] ?? "",
     getMapBounds: () => map.getBounds(),
     getMapZoom: () => map.getZoom(),
+    isCompactViewport: () => {
+      const { clientWidth, clientHeight } = map.getContainer();
+      return Math.min(clientWidth, clientHeight) < 600;
+    },
     scheduleUpdateLayers,
   });
 
