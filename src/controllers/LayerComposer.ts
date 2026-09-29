@@ -239,6 +239,14 @@ export class LayerComposer {
    * is automatically GC'd when the old frame's data is released.
    */
   private readonly snowPointsCache = new WeakMap<object, SnowPoint[]>();
+  /** Temperature frames re-encoded to the palette range, per source frame.
+   *  Rebuilding one is a 4 MB allocation and a full-frame loop, and a fresh
+   *  image makes the raster layer upload a new texture — on every redraw,
+   *  including each pan and zoom, when it was not cached. */
+  private readonly clampedTempImages = new WeakMap<
+    object,
+    { key: string; image: WeatherLayers.TextureData }
+  >();
 
   /** SVG overlay element mounted over the MapLibre canvas. Created on first use. */
   private snowOverlaySVG: SnowOverlaySVG | null = null;
@@ -758,12 +766,22 @@ export class LayerComposer {
               activeTempScale[activeTempScale.length - 1] as [number, unknown]
             )[0],
           );
-          rasterImage = clampScalarImage(
-            layer.image as WeatherLayers.TextureData,
-            imageUnscale,
-            tempPaletteMin,
-            tempPaletteMax,
-          );
+          const source = layer.image as WeatherLayers.TextureData;
+          const clampKey = `${imageUnscale?.join(",")}|${tempPaletteMin}|${tempPaletteMax}`;
+          let clamped = this.clampedTempImages.get(source);
+          if (clamped?.key !== clampKey) {
+            clamped = {
+              key: clampKey,
+              image: clampScalarImage(
+                source,
+                imageUnscale,
+                tempPaletteMin,
+                tempPaletteMax,
+              ),
+            };
+            this.clampedTempImages.set(source, clamped);
+          }
+          rasterImage = clamped.image;
           rasterImageUnscale = [tempPaletteMin, tempPaletteMax];
           // clampScalarImage produces 4-band RGBA with A=0 for nodata; the alpha check handles
           // nodata suppression. No imageMinValue needed.

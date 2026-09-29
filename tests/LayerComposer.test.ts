@@ -188,6 +188,7 @@ import {
   LayerComposer,
   type LayerComposerDeps,
 } from "../src/controllers/LayerComposer";
+import { clampScalarImage } from "../src/lib/imageProcessing";
 
 function makeDom() {
   return {
@@ -1287,6 +1288,54 @@ describe("LayerComposer", () => {
       const layers = (deps.setOverlayProps as ReturnType<typeof vi.fn>).mock
         .calls[0][0].layers as Array<{ id: string }>;
       expect(layers.some((l) => l.id === "graticule-lines")).toBe(true);
+    });
+
+    it("re-encodes a temperature frame once, not on every redraw", () => {
+      const catalog = makeMockCatalogController();
+      catalog.inhouseLayers = [
+        {
+          id: "a",
+          model: "gfs",
+          analysis: "2026",
+          variable: "air_temperature_at_2m_agl",
+          image: { data: new Float32Array([1]), width: 1, height: 1 },
+          rasterScalar: null,
+          manifest: {
+            bounds: [-10, -10, 10, 10],
+            shape: { width: 1, height: 1 },
+            unit: "°C",
+          },
+          visible: true,
+          renderMode: "raster",
+        } as unknown as InhouseLayer,
+      ];
+      const deps = makeDeps({
+        getCatalogController: (() =>
+          catalog) as unknown as LayerComposerDeps["getCatalogController"],
+        getUiState: () => ({
+          visible: true,
+          opacity: 1,
+          layerMode: "temperature",
+          showGrid: false,
+          iconographyStyle: "compact",
+        }),
+      });
+      const composer = new LayerComposer(deps);
+      const clamp = vi.mocked(clampScalarImage);
+      clamp.mockClear();
+      clamp.mockImplementation((image) => ({ ...image }));
+
+      composer.updateLayers();
+      composer.updateLayers();
+
+      expect(clamp).toHaveBeenCalledTimes(1);
+      const images = mockRasterLayer.mock.calls.map(
+        (call) => (call[0] as { image: unknown }).image,
+      );
+      expect(images).toHaveLength(2);
+      // The same object both times, so the raster keeps its GPU texture.
+      expect(images[1]).toBe(images[0]);
+      clamp.mockImplementation((image) => image);
     });
 
     it("updateLayers updates lastCompositeLayers state", () => {
