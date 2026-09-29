@@ -421,7 +421,6 @@ export function createControllers(config: ControllerFactoryConfig) {
     isDev,
     inhouseRoot,
     persistedModelId: persistedState?.modelId ?? null,
-    getMapContainer: () => map.getContainer(),
     setMapMaxZoom: (z) => map.setMaxZoom(z),
     getMapZoom: () => map.getZoom(),
     setMapZoom: (z) => map.setZoom(z),
