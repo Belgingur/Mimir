@@ -990,12 +990,17 @@ export class InhouseCatalogController {
     const canvas = document.createElement("canvas");
     canvas.width = bitmap.width;
     canvas.height = bitmap.height;
-    const ctx = canvas.getContext("2d");
+    // willReadFrequently keeps the canvas in CPU memory. Without it the
+    // canvas is GPU-backed and getImageData is a GPU readback — profiling GFS
+    // playback put over 90% of the busy main-thread time here.
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) return null;
     ctx.drawImage(bitmap, 0, 0);
-    const imageData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
-    const srcData = new Uint8Array(imageData.data.buffer.slice(0));
-    const processed = processTexturePixels(srcData, bitmap.width, bitmap.height);
+    bitmap.close?.();
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    // The ImageData is ours alone, so its buffer needs no defensive copy.
+    const srcData = new Uint8Array(imageData.data.buffer);
+    const processed = processTexturePixels(srcData, canvas.width, canvas.height);
     const { data, width, height, rawRange, alphaOn, alphaOff, minR, maxR } =
       processed;
     const texture = {

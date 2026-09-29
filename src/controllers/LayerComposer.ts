@@ -2935,7 +2935,7 @@ ${this.legendLabelsHtml(
     const canvas = document.createElement("canvas");
     canvas.width = width;
     canvas.height = height;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) {
       const empty = new Uint8Array(width * height);
       this.landMaskCache.set(key, empty);
