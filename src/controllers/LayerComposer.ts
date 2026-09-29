@@ -36,7 +36,11 @@ import { TooltipController } from "./TooltipController";
 import { WavegramController } from "./WavegramController";
 import { WindStyleController } from "./WindStyleController";
 import { LRUMap } from "../lib/LRUMap";
-import { buildGraticuleLabels, buildGraticuleLines } from "../lib/graticule";
+import {
+  buildGraticuleLabels,
+  buildGraticuleLines,
+  type GraticuleLine,
+} from "../lib/graticule";
 import {
   sampleInhouseRasterAtCoord,
   sampleInhouseScalarAtCoord,
@@ -617,17 +621,7 @@ export class LayerComposer {
         "id" in layer &&
         (layer as { id: string }).id === "graticule-lines"
       ) {
-        return new LineLayer({
-          id: "graticule-lines",
-          data: gridLines,
-          getSourcePosition: (d) => d.source,
-          getTargetPosition: (d) => d.target,
-          getColor: [60, 60, 60],
-          getWidth: 1,
-          opacity: 0.35,
-          visible: uiState.showGrid,
-          parameters: { depthTest: false },
-        });
+        return this.buildGridLayer(gridLines, uiState.showGrid);
       }
       return layer;
     });
@@ -1599,19 +1593,7 @@ export class LayerComposer {
       }
     }
 
-    const gridLayers = [
-      new LineLayer({
-        id: "graticule-lines",
-        data: gridLines,
-        getSourcePosition: (d) => d.source,
-        getTargetPosition: (d) => d.target,
-        getColor: [60, 60, 60],
-        getWidth: 1,
-        opacity: 0.35,
-        visible: uiState.showGrid,
-        parameters: { depthTest: false },
-      }),
-    ];
+    const gridLayers = [this.buildGridLayer(gridLines, uiState.showGrid)];
 
     const windArrowLayer =
       windArrowPoints.length > 0
@@ -3098,12 +3080,37 @@ ${this.legendLabelsHtml(
     anchorY: 12,
   } as const;
 
+  /** The lat/lon graticule; `updateGridOnly` swaps it in place by its id. */
+  private buildGridLayer(gridLines: GraticuleLine[], visible: boolean) {
+    return new LineLayer({
+      id: "graticule-lines",
+      data: gridLines,
+      getSourcePosition: (d) => d.source,
+      getTargetPosition: (d) => d.target,
+      getColor: [60, 60, 60],
+      getWidth: 1,
+      opacity: 0.35,
+      visible,
+      parameters: { depthTest: false },
+    });
+  }
+
   private buildIconographyLayers(): unknown[] {
     const iconographyController = this.deps.getIconographyController();
     const points = iconographyController.iconPoints;
     const iconSize = iconographyController.iconSize;
 
-    if (points.length === 0) return [];
+    // The grid sits under the widgets and is built even with no points, so the
+    // toggle works (and updateGridOnly finds the layer) in this view too.
+    const { showGrid } = this.deps.getUiState();
+    const gridLayer = this.buildGridLayer(
+      showGrid
+        ? this.getGridLinesForStep(getGridStepForZoom(this.deps.getMapZoom()))
+        : [],
+      showGrid,
+    );
+
+    if (points.length === 0) return [gridLayer];
 
     // ── Composite weather widget (sprite-sheet atlas) ────────────────────────
     // All unique widget canvases are packed into one HTMLCanvasElement that is
@@ -3158,6 +3165,6 @@ ${this.legendLabelsHtml(
           })
         : null;
 
-    return [widgetLayer, labelLayer].filter(Boolean);
+    return [gridLayer, widgetLayer, labelLayer].filter(Boolean);
   }
 }
