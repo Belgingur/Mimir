@@ -26,9 +26,14 @@ import {
   getSunPhase,
 } from "../lib/weatherConditions";
 import { sampleScalarGridAtCoord } from "../lib/gridSampling";
+import { declutterPlaces, widgetFootprint } from "../lib/declutterPlaces";
 import { getIconGridForZoom } from "../lib/zoomSteps";
+
 import type { InhouseManifest } from "../lib/inhouseTypes";
 import type * as WeatherLayers from "weatherlayers-gl";
+
+/** Widget scale on phone-sized maps: fits ~1.5× the places, still legible. */
+const COMPACT_ICON_SCALE = 0.8;
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -95,6 +100,8 @@ export interface IconographyDeps {
   };
   /** Current map zoom */
   getMapZoom: () => number;
+  /** True on phone-sized maps, where widgets are drawn smaller to fit more. */
+  isCompactViewport?: () => boolean;
   /** Trigger a layer rebuild */
   scheduleUpdateLayers: () => void;
 }
@@ -461,22 +468,22 @@ export class IconographyController {
     const datetime = this.deps.getCurrentDatetime();
     const utcMs = datetime ? Date.parse(datetime) : Date.now();
 
-    // Max rank to include at this zoom level (lower rank = more important).
-    // zoom 5–6.5: rank 1 only   — BEL-IS "outermost" view (25 key stations)
-    // zoom 6.5–7: rank 2        — regional zoom-in
-    // zoom 7–8:   rank 3        — city-level
-    // zoom 8+:    rank 4        — all stations
-    // zoom < 5:   rank 2        — global/continental view (GFS etc.) needs
-    //                             enough cities to be useful
-    const maxRank =
-      zoom >= 8 ? 4 : zoom >= 7 ? 3 : zoom >= 6.5 ? 2 : zoom >= 5 ? 1 : 2;
+    // As many places as fit without their widgets overlapping, most important
+    // (lowest rank) first — so a phone gets the same density of places per
+    // screen as a desktop instead of a fixed rank cut-off per zoom level.
+    const candidates = modelBounds
+      ? this._cities.filter((c) => this._inBounds(c.lon, c.lat, modelBounds))
+      : this._cities;
+    const shown = declutterPlaces(
+      candidates,
+      zoom,
+      widgetFootprint(this.iconSize),
+    );
 
     const points: IconPoint[] = [];
-    for (const city of this._cities) {
-      if (city.rank > maxRank) continue;
+    for (const city of shown) {
       const { lon, lat } = city;
       if (lat < south || lat > north || lon < west || lon > east) continue;
-      if (modelBounds && !this._inBounds(lon, lat, modelBounds)) continue;
 
       const pt = this._samplePoint(lon, lat, utcMs);
       if (pt) points.push({ ...pt, name: city.name });
@@ -639,7 +646,10 @@ export class IconographyController {
   }
 
   get iconSize(): number {
-    return getIconGridForZoom(this.deps.getMapZoom()).iconSize;
+    const { iconSize } = getIconGridForZoom(this.deps.getMapZoom());
+    return this.deps.isCompactViewport?.()
+      ? Math.round(iconSize * COMPACT_ICON_SCALE)
+      : iconSize;
   }
 
   static iconUrl(code: string): string {
