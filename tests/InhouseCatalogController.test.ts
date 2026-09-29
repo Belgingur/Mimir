@@ -1014,6 +1014,37 @@ describe("InhouseCatalogController", () => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
+    it("shares one download between concurrent requests for a frame", async () => {
+      stubTextureLoad(4, 2);
+      const fetchMock = vi.mocked(globalThis.fetch);
+      const [a, b] = await Promise.all([
+        ctrl.loadInhouseTexture("/test/shared.webp"),
+        ctrl.loadInhouseTexture("/test/shared.webp"),
+      ]);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(a).toBe(b);
+    });
+
+    it("refetches when the download it joined is cancelled", async () => {
+      stubTextureLoad(4, 2);
+      const fetchMock = vi.mocked(globalThis.fetch);
+      fetchMock.mockImplementationOnce(
+        (_url, init) =>
+          new Promise((_resolve, reject) => {
+            (init as RequestInit).signal!.addEventListener("abort", () =>
+              reject(new DOMException("aborted", "AbortError")),
+            );
+          }),
+      );
+      const prefetch = new AbortController();
+      const first = ctrl.loadInhouseTexture("/test/joined.webp", prefetch.signal);
+      const second = ctrl.loadInhouseTexture("/test/joined.webp");
+      prefetch.abort();
+      await expect(first).rejects.toThrow("aborted");
+      expect(await second).not.toBeNull();
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
     it("returns null when canvas context unavailable", async () => {
       vi.stubGlobal(
         "createImageBitmap",
