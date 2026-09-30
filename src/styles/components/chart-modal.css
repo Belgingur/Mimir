@@ -244,8 +244,10 @@
   font-size: 12px;
 }
 
-.wavegram-image:not([src]),
-.wavegram-image[src=""] {
+/* Scoped to the open modal: a closed one is only visibility-hidden, and an
+   infinite animation there would still recalc style every frame. */
+.chart-modal.is-open .wavegram-image:not([src]),
+.chart-modal.is-open .wavegram-image[src=""] {
   background: linear-gradient(90deg, #f5f7f9 25%, #edf0f3 37%, #f5f7f9 63%);
   background-size: 200% 100%;
   animation: shimmer 1.6s ease infinite;
