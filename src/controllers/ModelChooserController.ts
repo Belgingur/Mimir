@@ -26,6 +26,7 @@ export class ModelChooserController {
   private debugListenersAttached = false;
   private renderVersion = 0;
   private revealFrameId: number | null = null;
+  private revealObserver: ResizeObserver | null = null;
 
   constructor(private readonly deps: ModelChooserControllerDeps) {}
 
@@ -240,9 +241,40 @@ export class ModelChooserController {
   }
 
   private cancelPendingReveal(): void {
+    this.revealObserver?.disconnect();
+    this.revealObserver = null;
     if (this.revealFrameId === null) return;
     cancelAnimationFrame(this.revealFrameId);
     this.revealFrameId = null;
+  }
+
+  /**
+   * Call `retry` once the card may have a real width. The card can stay at
+   * zero width indefinitely (inside a layout that never shows it), so a
+   * per-frame poll would run for the whole session; wait for a resize instead.
+   */
+  private waitForWidth(modelCard: HTMLElement, retry: () => void): void {
+    if (typeof ResizeObserver === "undefined") {
+      this.revealFrameId = requestAnimationFrame(retry);
+      return;
+    }
+    this.revealObserver?.disconnect();
+    const observer = new ResizeObserver(() => {
+      // Observing fires once straight away; only a usable width ends the wait.
+      if (
+        this.revealObserver !== observer ||
+        this.getVisibleWidth(modelCard) <
+          ModelChooserController.MIN_READY_WIDTH_PX
+      ) {
+        return;
+      }
+      observer.disconnect();
+      this.revealObserver = null;
+      retry();
+    });
+    this.revealObserver = observer;
+    observer.observe(modelCard);
+    if (this.deps.dom.barEl) observer.observe(this.deps.dom.barEl);
   }
 
   private scheduleReveal(
@@ -259,7 +291,7 @@ export class ModelChooserController {
         this.getVisibleWidth(modelCard) <
         ModelChooserController.MIN_READY_WIDTH_PX
       ) {
-        this.revealFrameId = requestAnimationFrame(revealWhenReady);
+        this.waitForWidth(modelCard, revealWhenReady);
         return;
       }
       this.revealFrameId = requestAnimationFrame(() => {
