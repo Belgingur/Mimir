@@ -123,6 +123,10 @@ export function buildCityGeoJSON(places: readonly PlaceTuple[]): {
   };
 }
 
+/** The places array last sent to each city source, so an unchanged dataset
+ *  isn't re-sent. Keyed by source object: a style swap makes a new one. */
+const appliedPlaces = new WeakMap<object, readonly PlaceTuple[]>();
+
 /**
  * Add (or refresh) the city label source and layers. Added at the top of the
  * stack so the labels sit above the weather imagery. Idempotent: a second call
@@ -133,19 +137,25 @@ export function addCityLabelLayer(
   places: readonly PlaceTuple[],
 ): boolean {
   if (places.length === 0) return false;
-  const data = buildCityGeoJSON(places);
 
+  // This runs on every `styledata`. Re-sending unchanged data re-tiles the
+  // source, which restarts label placement and fires `styledata` again — a
+  // loop that kept the map repainting every frame while idle.
   const existing = map.getSource(CITY_LABEL_SOURCE_ID);
   if (existing) {
-    (existing as maplibregl.GeoJSONSource).setData(
-      data as unknown as GeoJSON.FeatureCollection,
-    );
+    if (appliedPlaces.get(existing) !== places) {
+      (existing as maplibregl.GeoJSONSource).setData(
+        buildCityGeoJSON(places) as unknown as GeoJSON.FeatureCollection,
+      );
+    }
   } else {
     map.addSource(CITY_LABEL_SOURCE_ID, {
       type: "geojson",
-      data: data as unknown as GeoJSON.FeatureCollection,
+      data: buildCityGeoJSON(places) as unknown as GeoJSON.FeatureCollection,
     });
   }
+  const source = map.getSource(CITY_LABEL_SOURCE_ID);
+  if (source) appliedPlaces.set(source, places);
 
   const filter = buildCityFilter();
 
