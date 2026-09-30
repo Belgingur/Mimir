@@ -31,17 +31,227 @@
     <link rel="icon" type="image/png" sizes="180x180" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/favicon.png" />
     <link rel="preconnect" href="https://api.maptiler.com" crossorigin />
+    <!-- The page is light before any stylesheet arrives. Without this the
+         first frames are the browser's empty canvas, which is black on a phone
+         in dark mode. -->
+    <meta name="color-scheme" content="light" />
     <!-- Prevent FOUC: hide app until stylesheet loads and overrides opacity -->
     <style>
+      html {
+        background: #e6ecef;
+      }
       #app {
         opacity: 0;
       }
       .chart-modal {
         display: none;
       }
+
+      /* Boot splash: plain HTML and CSS so it is in the very first paint, long
+         before the map's JavaScript has arrived. Dismissed from main.ts once
+         the basemap has drawn (see lib/bootSplash.ts). */
+      .boot-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        display: grid;
+        place-items: center;
+        background: radial-gradient(
+          circle at 20% 20%,
+          #f2f5f7,
+          #e6ecef 60%,
+          #dde4e8
+        );
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        transition:
+          opacity 0.4s ease,
+          visibility 0s linear 0.4s;
+      }
+      .boot-splash.is-done {
+        opacity: 0;
+        visibility: hidden;
+      }
+      .boot-splash__inner {
+        display: grid;
+        justify-items: center;
+        gap: 14px;
+        transform: translateY(-4vh);
+      }
+      .boot-splash__icon {
+        width: 112px;
+        height: 112px;
+        overflow: visible;
+      }
+      .boot-splash__word {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 650;
+        letter-spacing: 0.02em;
+        color: #14202b;
+      }
+      .boot-splash__by {
+        margin: -10px 0 0;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #5e6b76;
+      }
+      .boot-splash__sr {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+
+      /* One 6 s cycle: snow, rain, the sun peeking out, clear sky, and back. */
+      .bs-cloud,
+      .bs-sun,
+      .bs-snow,
+      .bs-rain,
+      .bs-rays,
+      .bs-flake,
+      .bs-drop {
+        transform-box: fill-box;
+        transform-origin: center;
+      }
+      .bs-cloud {
+        filter: drop-shadow(0 6px 12px rgba(20, 32, 43, 0.22));
+        animation: bs-cloud 6s ease-in-out infinite;
+      }
+      .bs-sun {
+        animation: bs-sun 6s ease-in-out infinite;
+      }
+      .bs-rays {
+        animation: bs-spin 9s linear infinite;
+      }
+      .bs-snow {
+        animation: bs-snow 6s ease-in-out infinite;
+      }
+      .bs-rain {
+        animation: bs-rain 6s ease-in-out infinite;
+      }
+      .bs-flake {
+        animation: bs-flake 1.5s ease-in infinite;
+      }
+      .bs-drop {
+        animation: bs-drop 0.75s cubic-bezier(0.5, 0, 1, 1) infinite;
+      }
+      .bs-flake:nth-child(2),
+      .bs-drop:nth-child(2) {
+        animation-delay: -0.5s;
+      }
+      .bs-flake:nth-child(3),
+      .bs-drop:nth-child(3) {
+        animation-delay: -1s;
+      }
+      .bs-flake:nth-child(4) {
+        animation-delay: -0.25s;
+      }
+      .bs-drop:nth-child(3) {
+        animation-delay: -0.25s;
+      }
+      @keyframes bs-snow {
+        0%, 22% { opacity: 1; }
+        28%, 94% { opacity: 0; }
+        100% { opacity: 1; }
+      }
+      @keyframes bs-rain {
+        0%, 22% { opacity: 0; }
+        28%, 46% { opacity: 1; }
+        52%, 100% { opacity: 0; }
+      }
+      @keyframes bs-sun {
+        0%, 44% { opacity: 0; transform: translate(-10px, 12px) scale(0.55); }
+        56%, 84% { opacity: 1; transform: translate(0, 0) scale(1); }
+        90%, 100% { opacity: 0; transform: translate(-10px, 12px) scale(0.55); }
+      }
+      @keyframes bs-cloud {
+        0%, 70% { opacity: 1; transform: translate(0, 0) scale(1); }
+        79%, 88% { opacity: 0; transform: translate(34px, 6px) scale(0.85); }
+        96%, 100% { opacity: 1; transform: translate(0, 0) scale(1); }
+      }
+      @keyframes bs-spin {
+        to { transform: rotate(360deg); }
+      }
+      @keyframes bs-flake {
+        0% { opacity: 0; transform: translate(0, -6px) rotate(0deg); }
+        25% { opacity: 1; }
+        100% { opacity: 0; transform: translate(3px, 18px) rotate(90deg); }
+      }
+      @keyframes bs-drop {
+        0% { opacity: 0; transform: translate(0, -6px); }
+        20% { opacity: 1; }
+        100% { opacity: 0; transform: translate(-4px, 18px); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-splash *,
+        .boot-splash {
+          animation: none !important;
+          transition: none !important;
+        }
+        /* Hold on the partly-cloudy frame: sun behind the cloud, no weather. */
+        .bs-snow,
+        .bs-rain {
+          opacity: 0;
+        }
+      }
     </style>
   </head>
   <body>
+    <div id="boot-splash" class="boot-splash" role="status" aria-live="polite">
+      <div class="boot-splash__inner">
+        <svg
+          class="boot-splash__icon"
+          viewBox="0 0 96 96"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <g class="bs-sun">
+            <g
+              class="bs-rays"
+              stroke="#f2a93b"
+              stroke-width="4"
+              stroke-linecap="round"
+            >
+              <path d="M60 8v7M60 61v7M30 38h7M83 38h7M38.8 16.8l5 5M76.2 54.2l5 5M38.8 59.2l5-5M76.2 21.8l5-5" />
+            </g>
+            <circle cx="60" cy="38" r="14" fill="#f2a93b" />
+          </g>
+          <defs>
+            <linearGradient id="bs-cloud-fill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#ffffff" />
+              <stop offset="1" stop-color="#d6dee4" />
+            </linearGradient>
+          </defs>
+          <path
+            class="bs-cloud"
+            fill="url(#bs-cloud-fill)"
+            d="M27 70h40a15 15 0 0 0 1.5-29.9A20 20 0 0 0 30.2 44 13 13 0 0 0 27 70z"
+          />
+          <g class="bs-snow" fill="#6f9fcc">
+            <circle class="bs-flake" cx="34" cy="78" r="3.6" />
+            <circle class="bs-flake" cx="46" cy="81" r="3.6" />
+            <circle class="bs-flake" cx="58" cy="78" r="3.6" />
+            <circle class="bs-flake" cx="68" cy="81" r="3.6" />
+          </g>
+          <g
+            class="bs-rain"
+            stroke="#3d82c4"
+            stroke-width="3.5"
+            stroke-linecap="round"
+          >
+            <path class="bs-drop" d="M38 76l-2 6" />
+            <path class="bs-drop" d="M50 78l-2 6" />
+            <path class="bs-drop" d="M62 76l-2 6" />
+          </g>
+        </svg>
+        <p class="boot-splash__word">Mímir</p>
+        <p class="boot-splash__by">by Belgingur</p>
+        <span class="boot-splash__sr">Loading the forecast map…</span>
+      </div>
+    </div>
     <div id="loading-bar" class="loading-bar"></div>
     <div id="app">
       <div class="map-wrap">
