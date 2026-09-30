@@ -22,33 +22,43 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 18px 22px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 6px 24px rgba(20, 32, 43, 0.18);
+  gap: 8px;
+  padding: 16px 26px 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 10px 32px rgba(20, 32, 43, 0.18);
   color: var(--text, #14202b);
   max-width: min(360px, 80%);
   text-align: center;
+  animation: dataset-loader-in 0.22s ease-out;
 }
 
-.dataset-loader__spinner {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  border: 3px solid rgba(20, 32, 43, 0.15);
-  border-top-color: var(--accent-orange, #d97433);
-  animation: dataset-loader-spin 0.9s linear infinite;
+/* The shared weather loop (lib/weatherLoopIcon.ts); its animation CSS is in
+   the page head, written there at build time for the boot splash. */
+.dataset-loader__icon {
+  width: 72px;
+  height: 72px;
 }
 
-@keyframes dataset-loader-spin {
-  to {
-    transform: rotate(360deg);
+@keyframes dataset-loader-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dataset-loader__card {
+    animation: none;
   }
 }
 
 .dataset-loader__text {
   font-size: 14px;
+  font-weight: 600;
   line-height: 1.35;
 }
 
@@ -69,6 +79,13 @@
   background: var(--accent-orange, #d97433);
   color: #fff;
   border-color: transparent;
+}
+
+/* The centre readout sits above this overlay and would show a stale value
+   over the card; there is nothing new to read until the switch lands. */
+body:has(.dataset-loader:not([hidden])) .center-readout {
+  /* display, not visibility: the readout's group sets visibility: visible. */
+  display: none;
 }
 
 /* Busy indication on the dataset selectors while a switch is loading. */
