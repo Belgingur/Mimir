@@ -225,6 +225,7 @@ export interface InhouseCatalogDeps {
 }
 
 /** Model cells that must span MAX_ZOOM_REFERENCE_PX at the deepest zoom. */
+const MB = 1024 * 1024;
 const MAX_ZOOM_CELLS = 24;
 const MAX_ZOOM_REFERENCE_PX = 1024;
 
@@ -316,10 +317,13 @@ export class InhouseCatalogController {
   private readonly _inhouseLayers: InhouseLayer[] = [];
 
   // --- Caches ---
+  // Byte budgets, not just counts: see LRUMap. 128 MB still covers the
+  // playback prefetch window (6 steps, 2 frames each with wind) at ICON-EU
+  // size, and each cached frame also pins its GPU texture until it is evicted.
   private readonly _textureCache = new LRUMap<
     string,
     WeatherLayers.TextureData
-  >(50);
+  >(50, { maxBytes: 128 * MB, sizeOf: (t) => t.data.byteLength });
   private readonly _manifestCache = new LRUMap<string, InhouseManifest>(100);
   private readonly _contourCache = new LRUMap<
     string,
@@ -331,11 +335,11 @@ export class InhouseCatalogController {
   private readonly _rasterScalarCache = new LRUMap<
     string,
     { data: Uint8Array; width: number; height: number; widthMeta?: number }
-  >(50);
+  >(50, { maxBytes: 24 * MB, sizeOf: (s) => s.data.byteLength });
   private readonly _scalarCache = new LRUMap<
     string,
     { data: Float32Array; width: number; height: number }
-  >(50);
+  >(50, { maxBytes: 48 * MB, sizeOf: (s) => s.data.byteLength });
 
   // --- Misc state ---
   private _precipCandidateIndex = 0;

@@ -134,4 +134,57 @@ describe("LRUMap", () => {
     const m = new LRUMap<string, number>(42);
     expect(m.maxSize).toBe(42);
   });
+
+  describe("byte budget", () => {
+    const sized = (maxBytes: number, maxSize = 50) =>
+      new LRUMap<string, Uint8Array>(maxSize, {
+        maxBytes,
+        sizeOf: (v) => v.byteLength,
+      });
+
+    it("evicts the oldest entries once the total exceeds the budget", () => {
+      const m = sized(10);
+      m.set("a", new Uint8Array(4));
+      m.set("b", new Uint8Array(4));
+      m.set("c", new Uint8Array(4));
+      expect([...m.keys()]).toEqual(["b", "c"]);
+      expect(m.byteSize).toBe(8);
+    });
+
+    it("counts a get as a use", () => {
+      const m = sized(10);
+      m.set("a", new Uint8Array(4));
+      m.set("b", new Uint8Array(4));
+      m.get("a");
+      m.set("c", new Uint8Array(4));
+      expect([...m.keys()]).toEqual(["a", "c"]);
+    });
+
+    it("keeps the newest entry even when it alone is over budget", () => {
+      const m = sized(10);
+      m.set("a", new Uint8Array(4));
+      m.set("big", new Uint8Array(64));
+      expect([...m.keys()]).toEqual(["big"]);
+    });
+
+    it("tracks bytes through replace, delete and clear", () => {
+      const m = sized(100);
+      m.set("a", new Uint8Array(4));
+      m.set("a", new Uint8Array(6));
+      expect(m.byteSize).toBe(6);
+      m.set("b", new Uint8Array(3));
+      m.delete("a");
+      expect(m.byteSize).toBe(3);
+      m.clear();
+      expect(m.byteSize).toBe(0);
+    });
+
+    it("still honours the entry cap", () => {
+      const m = sized(1000, 2);
+      m.set("a", new Uint8Array(1));
+      m.set("b", new Uint8Array(1));
+      m.set("c", new Uint8Array(1));
+      expect([...m.keys()]).toEqual(["b", "c"]);
+    });
+  });
 });
