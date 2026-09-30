@@ -974,6 +974,7 @@ describe("InhouseCatalogController", () => {
         height: 0,
         getContext: vi.fn().mockReturnValue(mockCtx),
       };
+      Object.assign(mockCtx, { canvas: mockCanvas });
       vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
         if (tag === "canvas") return mockCanvas as unknown as HTMLCanvasElement;
         return document.createElement(tag);
@@ -1106,6 +1107,7 @@ describe("InhouseCatalogController", () => {
         height: 0,
         getContext: vi.fn().mockReturnValue(mockCtx),
       };
+      Object.assign(mockCtx, { canvas: mockCanvas });
       vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
         if (tag === "canvas") return mockCanvas as unknown as HTMLCanvasElement;
         return document.createElement(tag);

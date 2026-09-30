@@ -977,6 +977,18 @@ export class InhouseCatalogController {
     }
   }
 
+  private _decodeContext: CanvasRenderingContext2D | null = null;
+
+  private decodeContext(): CanvasRenderingContext2D | null {
+    // willReadFrequently keeps the canvas in CPU memory. Without it the
+    // canvas is GPU-backed and getImageData is a GPU readback — profiling GFS
+    // playback put over 90% of the busy main-thread time here.
+    this._decodeContext ??= document
+      .createElement("canvas")
+      .getContext("2d", { willReadFrequently: true });
+    return this._decodeContext;
+  }
+
   private async fetchAndDecodeTexture(
     url: string,
     signal?: AbortSignal,
@@ -991,14 +1003,15 @@ export class InhouseCatalogController {
     // (textureDecoderClient/textureDecoderWorker) is intentionally NOT used here
     // — it regressed frame loading in the browser and is parked pending a fix.
     const bitmap = await createImageBitmap(blob);
-    const canvas = document.createElement("canvas");
+    const ctx = this.decodeContext();
+    if (!ctx) return null;
+    const { canvas } = ctx;
+    // One canvas for every frame: a fresh one per frame left a 4 MB backing
+    // store per step for the garbage collector to find, which it does late —
+    // it cannot see that memory. Draw → read has no await, so loads that
+    // overlap never share it mid-frame.
     canvas.width = bitmap.width;
     canvas.height = bitmap.height;
-    // willReadFrequently keeps the canvas in CPU memory. Without it the
-    // canvas is GPU-backed and getImageData is a GPU readback — profiling GFS
-    // playback put over 90% of the busy main-thread time here.
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    if (!ctx) return null;
     ctx.drawImage(bitmap, 0, 0);
     bitmap.close?.();
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
