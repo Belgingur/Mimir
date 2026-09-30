@@ -5,16 +5,23 @@ export default defineConfig({
     global: "globalThis",
   },
   build: {
-    rollupOptions: {
+    rolldownOptions: {
       output: {
-        // Vite 8 (rolldown) requires the function form of manualChunks; the
-        // former object form silently broke on the v7→v8 bump.
-        manualChunks(id: string) {
-          if (id.includes("node_modules/maplibre-gl")) return "maplibre";
-          if (id.includes("node_modules/@deck.gl/")) return "deckgl";
-          if (id.includes("node_modules/@luma.gl/")) return "luma";
-          if (id.includes("node_modules/weatherlayers-gl")) return "weatherlayers";
-          return undefined;
+        // rolldown's own grouping. The manualChunks compatibility shim it
+        // replaces ignored some of the names it was given: luma.gl was always
+        // folded into deckgl, and the preload-helper split below had no effect.
+        codeSplitting: {
+          groups: [
+            // Vite's dynamic-import preload helper is shared by the entry and
+            // the lazy chunks. Left to itself it lands in the deckgl chunk,
+            // and the entry importing it from there made the browser fetch
+            // and evaluate all of deck.gl before main.ts could start the map.
+            { name: "preload-helper", test: /vite\/preload-helper/, priority: 30 },
+            { name: "maplibre", test: /node_modules[\\/]maplibre-gl[\\/]/, priority: 20 },
+            // luma.gl stays with deck.gl, as it has in every build so far.
+            { name: "deckgl", test: /node_modules[\\/]@(deck|luma)\.gl[\\/]/, priority: 20 },
+            { name: "weatherlayers", test: /node_modules[\\/]weatherlayers-gl[\\/]/, priority: 20 },
+          ],
         },
       },
     },
