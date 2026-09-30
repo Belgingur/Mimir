@@ -242,11 +242,14 @@ export class LayerComposer {
   /** Temperature frames re-encoded to the palette range, per source frame.
    *  Rebuilding one is a 4 MB allocation and a full-frame loop, and a fresh
    *  image makes the raster layer upload a new texture — on every redraw,
-   *  including each pan and zoom, when it was not cached. */
-  private readonly clampedTempImages = new WeakMap<
+   *  including each pan and zoom, when it was not cached.
+   *  Only the last few are kept: keyed weakly by frame, this held a copy (and
+   *  its GPU texture) for every frame in the texture cache — ~120 MB of copies
+   *  on an ICON-EU loop, for frames that were not on screen. */
+  private readonly clampedTempImages = new LRUMap<
     object,
     { key: string; image: WeatherLayers.TextureData }
-  >();
+  >(8, { maxBytes: 32 * 1024 * 1024, sizeOf: (c) => c.image.data.byteLength });
 
   /** SVG overlay element mounted over the MapLibre canvas. Created on first use. */
   private snowOverlaySVG: SnowOverlaySVG | null = null;
