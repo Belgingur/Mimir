@@ -34,8 +34,8 @@ export const streamlines = (
     features: [],
   };
   let numLines = 0;
-  const inst = new StreamlineTracer(uData, vData);
-  const pixelDist = Math.round(inst.ySize / (60 * density)) || 1;
+  const pixelDist = Math.round(uData.length / (60 * density)) || 1;
+  const inst = new StreamlineTracer(uData, vData, pixelDist);
   const total = inst.xSize * inst.ySize;
 
   for (let pos = 0; pos < total; pos += 1) {
@@ -65,8 +65,15 @@ class StreamlineTracer {
   xSize: number;
   ySize: number;
   usedPixels: boolean[][];
+  // Pixels within `dist` (per axis) of a used pixel. isPixelFree asks "is any
+  // pixel within dist used?"; scanning that (2·dist+1)² box for every seed was
+  // the whole cost on large grids (dist is ~65 px on a zoomed-out ICON-EU
+  // grid). The box test is symmetric, so stamping each used pixel's box into
+  // this mask gives the same answers with an O(1) lookup.
+  dist: number;
+  blocked: Uint8Array;
 
-  constructor(uData: number[][], vData: number[][]) {
+  constructor(uData: number[][], vData: number[][], dist = 1) {
     if (
       uData.length <= 1 ||
       vData.length <= 1 ||
@@ -86,22 +93,31 @@ class StreamlineTracer {
     for (let y = 0; y < this.ySize; y += 1) {
       this.usedPixels[y] = new Array(this.xSize).fill(false);
     }
+    this.dist = Math.max(0, Math.round(dist));
+    this.blocked = new Uint8Array(this.xSize * this.ySize);
+  }
+
+  markUsed(x: number, y: number) {
+    if (this.usedPixels[y][x]) return;
+    this.usedPixels[y][x] = true;
+    const d = this.dist;
+    const xLow = Math.max(x - d, 0);
+    const xEnd = Math.min(x + d, this.xSize - 1) + 1;
+    const yHigh = Math.min(y + d, this.ySize - 1);
+    for (let yy = Math.max(y - d, 0); yy <= yHigh; yy += 1) {
+      const row = yy * this.xSize;
+      this.blocked.fill(1, row + xLow, row + xEnd);
+    }
   }
 
   isPixelFree(x0: number, y0: number, dist: number) {
     if (x0 < 0 || x0 >= this.xSize || y0 < 0 || y0 >= this.ySize) return false;
     // Outside the model domain — NaN marks out-of-domain pixels.
     if (!Number.isFinite(this.uData[y0]?.[x0] ?? NaN)) return false;
-    const xLow = Math.max(x0 - dist, 0);
-    const xHigh = Math.min(x0 + dist, this.xSize - 1);
-    const yLow = Math.max(y0 - dist, 0);
-    const yHigh = Math.min(y0 + dist, this.ySize - 1);
-    for (let x = xLow; x <= xHigh; x += 1) {
-      for (let y = yLow; y <= yHigh; y += 1) {
-        if (this.usedPixels[y][x]) return false;
-      }
+    if (dist !== this.dist) {
+      throw new Error("isPixelFree: dist differs from the tracer's");
     }
-    return true;
+    return this.blocked[y0 * this.xSize + x0] === 0;
   }
 
   getLine(x0: number, y0: number, flip: boolean, minS2: number) {
@@ -123,7 +139,7 @@ class StreamlineTracer {
     while (true) {
       const values = this.getValueAtPoint(x, y);
       if (values.s2 <= minS2) {
-        this.usedPixels[y0][x0] = true;
+        this.markUsed(x0, y0);
         break;
       }
       x += values.u;
@@ -140,7 +156,7 @@ class StreamlineTracer {
         break;
       outLine.push([x, y]);
       lineFound = true;
-      this.usedPixels[yr][xr] = true;
+      this.markUsed(xr, yr);
     }
 
     x = x0;
@@ -148,7 +164,7 @@ class StreamlineTracer {
     while (true) {
       const values = this.getValueAtPoint(x, y);
       if (values.s2 <= minS2) {
-        this.usedPixels[y0][x0] = true;
+        this.markUsed(x0, y0);
         break;
       }
       x -= values.u;
@@ -165,11 +181,11 @@ class StreamlineTracer {
         break;
       outLine.unshift([x, y]);
       lineFound = true;
-      this.usedPixels[yr][xr] = true;
+      this.markUsed(xr, yr);
     }
 
     if (!lineFound) return false;
-    this.usedPixels[y0][x0] = true;
+    this.markUsed(x0, y0);
     return outLine;
   }
 
