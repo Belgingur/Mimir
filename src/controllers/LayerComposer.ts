@@ -362,6 +362,13 @@ export class LayerComposer {
     30,
   );
   private activeWindStreamlineKey = "";
+  // One tracing job at a time, plus the latest one asked for since. Every
+  // timeline step and every re-render asks for the current key; posting each
+  // of those let the worker queue grow faster than it drained during
+  // playback, pinning a core on results that were stale before they landed.
+  private windStreamlineInFlight: string | null = null;
+  private windStreamlinePending: { key: string; post: () => void } | null =
+    null;
 
   private _contourWorkerInstance: Worker | null = null;
   private _mslpContourWorkerInstance: Worker | null = null;
@@ -415,6 +422,10 @@ export class LayerComposer {
         if (key === this.activeWindStreamlineKey) {
           this.scheduleUpdateLayers();
         }
+        this.startPendingWindStreamlines();
+      };
+      this._windStreamlineWorkerInstance.onerror = () => {
+        this.startPendingWindStreamlines();
       };
     }
     return this._windStreamlineWorkerInstance;
@@ -2992,16 +3003,44 @@ ${this.legendLabelsHtml(
     density: number,
     minSpeed: number,
   ): void {
+    const image = vectorLayer.image;
     if (
-      !vectorLayer.image ||
-      vectorLayer.image instanceof Promise ||
-      this.windStreamlineCache.has(key)
+      !image ||
+      image instanceof Promise ||
+      this.windStreamlineCache.has(key) ||
+      key === this.windStreamlineInFlight
     )
       return;
+    const post = () =>
+      this.postWindStreamlines(key, vectorLayer, image, density, minSpeed);
+    if (this.windStreamlineInFlight !== null) {
+      // Replaces any older waiting job: only the newest request still matters.
+      this.windStreamlinePending = { key, post };
+      return;
+    }
+    post();
+  }
+
+  private startPendingWindStreamlines(): void {
+    this.windStreamlineInFlight = null;
+    const next = this.windStreamlinePending;
+    this.windStreamlinePending = null;
+    if (next && !this.windStreamlineCache.has(next.key)) next.post();
+  }
+
+  private postWindStreamlines(
+    key: string,
+    vectorLayer: InhouseLayer,
+    image: NonNullable<InhouseLayer["image"]>,
+    density: number,
+    minSpeed: number,
+  ): void {
+    if (image instanceof Promise) return;
     const decoded = decodeVectorComponents(
-      vectorLayer.image,
+      image,
       getInhouseLayerUnscale(vectorLayer),
     );
+    this.windStreamlineInFlight = key;
     this.windStreamlineWorker.postMessage(
       {
         key,
