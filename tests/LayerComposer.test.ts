@@ -1028,6 +1028,36 @@ describe("LayerComposer", () => {
       expect(mockDecodeVectorComponents).toHaveBeenCalledTimes(1);
     });
 
+    it("scheduleWindStreamlines runs one job at a time, keeping only the newest", () => {
+      const composer = new LayerComposer(makeDeps());
+      const worker = getPrivate<{
+        postMessage: ReturnType<typeof vi.fn>;
+        onmessage: (event: { data: unknown }) => void;
+      }>(composer, "windStreamlineWorker");
+      const schedule = (key: string) =>
+        callPrivate(
+          composer,
+          "scheduleWindStreamlines",
+          key,
+          makeVectorLayer(),
+          2,
+          0.25,
+        );
+      schedule("w1");
+      schedule("w1"); // re-render of the same step: already in flight
+      schedule("w2"); // playback moves on while w1 traces…
+      schedule("w3"); // …and on again: w2 is never traced
+      expect(worker.postMessage).toHaveBeenCalledTimes(1);
+
+      const empty = { type: "FeatureCollection", features: [] };
+      worker.onmessage({ data: { key: "w1", featureCollection: empty } });
+      expect(worker.postMessage).toHaveBeenCalledTimes(2);
+      expect(worker.postMessage.mock.calls[1][0]).toMatchObject({ key: "w3" });
+
+      worker.onmessage({ data: { key: "w3", featureCollection: empty } });
+      expect(worker.postMessage).toHaveBeenCalledTimes(2);
+    });
+
     it("scheduleWindStreamlines skips repost for cached key", () => {
       const composer = new LayerComposer(makeDeps());
       const cache = getPrivate<Map<string, FeatureCollection>>(
