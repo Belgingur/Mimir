@@ -1,6 +1,30 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
+import {
+  WEATHER_LOOP_CSS_SLOT,
+  WEATHER_LOOP_ICON_CSS,
+  WEATHER_LOOP_ICON_SVG,
+  WEATHER_LOOP_SVG_SLOT,
+} from "./src/lib/weatherLoopIcon";
+
+/** Write the animated weather icon into index.html, so the boot splash has it
+ *  in the first paint with no JavaScript, from the same source the in-app
+ *  loading overlay uses. */
+const weatherLoopIcon = (): Plugin => ({
+  name: "mimir-weather-loop-icon",
+  transformIndexHtml(html) {
+    for (const slot of [WEATHER_LOOP_CSS_SLOT, WEATHER_LOOP_SVG_SLOT]) {
+      if (!html.includes(slot)) {
+        throw new Error(`index.html lost its ${slot} placeholder`);
+      }
+    }
+    return html
+      .replace(WEATHER_LOOP_CSS_SLOT, `<style>${WEATHER_LOOP_ICON_CSS}</style>`)
+      .replace(WEATHER_LOOP_SVG_SLOT, WEATHER_LOOP_ICON_SVG);
+  },
+});
 
 export default defineConfig({
+  plugins: [weatherLoopIcon()],
   define: {
     global: "globalThis",
   },

@@ -6,12 +6,14 @@
  * load; only the centred card is interactive (needed for the error "back"
  * action).
  */
+import { createWeatherLoopIcon } from "./weatherLoopIcon";
+
 export interface DatasetLoadingOverlay {
-  /** Show the spinner + label. */
+  /** Show the animated weather icon + label. */
   begin(label: string): void;
   /** Hide the overlay. */
   end(): void;
-  /** Replace the spinner with an explicit error and an optional way back. */
+  /** Replace the icon with an explicit error and an optional way back. */
   fail(opts: { message: string; backLabel?: string; onBack?: () => void }): void;
 }
 
@@ -36,12 +38,12 @@ export function createDatasetLoadingOverlay(
     begin(label: string): void {
       root.classList.remove("dataset-loader--error");
       clear();
-      const spinner = document.createElement("div");
-      spinner.className = "dataset-loader__spinner";
+      const icon = createWeatherLoopIcon();
+      icon.classList.add("dataset-loader__icon");
       const text = document.createElement("div");
       text.className = "dataset-loader__text";
       text.textContent = label;
-      card.append(spinner, text);
+      card.append(icon, text);
       root.hidden = false;
     },
     end(): void {
