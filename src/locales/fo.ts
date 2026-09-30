@@ -8,95 +8,96 @@
  */
 export const fo: Record<string, string> = {
   // ── Navigation / view modes ──────────────────────────────────────────
-  "nav.forecast": "Veðurspá",
-  "nav.icons": "Tákn",
-  "nav.iconography": "Táknmyndaspá",
-  "nav.forecastIcons": "Spátákn",
+  "nav.forecast": "Veðurforsøgn",
+  "nav.icons": "Tekn",
+  "nav.iconography": "Veðurtekn",
+  "nav.forecastIcons": "Forsagnartekn",
 
   // ── Icon style sub-buttons ───────────────────────────────────────────
-  "iconStyle.classic": "Klassískt",
-  "iconStyle.compact": "Þétt",
-  "iconStyle.classicTip": "Klassísk gluggi (yr.no tákn + vindur + hiti)",
-  "iconStyle.compactTip": "Þéttur texti (hiti og vindhraði/átt sem texti)",
+  "iconStyle.classic": "Klassiskt",
+  "iconStyle.compact": "Tætt",
+  "iconStyle.classicTip": "Klassiskur gluggi (yr.no tekn + vindur + hiti)",
+  "iconStyle.compactTip": "Tættur tekstur (hiti og vindferð/vindætt sum tekstur)",
 
   // ── Map controls ─────────────────────────────────────────────────────
-  "map.zoomIn": "Þysja inn",
-  "map.zoomOut": "Þysja út",
-  "map.grid": "Hnitanet",
-  "map.gridOn": "Hnitanet: Kveikt",
-  "map.gridOff": "Hnitanet: Slökkt",
-  "map.info": "Kortaupplýsingar",
-  "map.controls": "Kortastýringar",
-  "map.viewMode": "Skoðunarhamur",
-  "map.layerControls": "Lagastýringar",
-  "map.toggleLayers": "Víxla lögum",
-  "map.infoControls": "Upplýsingastýringar",
-  "map.close": "Loka",
+  "map.zoomIn": "Suma inn",
+  "map.zoomOut": "Suma út",
+  "map.grid": "Kortnet",
+  "map.gridOn": "Kortnet: Tendrað",
+  "map.gridOff": "Kortnet: Sløkt",
+  "map.info": "Kortupplýsingar",
+  "map.controls": "Kortstýring",
+  "map.viewMode": "Vísingarháttur",
+  "map.layerControls": "Lagstýring",
+  "map.toggleLayers": "Skift løg",
+  "map.infoControls": "Stýring av kortupplýsingum",
+  "map.close": "Lat aftur",
   "map.myLocation": "Brúka mína staðseting",
   "map.locationUnavailable": "Kundi ikki finna staðseting tína.",
-  "map.noForecastHere": "Eingin spá her — punkturin er uttanfyri dátur líkansins.",
-  "map.variable": "Breyta",
-  "map.variables": "Breytur",
-  "map.menu": "Valmynd",
+  "map.noForecastHere": "Eingin forsøgn her — punktið er uttanfyri spáøkið.",
+  "map.variable": "Stødd",
+  "map.variables": "Støddir",
+  "map.menu": "Skrá",
 
   // ── Layer groups ─────────────────────────────────────────────────────
   "layer.temperature": "Hiti",
-  "layer.wind": "Vindferð",
+  "layer.wind": "Vindur",
   "layer.precip": "Avfall",
-  "layer.cloud": "Skýloft",
-  "layer.snow": "Kavi (vatnvirði)",
-  "layer.waves": "Ölduhæð",
+  "layer.cloud": "Skýggj",
+  "layer.snow": "Kavi (vatnsvirði)",
+  "layer.waves": "Øldur",
 
   // ── Wind style options ───────────────────────────────────────────────
-  "wind.arrows": "Örvar",
-  "wind.particles": "Agnir",
-  "wind.streamlines": "Straumlínur",
+  "wind.arrows": "Pílar",
+  "wind.particles": "Partiklar",
+  "wind.streamlines": "Streymlinjur",
 
   // ── Wind style warnings ──────────────────────────────────────────────
-  "wind.requiresUV": "Krefst wind_uv_10m", // TODO
-  "wind.noFirefox": "Agnir ekki studdar í Firefox",
-  "wind.noWebGL2": "Agnir krefjast WebGL2",
-  "wind.unavailable": "Agnir ekki tiltækar",
-  "wind.uvRequired": "Agnir og straumlínur krefjast wind_uv_10m.",
-  "wind.firefoxFallback": "Agnalag er ekki stutt í Firefox; fer aftur í örvar.",
-  "wind.webgl2Fallback": "Agnalag krefst WebGL2.",
-  "wind.fallbackArrows": "Agnalag ekki tiltækt; fer aftur í örvar.",
+  "wind.requiresUV": "Krevur wind_uv_10m", // TODO
+  "wind.noFirefox": "Partiklar virka ikki í Firefox",
+  "wind.noWebGL2": "Partiklar krevja WebGL2",
+  "wind.unavailable": "Partiklar ikki tøkir",
+  "wind.uvRequired": "Partiklar og streymlinjur krevja wind_uv_10m.",
+  "wind.firefoxFallback": "Partikullagið virkar ikki í Firefox; vísi pílar í staðin.",
+  "wind.webgl2Fallback": "Partikullagið krevur WebGL2.",
+  "wind.fallbackArrows": "Partikullagið er ikki tøkt; vísi pílar í staðin.",
 
   // ── Variable labels (legends / tooltips) ─────────────────────────────
-  "var.airTemperature": "Hiti",
+  "var.airTemperature": "Lofthiti",
   "var.windSpeed": "Vindferð",
-  "var.mslp": "Meðalloftþrýstingur við sjávarmál",
+  "var.mslp": "Lufttrýst við havflatan",
   "var.temperature": "Hiti",
   "var.precipRate": "Avfall",
-  "var.windDirection": "Vindátt",
-  "var.humidity": "Loftraki",
-  "var.pressure": "Loftþrýstingur við sjávarmál",
-  "var.radiation": "Stuttbylgjugeislun",
-  "var.windGust": "Vindhviða",
+  "var.windDirection": "Vindætt",
+  "var.humidity": "Luftvæta",
+  "var.pressure": "Lufttrýst við havflatan",
+  "var.radiation": "Stuttbylgjugeislan",
+  "var.windGust": "Vindkast",
 
   // ── Legend titles ─────────────────────────────────────────────────────
-  "legend.waveHeight": "Ölduhæð",
+  "legend.waveHeight": "Alduhædd",
 
   // ── Units ────────────────────────────────────────────────────────────
   "unit.celsius": "°C",
   "unit.ms": "m/s",
-  "unit.mmhr": "mm/klst",
+  "unit.mmhr": "mm/t",
   "unit.hPa": "hPa",
-  "unit.degrees": "gráður",
+  "unit.degrees": "stig",
   "unit.percent": "%",
   "unit.wm2": "W/m²",
   "unit.seconds": "s",
   "unit.metres": "m",
 
   // ── Compass directions (16-point) ────────────────────────────────────
+  // norður, eystur, suður, vestur
   "dir.N": "N",
-  "dir.NNE": "NNA",
-  "dir.NE": "NA",
-  "dir.ENE": "ANA",
-  "dir.E": "A",
-  "dir.ESE": "ASA",
-  "dir.SE": "SA",
-  "dir.SSE": "SSA",
+  "dir.NNE": "NNE",
+  "dir.NE": "NE",
+  "dir.ENE": "ENE",
+  "dir.E": "E",
+  "dir.ESE": "ESE",
+  "dir.SE": "SE",
+  "dir.SSE": "SSE",
   "dir.S": "S",
   "dir.SSW": "SSV",
   "dir.SW": "SV",
@@ -109,65 +110,65 @@ export const fo: Record<string, string> = {
   // ── Graticule cardinal labels ────────────────────────────────────────
   "cardinal.N": "N",
   "cardinal.S": "S",
-  "cardinal.E": "A",
+  "cardinal.E": "E",
   "cardinal.W": "V",
 
   // ── Loading / status ─────────────────────────────────────────────────
-  "status.loadingFrame": "Sæki ramma…",
-  "status.loadingModel": "Sæki líkan…",
-  "status.loadingDataset": "Sæki {{model}}…",
-  "status.datasetFailed": "Kundi ikki sótt {{model}}. Tað kann vera uttan dáta nú.",
+  "status.loadingFrame": "Heinti mynd…",
+  "status.loadingModel": "Heinti líkan…",
+  "status.loadingDataset": "Heinti {{model}}…",
+  "status.datasetFailed": "Kundi ikki heinta {{model}}. Kanska eru eingi dátur tøk júst nú.",
   "action.backToModel": "Aftur til {{model}}",
-  "status.newRun": "Nýggjari spá er tøk.",
+  "status.newRun": "Nýggjari forsøgn er tøk.",
   "status.modelOutsideView": "Hetta spálíkanið fevnir ikki um økið tú hyggur at.",
   "action.useCoveringModel": "Brúka eitt líkan sum fevnir um",
   "action.updateForecast": "Dagfør veðurforsøgn",
   "action.dismiss": "Lat aftur",
-  "status.loadingWavegram": "Hleð bylgjurit…",
-  "status.loadingMeteogram": "Hleð veðurriti…",
-  "status.noData": "Vantar gögn.",
-  "status.noNumericData": "Vantar gögn fyrir þessa breytu/tímabil.",
+  "status.loadingWavegram": "Heinti aldurit…",
+  "status.loadingMeteogram": "Heinti veðurrit…",
+  "status.noData": "Eingi dátur tøk.",
+  "status.noNumericData": "Eingi talvirði fyri hesa stødd/hetta tíðarskeiðið.",
 
   // ── Modal titles ─────────────────────────────────────────────────────
-  "modal.wavegram": "Öldurit",
+  "modal.wavegram": "Aldurit",
   "modal.meteogram": "Veðurrit",
 
   // ── Wavegram controls ────────────────────────────────────────────────
-  "wavegram.duration": "Tímalengd",
-  "wavegram.hours": "{{n}} klukkustundir",
-  "wavegram.downloadPng": "Hleð niður PNG",
+  "wavegram.duration": "Tíðarlongd",
+  "wavegram.hours": "{{n}} tímar",
+  "wavegram.downloadPng": "Tak niður PNG",
   "wavegram.print": "Prenta",
   "wavegram.zoomIn": "Størri",
   "wavegram.zoomOut": "Minni",
-  "wavegram.zoomReset": "Tillaga til breidd",
-  "wavegram.showTech": "Birta tæknilegar upplýsingar",
-  "wavegram.failed": "Tókst ekki að sækja bylgjurit.",
-  "meteogram.loadFailed": "Tókst ikki at heinta veðurrit fyri {{model}} — punkturin kann vera uttan fyri spáøki modelsins. Royn eitt annað model ella ein annan stað. ({{message}})",
-  "meteogram.outsideDomain": "Hesin staður kann vera uttan fyri spáøki {{model}}.",
-  "meteogram.openAtCenter": "Vís veðurrit fyri merkta punktin",
+  "wavegram.zoomReset": "Laga til breiddina",
+  "wavegram.showTech": "Vís tøkniligar upplýsingar",
+  "wavegram.failed": "Kundi ikki heinta aldurit.",
+  "meteogram.loadFailed": "Kundi ikki heinta veðurrit fyri {{model}} — staðurin kann vera uttanfyri spáøkið hjá líkanum. Royn eitt annað líkan ella ein annan stað. ({{message}})",
+  "meteogram.outsideDomain": "Hesin staðurin kann vera uttanfyri spáøkið hjá {{model}}.",
+  "meteogram.openAtCenter": "Vís veðurrit fyri merkta punktið",
   "wavegram.unconfigured":
-    "Bylgjuritstænastan er ikki sett upp. Set VITE_BELGINGUR_BASE_URL fyri at virkja hana.",
+    "Alduritstænastan er ikki sett upp. Set VITE_BELGINGUR_BASE_URL fyri at virkja hana.",
   "wavegram.downloadFail":
-    "Niðurhal mistókst. Opnaðu mynd í nýjum flipa til að vista.",
+    "Niðurtøkan miseydnaðist. Lat myndina upp í nýggjum teigi fyri at goyma hana.",
 
   // ── External links ───────────────────────────────────────────────────
 
   // ── Legacy / hidden controls (low priority but in DOM) ───────────────
-  "legacy.layerVisible": "Lag sýnilegt",
-  "legacy.latLonGrid": "Hnitanet",
-  "legacy.opacity": "Gegnsæi",
-  "legacy.addLayer": "Bæta við lagi",
+  "legacy.layerVisible": "Lag sjónligt",
+  "legacy.latLonGrid": "Breiddar-/longdarnet",
+  "legacy.opacity": "Ógjøgnumskygni",
+  "legacy.addLayer": "Legg lag afturat",
 
   // ══════════════════════════════════════════════════════════════════════
   // Phase 2: internal / dev / error strings
   // ══════════════════════════════════════════════════════════════════════
 
   // ── Inhouse catalog ──────────────────────────────────────────────────
-  "inhouse.noLayers": "Engum lögum bætt við.",
-  "inhouse.render": "Birta",
+  "inhouse.noLayers": "Eingi løg løgd afturat.",
+  "inhouse.render": "Vís",
   "inhouse.raster": "Raster", // TODO
-  "inhouse.contour": "Hæðarlínur",
-  "inhouse.remove": "Fjarlægja",
+  "inhouse.contour": "Javnlinjur",
+  "inhouse.remove": "Tak burtur",
 
   // ── Tooltip ──────────────────────────────────────────────────────────
   "tooltip.wave": "{{height}} {{period}} {{dir}}",
@@ -175,10 +176,10 @@ export const fo: Record<string, string> = {
 
   // ── Wavegram (additional) ────────────────────────────────────────────
   "wavegram.subtitle":
-    "GWES • {{lat}},{{lon}} • tímalengd {{duration}} klukkustundir • tz UTC",
+    "GWES • {{lat}},{{lon}} • tíðarlongd {{duration}} tímar • tz UTC",
   "wavegram.downloadError":
-    "Niðurhal mistókst. Opnaðu mynd í nýjum flipa til að vista. ({{message}})",
-  "wavegram.printTitle": "Öldurit",
+    "Niðurtøkan miseydnaðist. Lat myndina upp í nýggjum teigi fyri at goyma hana. ({{message}})",
+  "wavegram.printTitle": "Aldurit",
 
   // ── Tooltip units / values ───────────────────────────────────────────
   "tooltip.wavePeriod": "{{value}} s",
@@ -186,27 +187,29 @@ export const fo: Record<string, string> = {
   "tooltip.tempValue": "{{value}} °C",
 
   // ── Weekday abbreviations (UTC day labels on the timeline) ───────────
+  // sunnudagur, mánadagur, týsdagur, mikudagur, hósdagur, fríggjadagur,
+  // leygardagur
   "day.0": "sun",
   "day.1": "mán",
-  "day.2": "þri",
-  "day.3": "mið",
-  "day.4": "fim",
-  "day.5": "fös",
-  "day.6": "lau",
+  "day.2": "týs",
+  "day.3": "mik",
+  "day.4": "hós",
+  "day.5": "frí",
+  "day.6": "ley",
 
   // ── Timeline ─────────────────────────────────────────────────────────
-  "timeline.play": "Spila tímalínu",
-  "timeline.selectedTime": "Valinn tími",
+  "timeline.play": "Spæl tíðarlinjuna",
+  "timeline.selectedTime": "Valda tíðin",
   "timeline.now": "Nú",
 
   // ── Error messages ───────────────────────────────────────────────────
-  "error.updateLayers": "Tókst ekki að uppfæra lag",
-  "error.countryOutlines": "Tókst ekki að hlaða landamærum",
-  "error.windData": "Tókst ekki að hlaða vindgögnum.",
-  "error.precipData": "Tókst ekki að hlaða úrkomugögnum.",
-  "error.precipUnavail": "Úrkomugagnasafn ekki tiltækt.",
-  "error.styleFallback": "Nýti einfalt útlínukort sum eykaloysn: {{message}}",
+  "error.updateLayers": "Kundi ikki dagføra løgini",
+  "error.countryOutlines": "Kundi ikki heinta landamørk",
+  "error.windData": "Kundi ikki heinta vinddátur.",
+  "error.precipData": "Kundi ikki heinta avfallsdátur.",
+  "error.precipUnavail": "Avfallsdátur eru ikki tøk.",
+  "error.styleFallback": "Brúki einfalt útlinjukort í staðin: {{message}}",
 
   // ── Wind style fallback (console + UI) ───────────────────────────────
-  "wind.particleFallback": "Agnalag ekki tiltækt, fer aftur í örvar.",
+  "wind.particleFallback": "Partikullagið er ikki tøkt, vísi pílar í staðin.",
 };
