@@ -28,7 +28,7 @@ import {
 } from "./mapLayerOrder";
 import { applyPlaceLabelStyle } from "./placeLabelStyle";
 import { createPlaceLabeller } from "./placeLabeller";
-import { addCityLabelLayer } from "./cityLabelLayer";
+import { addCityLabelLayer, CITY_LABEL_LAYER_ID } from "./cityLabelLayer";
 import { createStyleLoadedRunner } from "./styleLoadedRunner";
 import {
   createPlaceResolver,
@@ -187,7 +187,11 @@ export function createControllers(config: ControllerFactoryConfig) {
   function ensureCityLabels(): boolean {
     if (!map.isStyleLoaded()) {
       retryCityLabelsOnceSettled();
-      return false;
+      // Most styledata events land while tiles load. If this style already
+      // has the city layer, keep the basemap's cities hidden: flipping them
+      // back on here, then off again on idle, fired styledata each time and
+      // kept an idle map repainting every frame.
+      return Boolean(map.getLayer(CITY_LABEL_LAYER_ID));
     }
     const places = placeResolver.loadedPlaces();
     if (places.length === 0) return false;

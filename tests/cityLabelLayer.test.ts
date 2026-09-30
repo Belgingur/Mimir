@@ -185,8 +185,9 @@ describe("addCityLabelLayer", () => {
   function makeMap(existing: string[] = []) {
     const present = new Set(existing);
     const setData = vi.fn();
+    const source = { setData };
     const map = {
-      getSource: (id: string) => (present.has(id) ? { setData } : undefined),
+      getSource: (id: string) => (present.has(id) ? source : undefined),
       addSource: vi.fn((id: string) => present.add(id)),
       getLayer: (id: string) => (present.has(id) ? { id } : undefined),
       addLayer: vi.fn((layer: { id: string }) => present.add(layer.id)),
@@ -229,6 +230,17 @@ describe("addCityLabelLayer", () => {
     expect(raw.addLayer).not.toHaveBeenCalled();
     expect(setData).toHaveBeenCalledTimes(1);
     expect(raw.setFilter).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not re-send an unchanged dataset", () => {
+    // Re-sending re-tiles the source and fires styledata, which calls this
+    // again: an idle map would repaint forever.
+    const { map, setData } = makeMap();
+    addCityLabelLayer(map, PLACES);
+    addCityLabelLayer(map, PLACES);
+    expect(setData).not.toHaveBeenCalled();
+    addCityLabelLayer(map, [...PLACES]);
+    expect(setData).toHaveBeenCalledTimes(1);
   });
 
   it("does nothing when the dataset failed to load", () => {
