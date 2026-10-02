@@ -30,6 +30,22 @@ export const CITY_LABEL_SOURCE_ID = "mimir-places";
 export const CITY_LABEL_LAYER_ID = "mimir-city-labels";
 export const CITY_DOT_LAYER_ID = "mimir-city-dots";
 
+/** City name typography, shared with the iconography bubbles' names. */
+export const CITY_TEXT_FONT = ["Metropolis Bold", "Noto Sans Bold"];
+export const CITY_TEXT_SIZE: maplibregl.ExpressionSpecification = [
+  "interpolate",
+  ["linear"],
+  ["zoom"],
+  3,
+  12,
+  6,
+  14,
+  10,
+  16,
+];
+/** Below the point, in ems, with the name anchored at its top. */
+export const CITY_TEXT_OFFSET: [number, number] = [0, 0.45];
+
 /**
  * The zoom ladder, as three thresholds evaluated in parallel — a place is
  * labelled if it clears any one of them:
@@ -123,6 +139,52 @@ export function buildCityGeoJSON(places: readonly PlaceTuple[]): {
   };
 }
 
+/**
+ * Cities whose label or dot another layer stands in for, by name, on each
+ * map. An iconography bubble's pointer tip marks its city's spot, so the dot
+ * goes; when the bubble also draws the name, the label goes too.
+ */
+export interface HiddenCities {
+  labels: readonly string[];
+  dots: readonly string[];
+}
+const NONE: HiddenCities = { labels: [], dots: [] };
+const hiddenCities = new WeakMap<maplibregl.Map, HiddenCities>();
+
+function withoutNames(
+  names: readonly string[],
+): maplibregl.FilterSpecification {
+  const filter = buildCityFilter();
+  return (
+    names.length > 0
+      ? ["all", filter, ["!", ["in", ["get", "name"], ["literal", names]]]]
+      : filter
+  ) as maplibregl.FilterSpecification;
+}
+
+const sameNames = (a: readonly string[], b: readonly string[]) =>
+  a.length === b.length && a.every((name, i) => name === b[i]);
+
+/** Hide these cities' labels and dots; empty lists bring them all back. */
+export function setHiddenCities(
+  map: maplibregl.Map,
+  hidden: HiddenCities,
+): void {
+  const current = hiddenCities.get(map) ?? NONE;
+  hiddenCities.set(map, hidden);
+  // Called on every iconography redraw: re-filtering an unchanged list would
+  // restart label placement for nothing.
+  if (!sameNames(hidden.dots, current.dots) && map.getLayer(CITY_DOT_LAYER_ID)) {
+    map.setFilter(CITY_DOT_LAYER_ID, withoutNames(hidden.dots));
+  }
+  if (
+    !sameNames(hidden.labels, current.labels) &&
+    map.getLayer(CITY_LABEL_LAYER_ID)
+  ) {
+    map.setFilter(CITY_LABEL_LAYER_ID, withoutNames(hidden.labels));
+  }
+}
+
 /** The places array last sent to each city source, so an unchanged dataset
  *  isn't re-sent. Keyed by source object: a style swap makes a new one. */
 const appliedPlaces = new WeakMap<object, readonly PlaceTuple[]>();
@@ -157,7 +219,9 @@ export function addCityLabelLayer(
   const source = map.getSource(CITY_LABEL_SOURCE_ID);
   if (source) appliedPlaces.set(source, places);
 
-  const filter = buildCityFilter();
+  const hidden = hiddenCities.get(map) ?? NONE;
+  const dotFilter = withoutNames(hidden.dots);
+  const labelFilter = withoutNames(hidden.labels);
 
   // A small dot anchors the name to the actual point — the same coordinate a
   // click on this label resolves to, so "where is this city" is unambiguous.
@@ -166,7 +230,7 @@ export function addCityLabelLayer(
       id: CITY_DOT_LAYER_ID,
       type: "circle",
       source: CITY_LABEL_SOURCE_ID,
-      filter: filter as maplibregl.FilterSpecification,
+      filter: dotFilter,
       paint: {
         "circle-radius": [
           "interpolate",
@@ -183,7 +247,7 @@ export function addCityLabelLayer(
       },
     });
   } else {
-    map.setFilter(CITY_DOT_LAYER_ID, filter as maplibregl.FilterSpecification);
+    map.setFilter(CITY_DOT_LAYER_ID, dotFilter);
   }
 
   if (!map.getLayer(CITY_LABEL_LAYER_ID)) {
@@ -191,25 +255,15 @@ export function addCityLabelLayer(
       id: CITY_LABEL_LAYER_ID,
       type: "symbol",
       source: CITY_LABEL_SOURCE_ID,
-      filter: filter as maplibregl.FilterSpecification,
+      filter: labelFilter,
       layout: {
         "text-field": ["get", "name"],
         // Bold and mixed-case: positron's uppercase Regular is the least
         // legible combination over a busy raster.
-        "text-font": ["Metropolis Bold", "Noto Sans Bold"],
-        "text-size": [
-          "interpolate",
-          ["linear"],
-          ["zoom"],
-          3,
-          12,
-          6,
-          14,
-          10,
-          16,
-        ],
+        "text-font": CITY_TEXT_FONT,
+        "text-size": CITY_TEXT_SIZE,
         "text-anchor": "top",
-        "text-offset": [0, 0.45],
+        "text-offset": CITY_TEXT_OFFSET,
         "text-max-width": 8,
         "text-padding": 2,
         // Bigger cities win collisions against smaller neighbours.
@@ -223,10 +277,7 @@ export function addCityLabelLayer(
       },
     });
   } else {
-    map.setFilter(
-      CITY_LABEL_LAYER_ID,
-      filter as maplibregl.FilterSpecification,
-    );
+    map.setFilter(CITY_LABEL_LAYER_ID, labelFilter);
   }
   return true;
 }

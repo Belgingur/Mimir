@@ -303,6 +303,13 @@ function makeDeps(overrides?: Partial<LayerComposerDeps>): LayerComposerDeps {
   } as unknown as Worker;
   return {
     dom,
+    // An empty style: no iconography or city layers to add or remove.
+    getMap: () =>
+      ({
+        getLayer: () => undefined,
+        getSource: () => undefined,
+        hasImage: () => false,
+      }) as unknown as import("maplibre-gl").Map,
     getMapZoom: () => 5,
     getMapBounds: () => ({
       getWest: () => -30,

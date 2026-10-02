@@ -10,6 +10,7 @@ import {
   CAPITAL_POPULATION_BY_ZOOM,
   NATIONAL_RANK_BY_ZOOM,
   POPULATION_BY_ZOOM,
+  setHiddenCities,
 } from "../src/lib/cityLabelLayer";
 import type { PlaceTuple } from "../src/lib/nearestPlace";
 
@@ -248,5 +249,73 @@ describe("addCityLabelLayer", () => {
     expect(addCityLabelLayer(map, [])).toBe(false);
     expect(raw.addSource).not.toHaveBeenCalled();
     expect(raw.addLayer).not.toHaveBeenCalled();
+  });
+});
+
+describe("setHiddenCities", () => {
+  function makeMap() {
+    const present = new Set<string>();
+    const map = {
+      getSource: (id: string) =>
+        present.has(id) ? { setData: vi.fn() } : undefined,
+      addSource: vi.fn((id: string) => present.add(id)),
+      getLayer: (id: string) => (present.has(id) ? { id } : undefined),
+      addLayer: vi.fn((layer: { id: string }) => present.add(layer.id)),
+      setFilter: vi.fn(),
+    };
+    return { map: map as unknown as maplibregl.Map, raw: map };
+  }
+  const filterFor = (raw: ReturnType<typeof makeMap>["raw"], id: string) =>
+    raw.setFilter.mock.calls.filter(([layer]) => layer === id).at(-1)?.[1];
+  const hidingMadrid = [
+    "all",
+    buildCityFilter(),
+    ["!", ["in", ["get", "name"], ["literal", ["Madrid"]]]],
+  ];
+
+  const both = (names: string[]) => ({ labels: names, dots: names });
+
+  it("drops both the label and the dot of a named city", () => {
+    const { raw, map } = makeMap();
+    addCityLabelLayer(map, PLACES);
+    setHiddenCities(map, both(["Madrid"]));
+    expect(filterFor(raw, CITY_DOT_LAYER_ID)).toEqual(hidingMadrid);
+    expect(filterFor(raw, CITY_LABEL_LAYER_ID)).toEqual(hidingMadrid);
+  });
+
+  it("can drop a dot but keep the label", () => {
+    const { raw, map } = makeMap();
+    addCityLabelLayer(map, PLACES);
+    setHiddenCities(map, { labels: [], dots: ["Madrid"] });
+    expect(filterFor(raw, CITY_DOT_LAYER_ID)).toEqual(hidingMadrid);
+    expect(filterFor(raw, CITY_LABEL_LAYER_ID)).toBeUndefined();
+  });
+
+  it("keeps them hidden when the layers are refreshed on styledata", () => {
+    const { raw, map } = makeMap();
+    addCityLabelLayer(map, PLACES);
+    setHiddenCities(map, both(["Madrid"]));
+    addCityLabelLayer(map, PLACES);
+    expect(filterFor(raw, CITY_DOT_LAYER_ID)).toEqual(hidingMadrid);
+    expect(filterFor(raw, CITY_LABEL_LAYER_ID)).toEqual(hidingMadrid);
+  });
+
+  it("does not re-filter for an unchanged list", () => {
+    // Every iconography redraw calls this; a needless setFilter restarts
+    // label placement.
+    const { raw, map } = makeMap();
+    addCityLabelLayer(map, PLACES);
+    setHiddenCities(map, both(["Madrid"]));
+    setHiddenCities(map, both(["Madrid"]));
+    expect(raw.setFilter).toHaveBeenCalledTimes(2);
+  });
+
+  it("brings every city back for an empty list", () => {
+    const { raw, map } = makeMap();
+    addCityLabelLayer(map, PLACES);
+    setHiddenCities(map, both(["Madrid"]));
+    setHiddenCities(map, both([]));
+    expect(filterFor(raw, CITY_DOT_LAYER_ID)).toEqual(buildCityFilter());
+    expect(filterFor(raw, CITY_LABEL_LAYER_ID)).toEqual(buildCityFilter());
   });
 });
