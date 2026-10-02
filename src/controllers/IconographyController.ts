@@ -44,6 +44,7 @@ export interface IconPoint {
   windSpeed: number | null;
   windDirection: number | null; // degrees clockwise from North (wind FROM direction)
   name?: string; // city name (named-place mode only)
+  rank?: number; // the place's importance, 1 = most important
 }
 
 interface ScalarVar {
@@ -486,7 +487,7 @@ export class IconographyController {
       if (lat < south || lat > north || lon < west || lon > east) continue;
 
       const pt = this._samplePoint(lon, lat, utcMs);
-      if (pt) points.push({ ...pt, name: city.name });
+      if (pt) points.push({ ...pt, name: city.name, rank: city.rank });
     }
     return points;
   }

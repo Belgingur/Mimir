@@ -37,6 +37,10 @@ import { WavegramController } from "./WavegramController";
 import { WindStyleController } from "./WindStyleController";
 import { LRUMap } from "../lib/LRUMap";
 import {
+  clearIconographySymbols,
+  syncIconographySymbols,
+} from "../lib/iconographySymbolLayer";
+import {
   buildGraticuleLabels,
   buildGraticuleLines,
   type GraticuleLine,
@@ -140,6 +144,7 @@ export interface LayerComposerDeps {
     snowDepthLegendHost: HTMLDivElement;
   };
   getMapZoom: () => number;
+  getMap: () => import("maplibre-gl").Map;
   getMapBounds: () => MapBoundsLike;
   getMapCenter: () => { lng: number; lat: number };
   getMapBearing: () => number;
@@ -678,6 +683,7 @@ export class LayerComposer {
       return;
     }
 
+    clearIconographySymbols(this.deps.getMap());
     const mapBounds = this.deps.getMapBounds();
     const mapBoundsNormalized =
       mapBounds.getWest() <= mapBounds.getEast()
@@ -3170,61 +3176,18 @@ ${this.legendLabelsHtml(
       showGrid,
     );
 
-    if (points.length === 0) return [gridLayer];
-
-    // ── Composite weather widget (sprite-sheet atlas) ────────────────────────
-    // All unique widget canvases are packed into one HTMLCanvasElement that is
-    // uploaded to WebGL synchronously — no per-icon async image-load gap, so
-    // the time slider advances without any flicker or missing-icon frames.
-    const { atlas, mapping, getKey } = this._iconographyRenderer.buildAtlas(
-      points,
-      iconSize,
-    );
-
-    const widgetLayer = new IconLayer({
-      id: "iconography-icons",
-      data: points,
-      getPosition: (d) => d.position,
-      iconAtlas: atlas as unknown as string,
-      iconMapping: mapping,
-      getIcon: (d) => getKey(d),
-      getSize: iconSize,
-      sizeScale: 1,
-      sizeUnits: "pixels",
-      billboard: true,
-      alphaCutoff: 0.05,
-      parameters: { depthTest: false },
-      pickable: true,
-    });
-
-    // ── City name labels (named-place mode only) ─────────────────────────────
-    // The bubble's callout pointer tip sits at the geographic coordinate, so
-    // labels just need a small gap below the map point.
-    const namedPoints = points.filter((p) => p.name);
-    const labelOffset = 5; // px below the pointer tip
-    const labelLayer =
-      namedPoints.length > 0
-        ? new TextLayer({
-            id: "iconography-labels",
-            data: namedPoints,
-            getPosition: (d) => d.position,
-            getText: (d) => d.name ?? "",
-            getSize: 11,
-            getColor: [30, 30, 30, 220],
-            getBackgroundColor: [255, 255, 255, 170],
-            background: true,
-            backgroundPadding: [3, 1, 3, 1],
-            fontFamily: "system-ui, sans-serif",
-            fontWeight: "500",
-            characterSet: "auto",
-            getTextAnchor: "middle",
-            getAlignmentBaseline: "top",
-            getPixelOffset: [0, labelOffset],
-            parameters: { depthTest: false },
-            pickable: false,
-          })
+    // The widgets are a MapLibre symbol layer rather than a deck.gl one, so
+    // they take part in label collision: a basemap name under a bubble is
+    // hidden instead of painted over, and the city layer stands down for the
+    // places the bubbles name.
+    // All unique widget canvases are packed into one atlas, drawn
+    // synchronously, so the time slider never shows a missing-icon frame.
+    const atlas =
+      points.length > 0
+        ? this._iconographyRenderer.buildAtlas(points, iconSize)
         : null;
+    syncIconographySymbols(this.deps.getMap(), points, iconSize, atlas);
 
-    return [gridLayer, widgetLayer, labelLayer].filter(Boolean);
+    return [gridLayer];
   }
 }

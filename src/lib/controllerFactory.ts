@@ -361,6 +361,7 @@ export function createControllers(config: ControllerFactoryConfig) {
       cloudLegendHost: dom.cloudLegendHost,
       snowDepthLegendHost: dom.snowDepthLegendHost,
     },
+    getMap: () => map,
     getMapZoom: () => map.getZoom(),
     getMapBounds: () => map.getBounds(),
     getMapCenter: () => map.getCenter(),
