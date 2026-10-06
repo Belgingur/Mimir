@@ -48,12 +48,6 @@ export interface SetupMeteogramDeps {
   /** Domain bounds of the selected model `[minLon, minLat, maxLon, maxLat]`,
    *  or null when unknown — for the early out-of-domain hint. */
   readonly getModelBounds: () => [number, number, number, number] | null;
-  /** Authoritative model run / last-update times (ISO UTC) from the selected
-   *  model's manifest, or null when unknown — for the widget's footer (C2). */
-  readonly getAnalysisInfo: () => {
-    analysisTimeISO?: string;
-    generatedAt?: string;
-  } | null;
   /** Name of the place at a point (clicked city label, else nearest place), or
    *  undefined when nothing is close enough to fairly label it. */
   readonly getPlaceLabel?: (lng: number, lat: number) => string | undefined;
@@ -143,7 +137,6 @@ export function setupMeteogram(deps: SetupMeteogramDeps): MeteogramController {
     getLayerMode: deps.getLayerMode,
     isMeteogramTarget: deps.isMeteogramTarget,
     getModelBounds: deps.getModelBounds,
-    getAnalysisInfo: deps.getAnalysisInfo,
     getPlaceLabel: deps.getPlaceLabel,
     showPin: deps.showPin,
     removePin: deps.removePin,
