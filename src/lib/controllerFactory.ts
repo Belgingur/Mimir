@@ -1041,15 +1041,6 @@ export function createControllers(config: ControllerFactoryConfig) {
           },
           getModelBounds: () =>
             catalogController.inhouseLayers[0]?.manifest.bounds ?? null,
-          getAnalysisInfo: () => {
-            const manifest = catalogController.inhouseLayers[0]?.manifest;
-            return manifest
-              ? {
-                  analysisTimeISO: manifest.analysisTimeISO,
-                  generatedAt: manifest.generatedAt,
-                }
-              : null;
-          },
           getPlaceLabel: (lng: number, lat: number) =>
             placeLabeller.labelAt(lng, lat),
           showPin,

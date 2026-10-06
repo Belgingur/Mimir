@@ -54,14 +54,6 @@ export interface MeteogramControllerDeps {
    *  for the WOD forecast domain (the model's render extent), so it never
    *  blocks — a successful load clears the hint. */
   readonly getModelBounds?: () => [number, number, number, number] | null;
-  /** Authoritative model run / last-update times for the selected model, from
-   *  Mímir's manifest — passed to the widget so its "Greiningartími" footer is
-   *  correct (the WOD meteogram.json it fetches may not carry them). Both are
-   *  ISO 8601 UTC. Returns null when unknown (no layer loaded yet). */
-  readonly getAnalysisInfo?: () => {
-    analysisTimeISO?: string;
-    generatedAt?: string;
-  } | null;
   /** Name of the place at a point — the city label clicked on the map, else the
    *  nearest place from the bundled dataset — or undefined when nothing is close
    *  enough to fairly label the point, in which case the raw coordinate is used.
@@ -272,7 +264,6 @@ export class MeteogramController {
     if (this.widget && this.currentClientName === clientName) {
       this.widget.setAttribute("language", this.widgetLanguage());
       this.widget.setAttribute("forecast-label", modelLabel);
-      this.applyAnalysisAttrs(this.widget);
       this.applyLocationName(this.widget, lng, lat);
       this.widget.loadChartLocation(lat, lng, label);
       return { clientName };
@@ -286,28 +277,11 @@ export class MeteogramController {
     fresh.setAttribute("location-lat", String(lat));
     fresh.setAttribute("location-lon", String(lng));
     this.applyLocationName(fresh, lng, lat);
-    this.applyAnalysisAttrs(fresh);
     this.attachWidgetListeners(fresh);
     this.deps.dom.widgetHost.appendChild(fresh);
     this.widget = fresh;
     this.currentClientName = clientName;
     return { clientName };
-  }
-
-  /**
-   * Push Mímir's authoritative analysis / last-update times (from the selected
-   * model's manifest) onto the widget so its footer shows the correct
-   * "Greiningartími" (task C2). Cleared when unknown so the widget falls back to
-   * its own data.
-   */
-  private applyAnalysisAttrs(widget: MeteogramWidget): void {
-    const info = this.deps.getAnalysisInfo?.();
-    const set = (attr: string, val?: string): void => {
-      if (val) widget.setAttribute(attr, val);
-      else widget.removeAttribute(attr);
-    };
-    set("analysis-time", info?.analysisTimeISO);
-    set("last-updated", info?.generatedAt);
   }
 
   /**
