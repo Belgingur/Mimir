@@ -3,6 +3,7 @@ import {
   GWES_MODEL_ID,
   resolveSelectionChange,
   normalizeIdList,
+  normalizeModelList,
   normalizeVariableList,
   pickDefaultId,
   pickValidGroupForModel,
@@ -285,5 +286,80 @@ describe("pickValidGroupForModel", () => {
 
   it("returns null when no group is available", () => {
     expect(pickValidGroupForModel("empty-model", () => false)).toBeNull();
+  });
+});
+
+describe("normalizeModelList", () => {
+  it("keeps the models in the order models.json lists them", () => {
+    const { ids } = normalizeModelList({
+      models: [{ id: "B" }, { id: "A" }, { id: "C" }],
+    });
+    expect(ids).toEqual(["B", "A", "C"]);
+  });
+
+  it("accepts bare ids and reads the default", () => {
+    expect(normalizeModelList(["A", "B"]).ids).toEqual(["A", "B"]);
+    const { defaultId } = normalizeModelList({
+      models: [{ id: "A" }, { id: "B", default: true }],
+    });
+    expect(defaultId).toBe("B");
+  });
+
+  it("reads every coverage and behaviour field of an entry", () => {
+    const { meta } = normalizeModelList({
+      models: [
+        {
+          id: "M",
+          title: "Model M",
+          resolution_km: 2.5,
+          margin_km: 10,
+          bbox: { west: -10, south: 50, east: 10, north: 60 },
+          domain_mask: { cols: 4, rows: 2, runs: "1.2/4" },
+          domain_polygon: [[[0, 0], [1, 0], [1, 1], [0, 0]]],
+          preferred: true,
+          view: { center: [0, 55], zoom: 4.5 },
+        },
+      ],
+    });
+    expect(meta.M).toEqual({
+      id: "M",
+      title: "Model M",
+      resolutionKm: 2.5,
+      marginKm: 10,
+      bbox: { west: -10, south: 50, east: 10, north: 60 },
+      domainMask: { cols: 4, rows: 2, runs: "1.2/4" },
+      domainPolygon: [[[0, 0], [1, 0], [1, 1], [0, 0]]],
+      preferred: true,
+      view: { center: [0, 55], zoom: 4.5 },
+      available: true,
+    });
+  });
+
+  it("drops a malformed field rather than the model", () => {
+    const { ids, meta } = normalizeModelList({
+      models: [
+        {
+          id: "M",
+          bbox: { west: "a" },
+          domain_mask: { cols: 0, rows: 2, runs: "1.2" },
+          view: { center: [0], zoom: 4 },
+          preferred: "yes",
+        },
+        { id: "N", domain_mask: { cols: 2, rows: 1, runs: "<script>" } },
+      ],
+    });
+    expect(ids).toEqual(["M", "N"]);
+    expect(meta.M.bbox).toBeUndefined();
+    expect(meta.M.domainMask).toBeUndefined();
+    expect(meta.M.view).toBeUndefined();
+    expect(meta.M.preferred).toBe(false);
+    expect(meta.N.domainMask).toBeUndefined();
+  });
+
+  it("marks a model disabled by either flag as unavailable", () => {
+    const { meta } = normalizeModelList({
+      models: [{ id: "A", available: false }, { id: "B", disabled: true }, { id: "C" }],
+    });
+    expect([meta.A.available, meta.B.available, meta.C.available]).toEqual([false, false, true]);
   });
 });

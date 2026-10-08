@@ -53,15 +53,46 @@ export type ModelCoverage = {
    * Used for non-rectangular (rotated/curvilinear) domains after the bbox check.
    */
   domainPolygon?: number[][][];
+  /**
+   * Which cells of `bbox` hold data, for a domain that does not fill its bbox
+   * (a Lambert or rotated grid reprojected to lat/lon). Written by the
+   * catalog scripts; see scripts/catalog_coverage.py.
+   */
+  domainMask?: DomainMask;
   /** Grid resolution in km; lower = finer. Used to rank candidates. */
   resolutionKm?: number;
   /** Shrink the usable area inward by this many km to avoid domain-edge effects. */
   marginKm?: number;
   /**
+   * Wins location-based selection wherever it has data, ahead of finer
+   * models: a deployment's own model for a region, say.
+   */
+  preferred?: boolean;
+  /** Where to frame the model when the reader is looking outside it. */
+  view?: ModelView;
+  /**
    * Health flag: `false` when ops mark the model as having no data, so
    * selection skips it. Defaults to `true`.
    */
   available: boolean;
+};
+
+/**
+ * Which cells of a model's bbox hold data. The bbox is split into `cols` x
+ * `rows` equal cells, row 0 at the north edge. `runs` lists each row's
+ * alternating run lengths, nodata first, rows separated by "/" and runs by
+ * ".". A row's cells after its last run are nodata.
+ */
+export type DomainMask = {
+  cols: number;
+  rows: number;
+  runs: string;
+};
+
+/** A camera position for framing a model: `center` is [lon, lat]. */
+export type ModelView = {
+  center: [number, number];
+  zoom: number;
 };
 
 export type InhouseManifest = {
