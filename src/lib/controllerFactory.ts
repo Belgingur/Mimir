@@ -6,7 +6,6 @@ import type { AppDom } from "./domRegistry";
 import type { PersistedStateV1, LayerMode } from "./viewerTypes";
 import { createPersistScheduler } from "./persistence";
 import { initWeather } from "./initWeather";
-import { getModelResolutionMeters } from "./modelConfig";
 import { LAYER_GROUPS } from "./inhouseTypes";
 import type { UiState, InhouseGroupId } from "./inhouseTypes";
 import { WavegramController } from "../controllers/WavegramController";
@@ -323,7 +322,8 @@ export function createControllers(config: ControllerFactoryConfig) {
       getViewMode: () => layerGroupController?.viewMode ?? "forecast",
       getModels: () => catalogController.inhouseModels,
       getSelectedModel: () => catalogController.inhouseSelectedModel,
-      getModelResolutionMeters,
+      getModelResolutionMeters: (model: string) =>
+        catalogController.getModelResolutionMeters(model),
       onModelSelect: (model: string) => {
         dom.inhouseModelSelect.value = model;
         dom.inhouseModelSelect.dispatchEvent(
@@ -575,6 +575,7 @@ export function createControllers(config: ControllerFactoryConfig) {
     jumpToMap: (view) => map.jumpTo(view),
     getProgrammaticCameraMoves: () => programmaticCameraMoves,
     isMapMoving: () => map.isMoving(),
+    getNonWavesFallbackModel: () => catalogController.nonWavesFallbackModel(),
     scheduleUpdateLayers,
     schedulePersistState,
     setGridLabelsDirty: () => layerComposer.setGridLabelsDirty(true),

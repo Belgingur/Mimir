@@ -109,6 +109,7 @@ function makeDeps(overrides: Partial<LayerGroupDeps> = {}): {
     jumpToMap: vi.fn(),
     getProgrammaticCameraMoves: vi.fn(() => 0),
     isMapMoving: vi.fn(() => false),
+    getNonWavesFallbackModel: vi.fn(() => "GFS"),
     scheduleUpdateLayers: vi.fn(),
     schedulePersistState: vi.fn(),
     setGridLabelsDirty: vi.fn(),
@@ -517,8 +518,8 @@ describe("LayerGroupController", () => {
       expect(deps.loadInhouseAnalyses).not.toHaveBeenCalledWith("RAP");
     });
 
-    it("uses first non-GWES model as defaultModelForNonWaves when GFS absent", async () => {
-      const h = makeDeps({ getInhouseModels: vi.fn(() => ["RAP", "GWES"]) });
+    it("leaves the wave model for the catalog's non-waves fallback", async () => {
+      const h = makeDeps({ getNonWavesFallbackModel: vi.fn(() => "RAP") });
       const c = new LayerGroupController(h.deps);
       mockResolveSelectionChange.mockReturnValue({
         model: "RAP",

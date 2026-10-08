@@ -1,6 +1,5 @@
 import { domainMaskContains } from "./domainMask";
 import type { ModelBBox, ModelCoverage } from "./inhouseTypes";
-import { MODEL_DISPLAY_ORDER } from "./modelConfig";
 
 /**
  * Coverage-aware model selection (task A3).
@@ -26,19 +25,15 @@ export function selectModel(
     .filter((m) => modelContainsPoint(m, lat, lon));
   if (!covering.length) return null;
 
-  const rank = new Map(MODEL_DISPLAY_ORDER.map((id, i) => [id, i]));
+  // Array.prototype.sort is stable, so models that tie keep the order they
+  // came in: the order of models.json, which the deployment controls.
   covering.sort((a, b) => {
     // A model preferred where it has data beats any finer one.
     if (Boolean(a.preferred) !== Boolean(b.preferred)) return a.preferred ? -1 : 1;
     // Finest resolution first; models with no resolution rank last.
     const ra = a.resolutionKm ?? Number.POSITIVE_INFINITY;
     const rb = b.resolutionKm ?? Number.POSITIVE_INFINITY;
-    if (ra !== rb) return ra - rb;
-    // Tie-break by the display order, then id, for a deterministic pick.
-    return (
-      (rank.get(a.id) ?? 999) - (rank.get(b.id) ?? 999) ||
-      a.id.localeCompare(b.id)
-    );
+    return ra - rb;
   });
   return covering[0].id;
 }

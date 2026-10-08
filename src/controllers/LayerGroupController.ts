@@ -1,6 +1,5 @@
 import type * as WeatherLayers from "weatherlayers-gl";
 import { resolveSelectionChange, GWES_MODEL_ID } from "../lib/selectionRules";
-import { DEFAULT_NON_WAVES_MODEL } from "../lib/modelConfig";
 import { LAYER_GROUPS } from "../lib/inhouseTypes";
 import type { UiState, ViewMode } from "../lib/inhouseTypes";
 import type { IconographyStyle } from "../lib/viewerTypes";
@@ -69,6 +68,11 @@ export interface LayerGroupDeps {
   getProgrammaticCameraMoves: () => number;
   /** Whether the camera is animating or being dragged right now. */
   isMapMoving: () => boolean;
+  /**
+   * The model to move to when the reader leaves the wave model for another
+   * layer; see InhouseCatalogController.nonWavesFallbackModel.
+   */
+  getNonWavesFallbackModel: () => string;
 
   scheduleUpdateLayers: () => void;
   schedulePersistState: () => void;
@@ -324,13 +328,7 @@ export class LayerGroupController {
     // just wherever the animation had got to.
     const viewIsSettled = !this.deps.isMapMoving();
     const cameraMovesAtStart = this.deps.getProgrammaticCameraMoves();
-    const availableModels = this.deps.getInhouseModels();
-    const defaultModelForNonWaves = availableModels.includes(
-      DEFAULT_NON_WAVES_MODEL,
-    )
-      ? DEFAULT_NON_WAVES_MODEL
-      : (availableModels.find((m) => m !== GWES_MODEL_ID) ??
-        DEFAULT_NON_WAVES_MODEL);
+    const defaultModelForNonWaves = this.deps.getNonWavesFallbackModel();
     const resolve = resolveSelectionChange({
       action: "layerChange",
       fromModel: this.deps.getInhouseSelectedModel(),
