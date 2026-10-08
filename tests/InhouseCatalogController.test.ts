@@ -1266,6 +1266,48 @@ describe("InhouseCatalogController", () => {
       expect(c.inhouseSelectedModel).toBe("GWES");
     });
 
+    it("keeps the reloaded camera through the first layer build", async () => {
+      // The time sync in ensureInhouseGroupLayers clears the restoring flag
+      // before the domain-centring decision runs, so the flag alone cannot
+      // protect the restored camera. It used to be thrown toward the domain.
+      let restoring = true;
+      const d = makeDeps({
+        dom,
+        persistedModelId: "UWC-IG",
+        isRestoringFromPersisted: () => restoring,
+        setRestoringFromPersisted: vi.fn((v: boolean) => {
+          restoring = v;
+        }),
+        getMapCenter: () => [-46.6, -23.5] as [number, number], // São Paulo
+      });
+      const c = new InhouseCatalogController(d);
+      stubFetch({
+        "models.json": { models: [{ id: "GFS" }, { id: "UWC-IG" }] },
+        "analyses.json": {
+          analyses: ["2026-03-04_00"],
+          latest: "2026-03-04_00",
+        },
+        "variables.json": {
+          variables: [{ id: "air_temperature_at_2m_agl" }],
+        },
+        "manifest.json": makeManifest(),
+      });
+      vi.spyOn(c, "loadInhouseTexture").mockResolvedValue(null);
+
+      await c.loadInhouseCatalog();
+      await c.ensureInhouseGroupLayers("temperature");
+      await new Promise((r) => requestAnimationFrame(r));
+
+      expect(restoring).toBe(false);
+      expect(d.easeToMap).not.toHaveBeenCalled();
+      expect(d.fitMapBounds).not.toHaveBeenCalled();
+
+      // Nor on the reader's next variable change, now the flag is gone.
+      await c.ensureInhouseGroupLayers("temperature");
+      expect(d.easeToMap).not.toHaveBeenCalled();
+      expect(d.fitMapBounds).not.toHaveBeenCalled();
+    });
+
     it("shows warning on models.json failure", async () => {
       vi.stubGlobal(
         "fetch",

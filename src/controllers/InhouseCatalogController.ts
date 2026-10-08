@@ -1758,6 +1758,13 @@ export class InhouseCatalogController {
         preferredModel ||
         autoSelected ||
         pickDefaultId(this._inhouseModels, modelsNorm.defaultId);
+      // A reload hands back the camera the reader left with this model, so the
+      // framing decision for it is already made. Record it here rather than
+      // relying on isRestoringFromPersisted in centerMapOnInhouseDomain: the
+      // layer build's time sync clears that flag before the centring runs.
+      if (preferredModel && this.deps.isRestoringFromPersisted()) {
+        this._lastCenteredModel = preferredModel;
+      }
     } catch (error) {
       this.setInhouseWarning(
         `Failed to load models.json: ${error instanceof Error ? error.message : String(error)}`,
