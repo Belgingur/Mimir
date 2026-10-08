@@ -662,16 +662,7 @@ export class InhouseCatalogController {
 
     const preset = MODEL_REFOCUS_VIEW[model];
     if (preset) {
-      // BEL-IS reframes on the next frame at duration 0: the Iceland overview is
-      // set up while other map events are still settling, and an animated ease
-      // there gets cancelled by them.
-      if (model === "BEL-IS") {
-        window.requestAnimationFrame(() => {
-          this.deps.easeToMap({ ...preset, duration: 0 });
-        });
-      } else {
-        this.deps.easeToMap({ ...preset, duration: 800 });
-      }
+      this.deps.easeToMap({ ...preset, duration: 800 });
       return;
     }
     // No branch for global models: modelCoversPoint() answers `true` for every

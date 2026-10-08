@@ -114,6 +114,10 @@ export function createControllers(config: ControllerFactoryConfig) {
   // Forward reference to the programmatic model switcher (defined once all
   // controllers exist); used by the empty-model safety net and locate button.
   let switchModelFn: (model: string) => void = () => {};
+  // Camera moves the catalog makes on its own (framing a model's domain,
+  // capping zoom). LayerGroupController reads the count so that restoring the
+  // view after a layer change does not undo one of them.
+  let programmaticCameraMoves = 0;
   let pendingTimeIndex: number | null =
     persistedState?.mapCamera && Number.isFinite(persistedState.timeIndex)
       ? persistedState.timeIndex
@@ -428,8 +432,14 @@ export function createControllers(config: ControllerFactoryConfig) {
       const c = map.getCenter();
       return [c.lng, c.lat];
     },
-    easeToMap: (o) => map.easeTo(o),
-    fitMapBounds: (b, o) => map.fitBounds(b, o),
+    easeToMap: (o) => {
+      programmaticCameraMoves += 1;
+      map.easeTo(o);
+    },
+    fitMapBounds: (b, o) => {
+      programmaticCameraMoves += 1;
+      map.fitBounds(b, o);
+    },
     getCurrentDatetime: () =>
       timelineController?.currentDatetime ?? timelineCurrentDatetime,
     setCurrentDatetime: (dt) => {
@@ -563,6 +573,8 @@ export function createControllers(config: ControllerFactoryConfig) {
     easeToMap: (options) => map.easeTo(options),
     resizeMap: () => map.resize(),
     jumpToMap: (view) => map.jumpTo(view),
+    getProgrammaticCameraMoves: () => programmaticCameraMoves,
+    isMapMoving: () => map.isMoving(),
     scheduleUpdateLayers,
     schedulePersistState,
     setGridLabelsDirty: () => layerComposer.setGridLabelsDirty(true),
