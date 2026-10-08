@@ -107,6 +107,8 @@ function makeDeps(overrides: Partial<LayerGroupDeps> = {}): {
     easeToMap: vi.fn(),
     resizeMap: vi.fn(),
     jumpToMap: vi.fn(),
+    getProgrammaticCameraMoves: vi.fn(() => 0),
+    isMapMoving: vi.fn(() => false),
     scheduleUpdateLayers: vi.fn(),
     schedulePersistState: vi.fn(),
     setGridLabelsDirty: vi.fn(),
@@ -879,6 +881,60 @@ describe("LayerGroupController", () => {
       expect(deps.jumpToMap).toHaveBeenLastCalledWith(
         expect.objectContaining({ center: { lng: -20, lat: 55 }, zoom: 4 }),
       );
+    });
+
+    it("does not undo a camera move the app made during the layer change", async () => {
+      // The layer build may frame a model's domain; jumping back to the saved
+      // view used to cut that flight short wherever it had got to.
+      uiState.layerMode = "temperature";
+      mockResolveSelectionChange.mockReturnValue({
+        model: "GFS",
+        layer: "wind",
+        appliedException: null,
+      });
+      let moves = 0;
+      const d = { ...deps, getProgrammaticCameraMoves: () => moves };
+      const c = new LayerGroupController(d);
+      const restores: Array<() => void> = [];
+      vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
+        restores.push(() => cb(0));
+        return 1;
+      });
+      vi.spyOn(window, "setTimeout").mockImplementation(((handler: TimerHandler) => {
+        if (typeof handler === "function") restores.push(() => handler());
+        return 1 as unknown as number;
+      }) as typeof window.setTimeout);
+
+      await c.updateMode("wind");
+      moves += 1; // centerMapOnInhouseDomain starts a flight
+      restores.forEach((restore) => restore());
+
+      expect(d.jumpToMap).not.toHaveBeenCalled();
+    });
+
+    it("does not return to a view saved while the camera was in flight", async () => {
+      // initWeather starts the layer change while the first domain framing is
+      // still animating; the saved view is then a point part-way along it.
+      uiState.layerMode = "temperature";
+      mockResolveSelectionChange.mockReturnValue({
+        model: "GFS",
+        layer: "wind",
+        appliedException: null,
+      });
+      const d = { ...deps, isMapMoving: () => true };
+      const c = new LayerGroupController(d);
+      vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
+        cb(0);
+        return 1;
+      });
+      vi.spyOn(window, "setTimeout").mockImplementation(((handler: TimerHandler) => {
+        if (typeof handler === "function") handler();
+        return 1 as unknown as number;
+      }) as typeof window.setTimeout);
+
+      await c.updateMode("wind");
+
+      expect(d.jumpToMap).not.toHaveBeenCalled();
     });
 
     it("resizes once and skips view restore when switching to waves", async () => {
