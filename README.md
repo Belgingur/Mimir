@@ -141,7 +141,7 @@ Only `id` is required. Everything the viewer does with a model comes from this f
 
 The order of `models` is the order of the model chooser, and settles ties between equally fine models. `netcdf2image.py` fills `bbox`, `domain_mask` and `resolution_km` in as it converts each model; `scripts/build_model_coverage.py` does it for an existing catalog. Both leave every other field, and the order, as they found it. See [Model Coverage](scripts/README.md#model-coverage).
 
-With coverage present, a reader who pans away from a model's domain is offered the one that covers the view.
+With coverage present, a first-time visitor opens on the most detailed model for their region (guessed from the browser's time zone, with no permission prompt), and a reader who pans away from a model's domain is offered the one that covers the view. Without it, a first visit opens on the `default` model.
 
 `<model>/analyses.json` - lists available forecast runs:
 

@@ -1393,6 +1393,81 @@ describe("InhouseCatalogController", () => {
       expect(d.fitMapBounds).not.toHaveBeenCalled();
     });
 
+    describe("framing a first visit", () => {
+      const catalog = (models: unknown[]) =>
+        stubFetch({
+          "models.json": { models },
+          "analyses.json": { analyses: ["2026-03-04_00"] },
+          "variables.json": { variables: [] },
+        });
+      const iceland = { west: -26.5, south: 62.6, east: -11.5, north: 67.3 };
+      const world = { west: -180, south: -90, east: 179.75, north: 90 };
+
+      it("frames the chosen model around the guessed location, at once", async () => {
+        const reykjavik = { lat: 64.2, lon: -21.8 };
+        const d = makeDeps({
+          dom,
+          getAutoSelectLocation: () => reykjavik,
+          getFirstVisitLanding: () => ({ guess: reykjavik }),
+        });
+        const c = new InhouseCatalogController(d);
+        catalog([
+          { id: "GLOBAL", resolution_km: 25, bbox: world, default: true },
+          { id: "LOCAL", resolution_km: 2, bbox: iceland },
+        ]);
+        await c.loadInhouseCatalog();
+        expect(c.inhouseSelectedModel).toBe("LOCAL");
+        expect(d.fitMapBounds).toHaveBeenCalledWith(
+          [-26.5, 62.6, -11.5, 67.3],
+          expect.objectContaining({ duration: 0 }),
+        );
+        // The layer build that follows has nothing left to decide.
+        c.centerMapOnInhouseDomain("LOCAL", "2026-03-04_00", [-26.5, 62.6, -11.5, 67.3]);
+        expect(d.fitMapBounds).toHaveBeenCalledTimes(1);
+      });
+
+      it("frames the default model at once when the reader's location is unknown", async () => {
+        const d = makeDeps({ dom, getFirstVisitLanding: () => ({ guess: null }) });
+        const c = new InhouseCatalogController(d);
+        catalog([
+          { id: "LOCAL", bbox: iceland, view: { center: [-19, 65], zoom: 6 }, default: true },
+        ]);
+        await c.loadInhouseCatalog();
+        expect(d.easeToMap).toHaveBeenCalledWith({ center: [-19, 65], zoom: 6, duration: 0 });
+      });
+
+      it("leaves a global default on the view the map was built with", async () => {
+        const d = makeDeps({ dom, getFirstVisitLanding: () => ({ guess: null }) });
+        const c = new InhouseCatalogController(d);
+        catalog([{ id: "GLOBAL", bbox: world, default: true }]);
+        await c.loadInhouseCatalog();
+        expect(d.easeToMap).not.toHaveBeenCalled();
+        expect(d.fitMapBounds).not.toHaveBeenCalled();
+      });
+
+      it("frames a model the catalog says nothing about at the first layer build, still at once", async () => {
+        const d = makeDeps({ dom, getFirstVisitLanding: () => ({ guess: null }) });
+        const c = new InhouseCatalogController(d);
+        catalog([{ id: "BARE", default: true }]);
+        await c.loadInhouseCatalog();
+        expect(d.fitMapBounds).not.toHaveBeenCalled();
+        c.centerMapOnInhouseDomain("BARE", "2026-03-04_00", [-8, 61, -6, 62.5]);
+        expect(d.fitMapBounds).toHaveBeenCalledWith(
+          [-8, 61, -6, 62.5],
+          expect.objectContaining({ duration: 0 }),
+        );
+      });
+
+      it("leaves the camera alone on any other visit", async () => {
+        const d = makeDeps({ dom, getFirstVisitLanding: () => null });
+        const c = new InhouseCatalogController(d);
+        catalog([{ id: "LOCAL", bbox: iceland, default: true }]);
+        await c.loadInhouseCatalog();
+        expect(d.easeToMap).not.toHaveBeenCalled();
+        expect(d.fitMapBounds).not.toHaveBeenCalled();
+      });
+    });
+
     it("shows warning on models.json failure", async () => {
       vi.stubGlobal(
         "fetch",

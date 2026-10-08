@@ -23,6 +23,7 @@ import {
   filterTimesByRange,
 } from "../lib/timelineHelpers";
 import { decodeScalarGrid } from "../lib/imageProcessing";
+import { landingBounds } from "../lib/initialCamera";
 import { selectModel } from "../lib/selectModel";
 import { processTexturePixels } from "../lib/textureProcessing";
 import {
@@ -165,15 +166,23 @@ export interface InhouseCatalogDeps {
   isRestoringFromPersisted: () => boolean;
   setRestoringFromPersisted: (v: boolean) => void;
   /** True while the first-visit geolocation view owns the camera, so the model
-   *  domain auto-centre is skipped (see applyInitialCamera / task A1). */
+   *  domain auto-centre is skipped (task A1). */
   isInitialAutoCenterSuppressed?: () => boolean;
   /** Clear the above once the user explicitly switches models. */
   clearInitialAutoCenterSuppression?: () => void;
   /**
-   * Approximate user location used to re-rank models when the current one turns
-   * out to render no data (task A3 health safety net). Null when unknown.
+   * Approximate user location: chooses the first model on a first visit, and
+   * re-ranks models when the current one turns out to render no data (task A3
+   * health safety net). Null when unknown.
    */
   getAutoSelectLocation?: () => { lat: number; lon: number } | null;
+  /**
+   * Set on a first visit whose camera nothing has chosen yet (no saved camera,
+   * no remembered location). The catalog then frames the model it picks, at
+   * once rather than animated, around `guess` when the browser's time zone gave
+   * one. Null on every other visit.
+   */
+  getFirstVisitLanding?: () => { guess: { lat: number; lon: number } | null } | null;
   /**
    * Switch to another model programmatically (runs the same flow as the model
    * `<select>`). Used by the empty-model safety net and the "use my location"
@@ -344,6 +353,12 @@ export class InhouseCatalogController {
   private _lastCenteredModel = "";
   /** The model models.json marks `default`, or "" when it marks none. */
   private _inhouseDefaultModel = "";
+  /**
+   * The next domain framing is a first visit's and should not animate: the
+   * catalog could not frame the model when it loaded, because models.json
+   * says nothing about its domain.
+   */
+  private _firstFramingIsInstant = false;
   private _inhouseHoverLastTs = 0;
   readonly WIND_STREAMLINE_FLIP = false;
 
@@ -660,6 +675,8 @@ export class InhouseCatalogController {
     // the model you are already watching is not a reason to be moved.
     if (this._lastCenteredModel === model) return;
     this._lastCenteredModel = model;
+    const duration = this._firstFramingIsInstant ? 0 : 800;
+    this._firstFramingIsInstant = false;
 
     // The user is looking at ground this model covers: stay. Zoom is a separate
     // question, clamped by applyModelZoomConstraints for the model's resolution.
@@ -670,14 +687,60 @@ export class InhouseCatalogController {
     const framing = modelFraming(coverage, bounds);
     if (!framing) return;
     if ("view" in framing) {
-      this.deps.easeToMap({ ...framing.view, duration: 800 });
+      this.deps.easeToMap({ ...framing.view, duration });
       return;
     }
     this.deps.fitMapBounds(framing.bounds, {
       padding: 40,
-      duration: 800,
+      duration,
       maxZoom: this.computeModelMaxZoom(model, { bounds }),
     });
+  }
+
+  /**
+   * Frame the model a first visit opens on, without animating: the map was
+   * built over the reader's region (or the world) before the catalog knew
+   * which model it would be. This usually runs while the start-up splash
+   * still covers the map.
+   *
+   * With a guessed location the model was chosen for, frame the part of its
+   * domain around the reader: a small domain whole, a large one cut down to
+   * their region. Otherwise frame the model as a model switch would, except
+   * that a global model covers the region the map was built over and stays.
+   * When models.json says nothing about the domain, the first layer build
+   * frames it from the manifest instead, also without animating.
+   */
+  private frameFirstVisit(
+    model: string,
+    guess: { lat: number; lon: number } | null,
+  ): void {
+    if (!model) return;
+    const coverage = this._inhouseModelMeta.get(model);
+    if (guess) {
+      this._lastCenteredModel = model;
+      this.deps.fitMapBounds(landingBounds(guess, coverage?.bbox), {
+        padding: 40,
+        duration: 0,
+        maxZoom: this.computeModelMaxZoom(model),
+      });
+      return;
+    }
+    if (!coverage?.bbox && !coverage?.view) {
+      this._firstFramingIsInstant = true;
+      return;
+    }
+    this._lastCenteredModel = model;
+    const framing = modelFraming(coverage, null);
+    if (!framing) return;
+    if ("view" in framing) {
+      this.deps.easeToMap({ ...framing.view, duration: 0 });
+    } else {
+      this.deps.fitMapBounds(framing.bounds, {
+        padding: 40,
+        duration: 0,
+        maxZoom: this.computeModelMaxZoom(model),
+      });
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -1787,6 +1850,13 @@ export class InhouseCatalogController {
       if (preferredModel && this.deps.isRestoringFromPersisted()) {
         this._lastCenteredModel = preferredModel;
       }
+      const landing = this.deps.getFirstVisitLanding?.();
+      if (landing) {
+        this.frameFirstVisit(
+          this._inhouseSelectedModel,
+          autoSelected ? landing.guess : null,
+        );
+      }
     } catch (error) {
       this.setInhouseWarning(
         `Failed to load models.json: ${error instanceof Error ? error.message : String(error)}`,
@@ -2684,7 +2754,9 @@ export class InhouseCatalogController {
     this.deps.clearInitialAutoCenterSuppression?.();
     // Reset the framing guard: a deliberate model switch gets a fresh coverage
     // decision, so A→B→A can reframe on A again if B took the camera elsewhere.
+    // And it animates, whatever a first visit left pending.
     this._lastCenteredModel = "";
+    this._firstFramingIsInstant = false;
     this.setInhouseWarning(t("status.loadingModel"));
     if (resolve.model === GWES_MODEL_ID) {
       callbacks.setLayerMode("waves");

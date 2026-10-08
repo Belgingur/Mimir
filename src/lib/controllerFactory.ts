@@ -46,8 +46,8 @@ import {
   readStoredLocation,
   requestBrowserLocation,
   createLocateControl,
-  REYKJAVIK_VIEW,
   LOCATED_ZOOM,
+  type UserLocation,
 } from "./initialCamera";
 import { createDatasetLoadingOverlay } from "./datasetLoadingOverlay";
 import { createNewRunNotice } from "./newRunNotice";
@@ -63,10 +63,17 @@ export interface ControllerFactoryConfig {
   isDev: boolean;
   persistedState: PersistedStateV1 | null;
   localeIsUrlDriven?: boolean;
+  /**
+   * The reader's region, guessed from the browser's time zone by main.ts,
+   * which built the first view around it. The first model is chosen for the
+   * same point.
+   */
+  timeZoneGuess?: UserLocation | null;
 }
 
 export function createControllers(config: ControllerFactoryConfig) {
   const { map, dom, isDev, persistedState, localeIsUrlDriven } = config;
+  const timeZoneGuess = config.timeZoneGuess ?? null;
 
   // --- Mobile: gesture-only zoom, no on-map control stack ---
   // On phones the whole `.zoom-buttons` stack (+, −, grid, meteogram) is removed
@@ -101,15 +108,20 @@ export function createControllers(config: ControllerFactoryConfig) {
   let timelineCurrentDatetime = "";
   let timelineLastFrameLoadHadErrors = false;
   let restoringFromPersisted = !!persistedState?.mapCamera;
-  // First visit (no persisted camera) AND a cached user location: the located
-  // view owns the camera, so the model's domain auto-centre is suppressed until
-  // the user explicitly switches models. Armed here (before any async catalog
-  // centering can race) and cleared in handleModelChange. With no cached
-  // location we let the model domain centre normally (Iceland overview fallback).
-  // Returning users (persisted camera) are unaffected. See applyInitialCamera (A1).
+  // First visit (no persisted camera) AND a cached user location: main.ts built
+  // the map on that location, which owns the camera, so the model's domain
+  // auto-centre is suppressed until the user explicitly switches models. Armed
+  // here (before any async catalog centering can race) and cleared in
+  // handleModelChange. Returning users (persisted camera) are unaffected.
   const storedUserLocation = readStoredLocation();
   let suppressInitialAutoCenter =
     !persistedState?.mapCamera && !!storedUserLocation;
+  // A first visit nothing has chosen a camera for: the catalog frames the model
+  // it opens on (see firstVisitView in main.ts and frameFirstVisit).
+  const firstVisitLanding =
+    !persistedState?.mapCamera && !storedUserLocation
+      ? { guess: timeZoneGuess }
+      : null;
   // Forward reference to the programmatic model switcher (defined once all
   // controllers exist); used by the empty-model safety net and locate button.
   let switchModelFn: (model: string) => void = () => {};
@@ -462,14 +474,11 @@ export function createControllers(config: ControllerFactoryConfig) {
     clearInitialAutoCenterSuppression: () => {
       suppressInitialAutoCenter = false;
     },
-    // Coverage-aware selection uses the cached location, else the Reykjavík
-    // fallback (finest healthy model for Iceland — fixes landing on an empty
-    // default model). See selectModel / task A1/A3.
-    getAutoSelectLocation: () =>
-      readStoredLocation() ?? {
-        lat: REYKJAVIK_VIEW.center[1],
-        lon: REYKJAVIK_VIEW.center[0],
-      },
+    // Coverage-aware selection uses the cached location, else the time-zone
+    // guess, in the same order as the first view (firstVisitView). With
+    // neither, models.json's default decides. See selectModel / task A1/A3.
+    getAutoSelectLocation: () => readStoredLocation() ?? timeZoneGuess,
+    getFirstVisitLanding: () => firstVisitLanding,
     switchToModel: (model: string) => switchModelFn(model),
     getPendingTimeIndex: () => pendingTimeIndex,
     setPendingTimeIndex: (v) => {
@@ -1139,10 +1148,6 @@ export function createControllers(config: ControllerFactoryConfig) {
     getMeteogramController: () => meteogramController,
     meteogramEnabled: isMeteogramEnabled(),
     getUiState: () => uiState,
-    getPersistedState: () => persistedState,
-    suppressNextAutoCenter: () => {
-      suppressInitialAutoCenter = true;
-    },
     setMapReady: (ready) => {
       mapReady = ready;
     },

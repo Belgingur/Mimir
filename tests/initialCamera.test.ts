@@ -1,21 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type * as maplibregl from "maplibre-gl";
 import {
-  applyInitialCamera,
   requestBrowserLocation,
   readStoredLocation,
   writeStoredLocation,
   USER_LOCATION_KEY,
   LOCATED_ZOOM,
+  LANDING_RADIUS_DEG,
+  WORLD_VIEW,
+  firstVisitView,
+  landingBounds,
 } from "../src/lib/initialCamera";
-
-function makeMap(): {
-  map: Pick<maplibregl.Map, "easeTo">;
-  easeTo: ReturnType<typeof vi.fn>;
-} {
-  const easeTo = vi.fn();
-  return { map: { easeTo } as unknown as Pick<maplibregl.Map, "easeTo">, easeTo };
-}
 
 /** A Geolocation stub whose getCurrentPosition resolves to `coords`. */
 function grantGeolocation(coords: { latitude: number; longitude: number }): Geolocation {
@@ -40,38 +34,6 @@ function denyGeolocation(): Geolocation {
 afterEach(() => {
   localStorage.clear();
   vi.restoreAllMocks();
-});
-
-describe("applyInitialCamera", () => {
-  it("centres on a cached location and suppresses the model auto-centre", () => {
-    const { map, easeTo } = makeMap();
-    const suppressAutoCenter = vi.fn();
-    applyInitialCamera(map, {
-      suppressAutoCenter,
-      storedLocation: { lat: 52.52, lon: 13.405 }, // Berlin
-    });
-    expect(suppressAutoCenter).toHaveBeenCalledTimes(1);
-    expect(easeTo).toHaveBeenCalledWith(
-      expect.objectContaining({ center: [13.405, 52.52], zoom: LOCATED_ZOOM }),
-    );
-  });
-
-  it("does nothing (no prompt, no move) when there is no cached location", () => {
-    const { map, easeTo } = makeMap();
-    const suppressAutoCenter = vi.fn();
-    applyInitialCamera(map, { suppressAutoCenter, storedLocation: null });
-    expect(easeTo).not.toHaveBeenCalled();
-    expect(suppressAutoCenter).not.toHaveBeenCalled();
-  });
-
-  it("reads the cached location from localStorage when not injected", () => {
-    writeStoredLocation({ lat: 64.15, lon: -21.94 });
-    const { map, easeTo } = makeMap();
-    applyInitialCamera(map, {});
-    expect(easeTo).toHaveBeenCalledWith(
-      expect.objectContaining({ center: [-21.94, 64.15] }),
-    );
-  });
 });
 
 describe("stored location round-trip", () => {
@@ -119,5 +81,63 @@ describe("requestBrowserLocation (opt-in button)", () => {
       onError,
     });
     expect(onError).toHaveBeenCalledWith(null);
+  });
+});
+
+describe("landingBounds", () => {
+  const paris = { lat: 48.9, lon: 2.3 };
+
+  it("is a region around the point, wider in longitude away from the equator", () => {
+    const [west, south, east, north] = landingBounds(paris);
+    expect(north - south).toBeCloseTo(2 * LANDING_RADIUS_DEG, 5);
+    expect(east - west).toBeGreaterThan(north - south);
+    expect((west + east) / 2).toBeCloseTo(paris.lon, 5);
+  });
+
+  it("frames a small domain whole", () => {
+    const faroes = { west: -8.8, south: 60.8, east: -5, north: 62.9 };
+    expect(landingBounds({ lat: 62, lon: -6.8 }, faroes)).toEqual([-8.8, 60.8, -5, 62.9]);
+  });
+
+  it("cuts a large domain down to the reader's region", () => {
+    const europe = { west: -43, south: 37.7, east: 40, north: 69.9 };
+    const [west, south, east, north] = landingBounds(paris, europe);
+    expect(west).toBeGreaterThan(-43);
+    expect(east).toBeLessThan(40);
+    expect(south).toBeCloseTo(paris.lat - LANDING_RADIUS_DEG, 5);
+    expect(north).toBeCloseTo(paris.lat + LANDING_RADIUS_DEG, 5);
+  });
+
+  it("does not cut at the seam of a domain spanning every longitude", () => {
+    const [west, , east] = landingBounds(
+      { lat: -17.7, lon: 178.4 }, // Fiji
+      { west: -180, south: -90, east: 179.75, north: 90 },
+    );
+    expect(west).toBeLessThan(178.4);
+    expect(east).toBeGreaterThan(180);
+  });
+
+  it("keeps the region when the domain does not reach the point", () => {
+    const far = { west: 100, south: -10, east: 120, north: 10 };
+    expect(landingBounds(paris, far)).toEqual(landingBounds(paris));
+  });
+});
+
+describe("firstVisitView", () => {
+  it("centres a remembered location, ahead of a guessed one", () => {
+    expect(
+      firstVisitView({ stored: { lat: 52.2, lon: 21 }, guessed: { lat: 64.2, lon: -21.8 } }),
+    ).toEqual({ center: [21, 52.2], zoom: LOCATED_ZOOM });
+  });
+
+  it("frames the region around a guessed location", () => {
+    expect(firstVisitView({ stored: null, guessed: { lat: -23.5, lon: -46.6 } })).toEqual({
+      bounds: landingBounds({ lat: -23.5, lon: -46.6 }),
+      fitBoundsOptions: { padding: 40 },
+    });
+  });
+
+  it("opens on the world when nothing says where the reader is", () => {
+    expect(firstVisitView({ stored: null, guessed: null })).toEqual(WORLD_VIEW);
   });
 });
