@@ -4,6 +4,7 @@ import { queryDom } from "./lib/domRegistry";
 import { loadPersistedState } from "./lib/persistence";
 import { initEdgeHitWiring } from "./lib/edgeHitWiring";
 import { restoreMapTransformForDeck } from "./lib/deckMaplibreCompat";
+import { reloadAfterContextLoss } from "./lib/contextLossReload";
 import { translateDOM, registerLocale, setLocale, hasLocale } from "./lib/i18n";
 import { is } from "./locales/is";
 import { pl } from "./locales/pl";
@@ -73,6 +74,9 @@ try {
 }
 
 restoreMapTransformForDeck(map);
+// The forecast layers cannot survive a lost WebGL context; reload instead of
+// leaving a bare basemap behind. See contextLossReload.
+reloadAfterContextLoss(map);
 
 // The splash in index.html covers the page until the basemap has drawn; the
 // top loading bar then carries on until the forecast itself is in.
