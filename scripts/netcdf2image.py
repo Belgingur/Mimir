@@ -19,6 +19,8 @@ import xarray as xr
 from PIL import Image
 import yaml
 
+from catalog_coverage import merge_coverage, model_coverage
+
 # Debug usage:
 #   python scripts/netcdf2image.py --debug-one --variable air_temperature_at_2m_agl ...
 #   python scripts/netcdf2image.py --debug --jobs 1 ...
@@ -2097,7 +2099,15 @@ def write_variables_catalog(
     print(f"Wrote variables catalog: {out_path}")
 
 
-def write_models_catalog(out_root: Path, *, model: str) -> None:
+def write_models_catalog(
+    out_root: Path, *, model: str, coverage: dict[str, Any] | None = None
+) -> None:
+    """
+    Add the model to models.json if it is new, and refresh its coverage fields
+    (see catalog_coverage.py). Every other field of every entry, and the order
+    of the entries, is left as it was, so a hand-edited title, default,
+    `preferred` or `view` survives every conversion.
+    """
     out_path = out_root / FORECAST_DATA_SUBDIR / "models.json"
     models: list[dict[str, Any]] = []
     if out_path.exists():
@@ -2109,6 +2119,8 @@ def write_models_catalog(out_root: Path, *, model: str) -> None:
             models = []
     if not any(m.get("id") == model for m in models):
         models.append({"id": model, "title": model, "default": len(models) == 0})
+    if coverage:
+        models = [merge_coverage(m, coverage) if m.get("id") == model else m for m in models]
     payload = {"schemaVersion": 1, "models": models}
     out_path.write_text(
         json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
@@ -3618,7 +3630,6 @@ def main() -> int:
             }
             for s in ok
         ]
-        write_models_catalog(out_root, model=args.model)
         write_analyses_catalog(out_root, model=args.model, analysis_time=analysis_time)
         write_variables_catalog(
             out_root,
@@ -3626,6 +3637,18 @@ def main() -> int:
             analysis_time=analysis_time,
             variables=vars_payload,
         )
+        catalog_root = out_root / FORECAST_DATA_SUBDIR
+        try:
+            coverage = model_coverage(
+                lambda path: (catalog_root / path).read_bytes(),
+                args.model,
+                analysis_time.strftime("%Y-%m-%d_%H"),
+                [v["manifest"] for v in vars_payload],
+            )
+        except Exception as exc:  # noqa: BLE001 — coverage is optional; the frames are not
+            print(f"WARNING: could not read {args.model} coverage: {exc}", file=sys.stderr)
+            coverage = None
+        write_models_catalog(out_root, model=args.model, coverage=coverage)
 
     if args.emit_scale_config:
         Path(args.emit_scale_config).write_text(

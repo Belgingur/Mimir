@@ -5,6 +5,8 @@ This directory contains Python helpers for converting NetCDF forecast model outp
 | File | Purpose |
 | ---- | ------- |
 | `netcdf2image.py` | Convert NetCDF variables to WebP/PNG frames and write catalog JSON |
+| `build_model_coverage.py` | Fill in model coverage (`bbox`, `domain_mask`, `resolution_km`) for an existing catalog's `models.json` |
+| `catalog_coverage.py` | Shared coverage code used by the two scripts above (tests: `test_catalog_coverage.py`) |
 | `stitch_rap_forecast.py` | Extend a short RAP run with frames from the previous long RAP run |
 | `stitch_icon_forecast.py` | Extend a short ICON-EU run with frames from the previous long ICON run |
 | `config_GFS.yml` | Example config for GFS atmospheric output |
@@ -65,6 +67,30 @@ python netcdf2image.py -i forecast.nc --model GFS --out-root ./output \
 ```
 
 To use with Mímir locally, copy the contents of `<out-root>/forecast-data/` into `public/forecast-data/` in your Mímir checkout. Alternatively, serve that directory from a CDN or API and set `VITE_INHOUSE_ROOT` to that origin (without appending `/forecast-data`).
+
+## Model Coverage
+
+Each time `netcdf2image.py` converts a model it also records, in that model's `models.json` entry, where the model has data and how fine its grid is. The viewer uses this to open on the most detailed model for a reader's region, to say when a model does not cover the view, to cap zoom at the grid's resolution, and to show the resolution in the model chooser.
+
+| Field | Written | Meaning |
+| ----- | ------- | ------- |
+| `bbox` | every run | Union of the variables' manifest bounds |
+| `domain_mask` | every run | Which cells of the bbox hold data, read from the frames' alpha channel. Left out when the data fills the bbox. Needed for Lambert and rotated grids, whose lat/lon bbox is far larger than their data |
+| `resolution_km` | only if missing | Grid spacing, estimated from bounds and image height. Write the model's published figure by hand if you prefer it; it is kept |
+
+Every other field of an entry (`title`, `default`, `preferred`, `view`, ...) and the order of the entries are left alone, so hand edits survive every conversion. The viewer's README describes them.
+
+For a catalog built before this, or by another pipeline, fill the fields in once:
+
+```bash
+# A local catalog, rewritten in place
+python build_model_coverage.py ../public/forecast-data --out ../public/forecast-data/models.json
+
+# A served catalog; the result goes to stdout
+python build_model_coverage.py https://example.org > models.json
+```
+
+It reads each model's latest run, so run it while every model has one. Test the shared code with `python -m unittest discover -s scripts`.
 
 ## Config Files
 
