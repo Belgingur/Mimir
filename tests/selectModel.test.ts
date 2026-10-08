@@ -67,22 +67,12 @@ describe("selectModel", () => {
     expect(selectModel(64.15, -21.94, set)).toBe("RAP");
   });
 
-  it("tie-breaks equal-resolution models by display order (BEL-IS before UWC-IG)", () => {
-    const set: ModelCoverage[] = [
-      {
-        id: "UWC-IG",
-        resolutionKm: 2,
-        bbox: { west: -25.6, south: 62.9, east: -12.4, north: 67.3 },
-        available: true,
-      },
-      {
-        id: "BEL-IS",
-        resolutionKm: 2,
-        bbox: { west: -25.6, south: 62.9, east: -12.4, north: 67.3 },
-        available: true,
-      },
-    ];
-    expect(selectModel(65, -19, set)).toBe("BEL-IS");
+  it("breaks a resolution tie in the order models.json lists the models", () => {
+    const iceland = { west: -25.6, south: 62.9, east: -12.4, north: 67.3 };
+    const a: ModelCoverage = { id: "A", resolutionKm: 2, bbox: iceland, available: true };
+    const b: ModelCoverage = { id: "B", resolutionKm: 2, bbox: iceland, available: true };
+    expect(selectModel(65, -19, [a, b])).toBe("A");
+    expect(selectModel(65, -19, [b, a])).toBe("B");
   });
 
   it("respects a domain_polygon that carves out part of the bbox", () => {

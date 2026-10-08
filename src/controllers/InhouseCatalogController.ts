@@ -97,15 +97,10 @@ export function createCloudForecastProvider(
 import {
   DEFAULT_MODEL_MAX_ZOOM,
   WEB_MERCATOR_METERS_PER_PIXEL_AT_Z0,
-  DEFAULT_NON_WAVES_MODEL,
-  MODEL_RESOLUTION_METERS,
-  shouldCenterOnBounds,
-  modelCoversPoint,
-  MODEL_REFOCUS_VIEW,
-  getModelResolutionMeters,
-  getModelDefaultCenter,
   getMetersPerPixelAtLatitude,
-  sortModels,
+  modelCoversPoint,
+  modelFraming,
+  modelResolutionMeters,
 } from "../lib/modelConfig";
 
 // ---------------------------------------------------------------------------
@@ -347,6 +342,8 @@ export class InhouseCatalogController {
   /** Model whose domain the camera was last framed for. Guards against
    *  re-framing on variable changes and new analysis runs of the same model. */
   private _lastCenteredModel = "";
+  /** The model models.json marks `default`, or "" when it marks none. */
+  private _inhouseDefaultModel = "";
   private _inhouseHoverLastTs = 0;
   readonly WIND_STREAMLINE_FLIP = false;
 
@@ -565,12 +562,22 @@ export class InhouseCatalogController {
       manifest?: InhouseManifest | null;
     },
   ): number {
-    const resolutionMeters = getModelResolutionMeters(model, options?.manifest);
+    const coverage = this._inhouseModelMeta.get(model);
+    const resolutionMeters = modelResolutionMeters(coverage, options?.manifest);
     if (!resolutionMeters) {
       return DEFAULT_MODEL_MAX_ZOOM;
     }
-    const center = getModelDefaultCenter(model, options?.bounds);
-    const latitude = clamp(center[1], -85, 85);
+    // Ground per pixel depends on latitude, so the cap is worked out where the
+    // reader is looking, kept inside the model's domain.
+    const domain = coverage?.bbox;
+    const south = domain?.south ?? options?.bounds?.[1] ?? -85;
+    const north = domain?.north ?? options?.bounds?.[3] ?? 85;
+    const center = this.deps.getMapCenter();
+    const latitude = clamp(
+      clamp(center[1], Math.min(south, north), Math.max(south, north)),
+      -85,
+      85,
+    );
     // Cap where MAX_ZOOM_CELLS model cells span MAX_ZOOM_REFERENCE_PX pixels
     // (~43 px per cell). A fixed reference, not the viewport: on-screen cell
     // size depends only on zoom, so tying the cap to the viewport's short side
@@ -583,9 +590,7 @@ export class InhouseCatalogController {
     const rawZoom = Math.log2(
       Math.max(targetSpanMeters, 1) > 0 ? numerator / targetSpanMeters : 1,
     );
-    // BEL-IS: allow zooming to at least 7 so the Iceland overview (zoom 6) is reachable.
-    const minAllowed = model === "BEL-IS" ? 7 : 1;
-    const maxZoom = clamp(rawZoom, minAllowed, 14);
+    const maxZoom = clamp(rawZoom, 1, 14);
     if (this.deps.isDev) {
       const spanAtZoom =
         getMetersPerPixelAtLatitude(latitude, maxZoom) * MAX_ZOOM_REFERENCE_PX;
@@ -593,7 +598,7 @@ export class InhouseCatalogController {
         model,
         resolutionMeters,
         targetSpanMeters,
-        center,
+        latitude,
         finalMaxZoom: maxZoom,
         resultingSpanMeters: spanAtZoom,
       });
@@ -658,18 +663,17 @@ export class InhouseCatalogController {
 
     // The user is looking at ground this model covers: stay. Zoom is a separate
     // question, clamped by applyModelZoomConstraints for the model's resolution.
-    if (modelCoversPoint(model, bounds, this.deps.getMapCenter())) return;
+    // A global model covers every view, so it never gets past this.
+    const coverage = this._inhouseModelMeta.get(model);
+    if (modelCoversPoint(coverage, bounds, this.deps.getMapCenter())) return;
 
-    const preset = MODEL_REFOCUS_VIEW[model];
-    if (preset) {
-      this.deps.easeToMap({ ...preset, duration: 800 });
+    const framing = modelFraming(coverage, bounds);
+    if (!framing) return;
+    if ("view" in framing) {
+      this.deps.easeToMap({ ...framing.view, duration: 800 });
       return;
     }
-    // No branch for global models: modelCoversPoint() answers `true` for every
-    // one of them, so a global model has already returned above — it can show
-    // wherever the reader is standing and never needs reframing.
-    if (!shouldCenterOnBounds(model, bounds)) return;
-    this.deps.fitMapBounds(bounds, {
+    this.deps.fitMapBounds(framing.bounds, {
       padding: 40,
       duration: 800,
       maxZoom: this.computeModelMaxZoom(model, { bounds }),
@@ -1447,6 +1451,35 @@ export class InhouseCatalogController {
     return [...this._inhouseModelMeta.values()];
   }
 
+  /**
+   * A model's resolution in metres, for the model chooser: models.json's
+   * resolution_km, else the grid of a manifest already loaded for the model.
+   */
+  getModelResolutionMeters(model: string): number | null {
+    const manifest =
+      this._inhouseLayers.find((layer) => layer.model === model)?.manifest ??
+      null;
+    return modelResolutionMeters(this._inhouseModelMeta.get(model), manifest);
+  }
+
+  /**
+   * The model to switch to when the reader picks a non-wave layer while on the
+   * wave model: the finest one with data where they are looking, else the
+   * catalog's default, else the first listed.
+   */
+  nonWavesFallbackModel(): string {
+    const candidates = [...this._inhouseModelMeta.values()].filter(
+      (model) => model.id !== GWES_MODEL_ID,
+    );
+    const [lon, lat] = this.deps.getMapCenter();
+    const covering = selectModel(lat, lon, candidates);
+    if (covering) return covering;
+    if (this._inhouseDefaultModel && this._inhouseDefaultModel !== GWES_MODEL_ID) {
+      return this._inhouseDefaultModel;
+    }
+    return candidates[0]?.id ?? "";
+  }
+
   selectModelForLocation(lat?: number, lon?: number): string | null {
     let point: { lat: number; lon: number } | null;
     if (typeof lat === "number" && typeof lon === "number") {
@@ -1723,16 +1756,14 @@ export class InhouseCatalogController {
         `${root}/${FORECAST_DATA_SEGMENT}/models.json`,
       );
       const modelsNorm = normalizeModelList(modelsRaw);
-      this._inhouseModels = sortModels(modelsNorm.ids);
-      this._inhouseModelMeta = new Map(Object.entries(modelsNorm.meta));
-      // Backfill resolution from the built-in table when models.json omits it,
-      // so coverage-aware ranking works even before ops populate resolution_km.
-      for (const meta of this._inhouseModelMeta.values()) {
-        if (meta.resolutionKm == null) {
-          const meters = MODEL_RESOLUTION_METERS[meta.id];
-          if (typeof meters === "number") meta.resolutionKm = meters / 1000;
-        }
-      }
+      // Listed, and ranked on ties, in the order models.json gives them. The
+      // map is built from the ids rather than Object.entries(meta), which
+      // would move an id that looks like an integer ("2024") to the front.
+      this._inhouseModels = modelsNorm.ids;
+      this._inhouseModelMeta = new Map(
+        modelsNorm.ids.map((id) => [id, modelsNorm.meta[id]]),
+      );
+      this._inhouseDefaultModel = modelsNorm.defaultId;
       const preferredModel =
         this.deps.persistedModelId &&
         this._inhouseModels.includes(this.deps.persistedModelId)
@@ -2642,7 +2673,7 @@ export class InhouseCatalogController {
       fromLayer: callbacks.getLayerMode(),
       toModel: nextModel,
       defaults: {
-        defaultModelForNonWaves: DEFAULT_NON_WAVES_MODEL,
+        defaultModelForNonWaves: this.nonWavesFallbackModel(),
         defaultLayer: "temperature",
       },
       isGroupAvailableForModel: (groupId) =>

@@ -50,3 +50,37 @@ export function domainMaskContains(
   );
   return decode(mask)[row * mask.cols + col] === 1;
 }
+
+/**
+ * The part of `bbox` the mask's data spans, as [west, south, east, north]:
+ * what to frame for a model whose domain fills only part of its bbox. Null
+ * when the mask has no data at all.
+ */
+export function domainMaskExtent(
+  mask: DomainMask,
+  bbox: ModelBBox,
+): [number, number, number, number] | null {
+  const cells = decode(mask);
+  let minCol = Infinity;
+  let maxCol = -Infinity;
+  let minRow = Infinity;
+  let maxRow = -Infinity;
+  for (let row = 0; row < mask.rows; row += 1) {
+    for (let col = 0; col < mask.cols; col += 1) {
+      if (cells[row * mask.cols + col] !== 1) continue;
+      minCol = Math.min(minCol, col);
+      maxCol = Math.max(maxCol, col);
+      minRow = Math.min(minRow, row);
+      maxRow = Math.max(maxRow, row);
+    }
+  }
+  if (minCol === Infinity) return null;
+  const lonPerCol = (bbox.east - bbox.west) / mask.cols;
+  const latPerRow = (bbox.north - bbox.south) / mask.rows;
+  return [
+    bbox.west + minCol * lonPerCol,
+    bbox.north - (maxRow + 1) * latPerRow,
+    bbox.west + (maxCol + 1) * lonPerCol,
+    bbox.north - minRow * latPerRow,
+  ];
+}
