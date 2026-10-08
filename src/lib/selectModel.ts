@@ -1,3 +1,4 @@
+import { domainMaskContains } from "./domainMask";
 import type { ModelBBox, ModelCoverage } from "./inhouseTypes";
 import { MODEL_DISPLAY_ORDER } from "./modelConfig";
 
@@ -5,11 +6,12 @@ import { MODEL_DISPLAY_ORDER } from "./modelConfig";
  * Coverage-aware model selection (task A3).
  *
  * Given an approximate `(lat, lon)`, pick the finest-resolution *healthy* model
- * whose domain actually **contains** the point. Because global models carry a
- * world bbox, a point outside every regional domain naturally resolves to the
- * global model that covers it — we never pan the user into a domain they are
- * not in (spec A3.4). Returns `null` when no available model covers the point
- * (the caller then uses its own default).
+ * whose domain actually **contains** the point, unless a `preferred` model has
+ * data there. Because global models carry a world bbox, a point outside every
+ * regional domain naturally resolves to the global model that covers it — we
+ * never pan the user into a domain they are not in (spec A3.4). Returns `null`
+ * when no available model covers the point (the caller then uses its own
+ * default).
  *
  * This function is pure and side-effect free so it can be unit-tested in
  * isolation.
@@ -26,6 +28,8 @@ export function selectModel(
 
   const rank = new Map(MODEL_DISPLAY_ORDER.map((id, i) => [id, i]));
   covering.sort((a, b) => {
+    // A model preferred where it has data beats any finer one.
+    if (Boolean(a.preferred) !== Boolean(b.preferred)) return a.preferred ? -1 : 1;
     // Finest resolution first; models with no resolution rank last.
     const ra = a.resolutionKm ?? Number.POSITIVE_INFINITY;
     const rb = b.resolutionKm ?? Number.POSITIVE_INFINITY;
@@ -41,9 +45,10 @@ export function selectModel(
 
 /**
  * Whether a model's domain contains the point. Cheap bbox check first
- * (shrunk inward by `marginKm`), then a precise point-in-polygon test when a
- * `domainPolygon` is present. A model with no bbox and no polygon cannot be
- * matched by containment (it can only be selected via the caller's fallback).
+ * (shrunk inward by `marginKm`), then a precise test against the
+ * `domainPolygon` or, failing that, the `domainMask` of cells with data. A
+ * model with no bbox and no polygon cannot be matched by containment (it can
+ * only be selected via the caller's fallback).
  */
 export function modelContainsPoint(
   model: ModelCoverage,
@@ -56,7 +61,10 @@ export function modelContainsPoint(
   if (model.domainPolygon) {
     return pointInPolygon(model.domainPolygon, lat, lon);
   }
-  // bbox present and passed, no polygon → contained.
+  if (model.domainMask && model.bbox) {
+    return domainMaskContains(model.domainMask, model.bbox, lat, lon);
+  }
+  // bbox present and passed, no polygon or mask → contained.
   return Boolean(model.bbox);
 }
 

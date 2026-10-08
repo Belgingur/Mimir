@@ -1,5 +1,10 @@
 import type { LayerMode } from "./viewerTypes";
-import type { ModelBBox, ModelCoverage } from "./inhouseTypes";
+import type {
+  DomainMask,
+  ModelBBox,
+  ModelCoverage,
+  ModelView,
+} from "./inhouseTypes";
 
 export const GWES_MODEL_ID = "GWES";
 
@@ -16,6 +21,32 @@ const parseBBox = (raw: unknown): ModelBBox | undefined => {
     return { west, south, east, north };
   }
   return undefined;
+};
+
+const isPositiveInteger = (value: unknown): value is number =>
+  typeof value === "number" && Number.isInteger(value) && value > 0;
+
+const parseDomainMask = (raw: unknown): DomainMask | undefined => {
+  if (!raw || typeof raw !== "object") return undefined;
+  const { cols, rows, runs } = raw as Record<string, unknown>;
+  if (!isPositiveInteger(cols) || !isPositiveInteger(rows)) return undefined;
+  if (typeof runs !== "string" || !/^[\d./]*$/.test(runs)) return undefined;
+  return { cols, rows, runs };
+};
+
+const parseView = (raw: unknown): ModelView | undefined => {
+  if (!raw || typeof raw !== "object") return undefined;
+  const { center, zoom } = raw as Record<string, unknown>;
+  if (
+    !Array.isArray(center) ||
+    center.length !== 2 ||
+    !center.every((v) => typeof v === "number" && Number.isFinite(v)) ||
+    typeof zoom !== "number" ||
+    !Number.isFinite(zoom)
+  ) {
+    return undefined;
+  }
+  return { center: [center[0], center[1]], zoom };
 };
 
 /**
@@ -50,11 +81,13 @@ const parseDomainPolygon = (raw: unknown): number[][][] | undefined => {
 };
 
 /**
- * Normalize `models.json` into ids + default + per-model coverage metadata
- * (bbox / resolution / domain polygon / health flag). Unlike normalizeIdList,
- * this preserves the extra selection fields (task A2). Mirrors the shape of
+ * Normalize `models.json` into ids + default + per-model metadata (coverage,
+ * resolution, preference, framing view, health flag). Unlike normalizeIdList,
+ * this preserves the extra selection fields. Mirrors the shape of
  * normalizeVariableList. Accepts a bare id array, an object with a `models`
- * array of ids, or an object with a `models` array of entry objects.
+ * array of ids, or an object with a `models` array of entry objects. A field
+ * that is malformed is dropped rather than failing the whole catalog. The
+ * README's "Catalog Files" section documents every field.
  */
 export const normalizeModelList = (
   data: unknown,
@@ -87,12 +120,15 @@ export const normalizeModelList = (
         title: entry.title ? String(entry.title) : undefined,
         bbox: parseBBox(entry.bbox),
         domainPolygon: parseDomainPolygon(entry.domain_polygon),
+        domainMask: parseDomainMask(entry.domain_mask),
         resolutionKm:
           typeof entry.resolution_km === "number"
             ? entry.resolution_km
             : undefined,
         marginKm:
           typeof entry.margin_km === "number" ? entry.margin_km : undefined,
+        preferred: entry.preferred === true,
+        view: parseView(entry.view),
         // Healthy unless explicitly disabled by ops.
         available: !(entry.available === false || entry.disabled === true),
       };

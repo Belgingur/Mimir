@@ -129,6 +129,47 @@ describe("selectModel", () => {
   });
 });
 
+describe("selectModel — data masks and preferred models", () => {
+  // A wide bbox whose data fills only its northern half, like a Lambert
+  // domain reprojected to lat/lon.
+  const lambert: ModelCoverage = {
+    id: "LAMBERT",
+    resolutionKm: 2,
+    bbox: { west: -10, south: 40, east: 20, north: 70 },
+    domainMask: { cols: 2, rows: 2, runs: "0.2/2" },
+    available: true,
+  };
+  const global: ModelCoverage = {
+    id: "GLOBAL",
+    resolutionKm: 25,
+    bbox: { west: -180, south: -90, east: 180, north: 90 },
+    available: true,
+  };
+  const local: ModelCoverage = {
+    id: "LOCAL",
+    resolutionKm: 3,
+    bbox: { west: -8.8, south: 60.9, east: -5, north: 62.9 },
+    preferred: true,
+    available: true,
+  };
+
+  it("picks a model where its mask has data", () => {
+    expect(selectModel(60, 5, [lambert, global])).toBe("LAMBERT");
+  });
+
+  it("passes over a model whose bbox, but not its data, covers the point", () => {
+    expect(selectModel(45, 5, [lambert, global])).toBe("GLOBAL");
+  });
+
+  it("lets a preferred model win over a finer one where it has data", () => {
+    expect(selectModel(62, -6.8, [lambert, local, global])).toBe("LOCAL");
+  });
+
+  it("does not let a preferred model win anywhere else", () => {
+    expect(selectModel(60, 5, [lambert, local, global])).toBe("LAMBERT");
+  });
+});
+
 describe("pointInBBox", () => {
   const bbox = { west: -25.6, south: 62.9, east: -12.4, north: 67.3 };
 
