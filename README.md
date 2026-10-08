@@ -180,7 +180,8 @@ The credentials are passed to the widget (as its `api-user`/`api-password` attri
 
 The [`scripts/`](scripts/) directory contains tools for building forecast datasets from NetCDF model output:
 
-- **`netcdf2image.py`** — converts NetCDF variables to WebP/PNG frames and writes the catalog structure (`models.json`, `analyses.json`, `variables.json`, per-variable `manifest.json`). Output lands in `<out-root>/forecast-data/`; copy those files into `public/forecast-data/` for local development.
+- **`netcdf2image.py`** — converts NetCDF variables to WebP/PNG frames and writes the catalog structure (`models.json`, `analyses.json`, `variables.json`, per-variable `manifest.json`), including each model's coverage. Output lands in `<out-root>/forecast-data/`; copy those files into `public/forecast-data/` for local development.
+- **`build_model_coverage.py`** — fills in model coverage for a catalog that already exists, from a local directory or a served origin.
 - **`stitch_rap_forecast.py`** and **`stitch_icon_forecast.py`** — extend short RAP or ICON-EU runs with tail frames from the previous long run, for operational update schedules that alternate run lengths.
 
 Example YAML configs (`config_GFS.yml`, `config_GWES.yml`) and a curated scaling policy (`manifest_scaling_v2.yml`) are included. See [`scripts/README.md`](scripts/README.md) for installation, usage examples, and stitching workflow details.
