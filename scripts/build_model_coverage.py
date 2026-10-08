@@ -33,6 +33,7 @@ from catalog_coverage import (
     merge_coverage,
     model_coverage,
 )
+from catalog_io import entry_id, update_models_catalog, write_json_atomic
 
 FORECAST_DATA_SUBDIR = "forecast-data"
 
@@ -102,17 +103,17 @@ def main() -> int:
         print("models.json has no `models` array", file=sys.stderr)
         return 1
 
-    models = []
+    # Reading every model's frames takes a while, so coverage is worked out
+    # first and merged into the catalog only at the end.
+    coverages: dict[str, dict[str, Any]] = {}
     for entry in catalog["models"]:
-        if not isinstance(entry, dict):
-            entry = {"id": str(entry), "title": str(entry)}
-        model = str(entry.get("id", ""))
+        model = entry_id(entry)
         try:
             analysis = latest_analysis(fetch, model)
             coverage = model_coverage(
                 fetch, model, analysis, manifest_paths(fetch, model, analysis), cells=args.cells
             )
-            entry = merge_coverage(entry, coverage)
+            coverages[model] = coverage
             mask = coverage.get("domain_mask")
             print(
                 f"✓ {model} {analysis}: {coverage.get('resolution_km')} km"
@@ -121,14 +122,32 @@ def main() -> int:
             )
         except Exception as error:  # noqa: BLE001 — report it and keep the entry as it was
             print(f"✗ {model}: {error}", file=sys.stderr)
-        models.append(entry)
 
-    output = json.dumps({**catalog, "models": models}, indent=2, ensure_ascii=False) + "\n"
-    if args.out:
-        Path(args.out).write_text(output, encoding="utf-8")
-        print(f"wrote {args.out}", file=sys.stderr)
+    def merged(models: list[Any]) -> list[Any]:
+        return [
+            merge_coverage(m if isinstance(m, dict) else {"id": m, "title": m}, coverages[entry_id(m)])
+            if entry_id(m) in coverages
+            else m
+            for m in models
+        ]
+
+    if not args.out:
+        sys.stdout.write(
+            json.dumps({**catalog, "models": merged(catalog["models"])}, indent=2, ensure_ascii=False)
+            + "\n"
+        )
+        return 0
+
+    out = Path(args.out)
+    source_catalog = Path(args.source) / "models.json"
+    if source_catalog.exists() and out.exists() and out.samefile(source_catalog):
+        # Rewriting the catalog in place: merge into a fresh read, under the
+        # lock a conversion takes, so a model it added meanwhile is kept.
+        if not update_models_catalog(out, merged):
+            return 1
     else:
-        sys.stdout.write(output)
+        write_json_atomic(out, {**catalog, "models": merged(catalog["models"])})
+    print(f"wrote {out}", file=sys.stderr)
     return 0
 
 

@@ -20,6 +20,7 @@ from PIL import Image
 import yaml
 
 from catalog_coverage import merge_coverage, model_coverage
+from catalog_io import entry_id, update_models_catalog, write_json_atomic
 
 # Debug usage:
 #   python scripts/netcdf2image.py --debug-one --variable air_temperature_at_2m_agl ...
@@ -1534,9 +1535,7 @@ def write_manifest(
         }
 
     out_path = out_dir / manifest_name
-    out_path.write_text(
-        json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
+    write_json_atomic(out_path, manifest)
     print(f"Wrote manifest: {out_path}")
     return out_path
 
@@ -2093,9 +2092,7 @@ def write_variables_catalog(
         "analysis": analysis_folder,
         "variables": variables,
     }
-    out_path.write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
+    write_json_atomic(out_path, payload)
     print(f"Wrote variables catalog: {out_path}")
 
 
@@ -2106,26 +2103,25 @@ def write_models_catalog(
     Add the model to models.json if it is new, and refresh its coverage fields
     (see catalog_coverage.py). Every other field of every entry, and the order
     of the entries, is left as it was, so a hand-edited title, default,
-    `preferred` or `view` survives every conversion.
+    `preferred` or `view` survives every conversion. The update is locked and
+    atomic, and an unreadable models.json is left alone (see catalog_io.py).
     """
     out_path = out_root / FORECAST_DATA_SUBDIR / "models.json"
-    models: list[dict[str, Any]] = []
-    if out_path.exists():
-        try:
-            existing = json.loads(out_path.read_text(encoding="utf-8"))
-            if isinstance(existing, dict) and isinstance(existing.get("models"), list):
-                models = [m for m in existing["models"] if isinstance(m, dict)]
-        except Exception:
-            models = []
-    if not any(m.get("id") == model for m in models):
-        models.append({"id": model, "title": model, "default": len(models) == 0})
-    if coverage:
-        models = [merge_coverage(m, coverage) if m.get("id") == model else m for m in models]
-    payload = {"schemaVersion": 1, "models": models}
-    out_path.write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
-    print(f"Wrote models catalog: {out_path}")
+
+    def update(models: list[Any]) -> list[Any]:
+        if not any(entry_id(m) == model for m in models):
+            models.append({"id": model, "title": model, "default": len(models) == 0})
+        if not coverage:
+            return models
+        return [
+            merge_coverage(m if isinstance(m, dict) else {"id": m, "title": m}, coverage)
+            if entry_id(m) == model
+            else m
+            for m in models
+        ]
+
+    if update_models_catalog(out_path, update):
+        print(f"Wrote models catalog: {out_path}")
 
 
 def write_analyses_catalog(
@@ -2158,9 +2154,7 @@ def write_analyses_catalog(
         "latest": analyses[-1],
     }
     model_dir.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
+    write_json_atomic(out_path, payload)
     print(f"Wrote analyses catalog: {out_path}")
 
 
