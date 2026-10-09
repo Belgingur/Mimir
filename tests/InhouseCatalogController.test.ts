@@ -12,6 +12,7 @@ import type {
   InhouseManifest,
   InhouseLayer,
   InhouseGroupId,
+  ModelCoverage,
 } from "../src/lib/inhouseTypes";
 
 /**
@@ -502,25 +503,78 @@ describe("InhouseCatalogController", () => {
       expect(zoom).toBe(12); // DEFAULT_MODEL_MAX_ZOOM
     });
 
-    it("returns a zoom for known model", () => {
-      const zoom = ctrl.computeModelMaxZoom("GFS");
-      expect(zoom).toBeGreaterThan(0);
-      expect(zoom).toBeLessThanOrEqual(14);
-    });
-
     it("clamps between 1 and 14", () => {
-      const zoom = ctrl.computeModelMaxZoom("BEL-IS");
-      expect(zoom).toBeGreaterThanOrEqual(1);
-      expect(zoom).toBeLessThanOrEqual(14);
+      const internals = ctrl as unknown as {
+        _inhouseModelMeta: Map<string, ModelCoverage>;
+      };
+      internals._inhouseModelMeta = new Map([
+        ["HUGE", { id: "HUGE", resolutionKm: 50_000, available: true }],
+        ["TINY", { id: "TINY", resolutionKm: 0.001, available: true }],
+      ]);
+      expect(ctrl.computeModelMaxZoom("HUGE")).toBe(1);
+      expect(ctrl.computeModelMaxZoom("TINY")).toBe(14);
+    });
+  });
+
+  describe("model resolution and zoom cap from the catalog", () => {
+    const setCoverage = (c: InhouseCatalogController, coverage: ModelCoverage[]) => {
+      (
+        c as unknown as { _inhouseModelMeta: Map<string, ModelCoverage> }
+      )._inhouseModelMeta = new Map(coverage.map((m) => [m.id, m]));
+    };
+
+    it("caps zoom from the catalog's resolution_km", () => {
+      setCoverage(ctrl, [
+        { id: "FINE", resolutionKm: 2, available: true },
+        { id: "COARSE", resolutionKm: 25, available: true },
+      ]);
+      expect(ctrl.computeModelMaxZoom("FINE")).toBeGreaterThan(
+        ctrl.computeModelMaxZoom("COARSE") + 3,
+      );
     });
 
-    it("lets the 2 km BEL-IS model zoom past 9 over Iceland", () => {
-      const bounds: [number, number, number, number] = [
-        -25.6, 62.9, -12.4, 67.3,
-      ];
-      expect(ctrl.computeModelMaxZoom("BEL-IS", { bounds })).toBeGreaterThan(
-        9,
-      );
+    it("caps zoom from a loaded manifest's grid when the catalog gives none", () => {
+      const manifest = makeManifest({ bounds: [-25, 63, -13, 67], shape: { width: 100, height: 200 } });
+      // 4° over 200 rows: a 2.2 km grid.
+      expect(ctrl.computeModelMaxZoom("M", { manifest })).toBeGreaterThan(9);
+    });
+
+    it("reports the resolution the chooser shows", () => {
+      setCoverage(ctrl, [{ id: "M", resolutionKm: 3.2, available: true }]);
+      expect(ctrl.getModelResolutionMeters("M")).toBe(3200);
+      expect(ctrl.getModelResolutionMeters("UNKNOWN")).toBeNull();
+    });
+  });
+
+  describe("nonWavesFallbackModel", () => {
+    const world = { west: -180, south: -90, east: 180, north: 90 };
+    const setCatalog = (
+      c: InhouseCatalogController,
+      coverage: ModelCoverage[],
+      defaultModel = "",
+    ) => {
+      const internals = c as unknown as {
+        _inhouseModelMeta: Map<string, ModelCoverage>;
+        _inhouseDefaultModel: string;
+      };
+      internals._inhouseModelMeta = new Map(coverage.map((m) => [m.id, m]));
+      internals._inhouseDefaultModel = defaultModel;
+    };
+
+    it("picks the finest model covering the view, never the wave model", () => {
+      setCatalog(ctrl, [
+        { id: "GWES", resolutionKm: 1, bbox: world, available: true },
+        { id: "COARSE", resolutionKm: 25, bbox: world, available: true },
+        { id: "FINE", resolutionKm: 2, bbox: { west: -50, south: 30, east: -30, north: 50 }, available: true },
+      ]);
+      expect(ctrl.nonWavesFallbackModel()).toBe("FINE"); // view centre [-40, 40]
+    });
+
+    it("falls back to the catalog's default, then to the first model", () => {
+      setCatalog(ctrl, [{ id: "GWES", available: true }, { id: "A", available: true }, { id: "B", available: true }], "B");
+      expect(ctrl.nonWavesFallbackModel()).toBe("B");
+      setCatalog(ctrl, [{ id: "GWES", available: true }, { id: "A", available: true }], "GWES");
+      expect(ctrl.nonWavesFallbackModel()).toBe("A");
     });
   });
 
@@ -557,12 +611,21 @@ describe("InhouseCatalogController", () => {
 
   describe("centerMapOnInhouseDomain", () => {
     // The rule: the camera stays where the user put it, and moves only when the
-    // model they just picked has no data where they are looking.
+    // model they just picked has no data where they are looking. What a model
+    // covers, and how to frame it, comes from models.json.
     const ICELAND: [number, number, number, number] = [-25, 63, -13, 67];
+    const withCoverage = (
+      c: InhouseCatalogController,
+      coverage: ModelCoverage[],
+    ) => {
+      (
+        c as unknown as { _inhouseModelMeta: Map<string, ModelCoverage> }
+      )._inhouseModelMeta = new Map(coverage.map((m) => [m.id, m]));
+    };
 
     it("does nothing when restoring from persisted — for every model", () => {
-      // A reload restores the user's camera; BEL-IS used to override it.
-      for (const model of ["BEL-IS", "UWC-IG", "RAP", "GFS"]) {
+      // A reload restores the user's camera; no model may override it.
+      for (const model of ["A", "B", "GLOBAL"]) {
         const d = makeDeps({ isRestoringFromPersisted: () => true });
         const c = new InhouseCatalogController(d);
         c.centerMapOnInhouseDomain(model, "2026-03-04_00", ICELAND);
@@ -576,7 +639,7 @@ describe("InhouseCatalogController", () => {
         getMapCenter: () => [-21.9, 64.1] as [number, number], // Reykjavík
       });
       const c = new InhouseCatalogController(d);
-      c.centerMapOnInhouseDomain("BEL-IS", "2026-03-04_00", ICELAND);
+      c.centerMapOnInhouseDomain("A", "2026-03-04_00", ICELAND);
       expect(d.easeToMap).not.toHaveBeenCalled();
       expect(d.fitMapBounds).not.toHaveBeenCalled();
     });
@@ -585,52 +648,63 @@ describe("InhouseCatalogController", () => {
       // ensureInhouseGroupLayers() calls this on every layer rebuild, which is
       // what used to throw the view away when picking another variable.
       const c = new InhouseCatalogController(deps);
-      c.centerMapOnInhouseDomain("UWC-IG", "2026-03-04_00", ICELAND);
-      expect(deps.easeToMap).toHaveBeenCalledTimes(1);
-      c.centerMapOnInhouseDomain("UWC-IG", "2026-03-04_00", ICELAND);
-      c.centerMapOnInhouseDomain("UWC-IG", "2026-03-04_00", ICELAND);
-      expect(deps.easeToMap).toHaveBeenCalledTimes(1);
+      c.centerMapOnInhouseDomain("A", "2026-03-04_00", ICELAND);
+      expect(deps.fitMapBounds).toHaveBeenCalledTimes(1);
+      c.centerMapOnInhouseDomain("A", "2026-03-04_00", ICELAND);
+      c.centerMapOnInhouseDomain("A", "2026-03-04_00", ICELAND);
+      expect(deps.fitMapBounds).toHaveBeenCalledTimes(1);
     });
 
     it("does not move for a new analysis run of the same model", () => {
       const c = new InhouseCatalogController(deps);
-      c.centerMapOnInhouseDomain("UWC-IG", "2026-03-04_00", ICELAND);
-      expect(deps.easeToMap).toHaveBeenCalledTimes(1);
-      c.centerMapOnInhouseDomain("UWC-IG", "2026-03-04_12", ICELAND);
-      expect(deps.easeToMap).toHaveBeenCalledTimes(1);
+      c.centerMapOnInhouseDomain("A", "2026-03-04_00", ICELAND);
+      c.centerMapOnInhouseDomain("A", "2026-03-04_12", ICELAND);
+      expect(deps.fitMapBounds).toHaveBeenCalledTimes(1);
     });
 
-    it("refocuses UWC-IG when the view is outside it", () => {
-      ctrl.centerMapOnInhouseDomain("UWC-IG", "2026-03-04_00", ICELAND);
-      expect(deps.easeToMap).toHaveBeenCalledWith(
-        expect.objectContaining({ center: [-36, 68.5], zoom: 3.5 }),
-      );
-    });
-
-    it("refocuses RAP when the view is outside it", () => {
-      ctrl.centerMapOnInhouseDomain("RAP", "2026-03-04_00", [-60, 50, -40, 70]);
-      expect(deps.easeToMap).toHaveBeenCalledWith(
+    it("frames a model on the view models.json gives it", () => {
+      const d = makeDeps({
+        getMapCenter: () => [151.2, -33.9] as [number, number], // Sydney
+      });
+      const c = new InhouseCatalogController(d);
+      withCoverage(c, [
+        {
+          id: "POLAR",
+          bbox: { west: -180, south: -10, east: 180, north: 90 },
+          view: { center: [-60, 62], zoom: 2.5 },
+          available: true,
+        },
+      ]);
+      c.centerMapOnInhouseDomain("POLAR", "2026-03-04_00", [-180, -10, 180, 90]);
+      expect(d.easeToMap).toHaveBeenCalledWith(
         expect.objectContaining({ center: [-60, 62], zoom: 2.5 }),
       );
     });
 
-    it("refocuses BEL-IS to the Iceland overview when the view is elsewhere", async () => {
-      ctrl.centerMapOnInhouseDomain("BEL-IS", "2026-03-04_00", ICELAND);
-      // BEL-IS reframes on the next frame so settling map events cannot cancel it.
-      await new Promise((r) => requestAnimationFrame(r));
-      expect(deps.easeToMap).toHaveBeenCalledWith(
-        expect.objectContaining({ center: [-19, 65], zoom: 6.0 }),
+    it("frames the extent of a model's data when it has no view", () => {
+      withCoverage(ctrl, [
+        {
+          id: "LAMBERT",
+          bbox: { west: 0, south: 0, east: 4, north: 2 },
+          domainMask: { cols: 4, rows: 2, runs: "1.2/4" },
+          available: true,
+        },
+      ]);
+      ctrl.centerMapOnInhouseDomain("LAMBERT", "2026-03-04_00", [0, 0, 4, 2]);
+      expect(deps.fitMapBounds).toHaveBeenCalledWith(
+        [1, 1, 3, 2],
+        expect.objectContaining({ padding: 40 }),
       );
     });
 
     it("never moves for a global model — it covers wherever you are", () => {
-      ctrl.centerMapOnInhouseDomain("GFS", "2026-03-04_00", [-180, -90, 180, 90]);
+      ctrl.centerMapOnInhouseDomain("GLOBAL", "2026-03-04_00", [-180, -90, 180, 90]);
       expect(deps.easeToMap).not.toHaveBeenCalled();
       expect(deps.fitMapBounds).not.toHaveBeenCalled();
     });
 
-    it("frames an unlisted regional model on its bounds when uncovered", () => {
-      ctrl.centerMapOnInhouseDomain("BEL-FO", "2026-03-04_00", [-8, 61, -6, 62.5]);
+    it("frames a model the catalog says nothing about on its bounds", () => {
+      ctrl.centerMapOnInhouseDomain("A", "2026-03-04_00", [-8, 61, -6, 62.5]);
       expect(deps.fitMapBounds).toHaveBeenCalledWith(
         [-8, 61, -6, 62.5],
         expect.objectContaining({ padding: 40 }),
@@ -1254,6 +1328,17 @@ describe("InhouseCatalogController", () => {
       expect(ensure).not.toHaveBeenCalled();
     });
 
+    it("keeps models.json order, even for ids that look like numbers", async () => {
+      stubFetch({
+        "models.json": { models: [{ id: "ZED" }, { id: "2024" }, { id: "ALPHA" }] },
+        "analyses.json": { analyses: ["2026-03-04_00"] },
+        "variables.json": { variables: [] },
+      });
+      await ctrl.loadInhouseCatalog();
+      expect(ctrl.inhouseModels).toEqual(["ZED", "2024", "ALPHA"]);
+      expect(ctrl.modelCoverages.map((m) => m.id)).toEqual(["ZED", "2024", "ALPHA"]);
+    });
+
     it("uses persisted model if available", async () => {
       const d = makeDeps({ dom, persistedModelId: "GWES" });
       const c = new InhouseCatalogController(d);
@@ -1264,6 +1349,123 @@ describe("InhouseCatalogController", () => {
       });
       await c.loadInhouseCatalog();
       expect(c.inhouseSelectedModel).toBe("GWES");
+    });
+
+    it("keeps the reloaded camera through the first layer build", async () => {
+      // The time sync in ensureInhouseGroupLayers clears the restoring flag
+      // before the domain-centring decision runs, so the flag alone cannot
+      // protect the restored camera. It used to be thrown toward the domain.
+      let restoring = true;
+      const d = makeDeps({
+        dom,
+        persistedModelId: "UWC-IG",
+        isRestoringFromPersisted: () => restoring,
+        setRestoringFromPersisted: vi.fn((v: boolean) => {
+          restoring = v;
+        }),
+        getMapCenter: () => [-46.6, -23.5] as [number, number], // São Paulo
+      });
+      const c = new InhouseCatalogController(d);
+      stubFetch({
+        "models.json": { models: [{ id: "GFS" }, { id: "UWC-IG" }] },
+        "analyses.json": {
+          analyses: ["2026-03-04_00"],
+          latest: "2026-03-04_00",
+        },
+        "variables.json": {
+          variables: [{ id: "air_temperature_at_2m_agl" }],
+        },
+        "manifest.json": makeManifest(),
+      });
+      vi.spyOn(c, "loadInhouseTexture").mockResolvedValue(null);
+
+      await c.loadInhouseCatalog();
+      await c.ensureInhouseGroupLayers("temperature");
+      await new Promise((r) => requestAnimationFrame(r));
+
+      expect(restoring).toBe(false);
+      expect(d.easeToMap).not.toHaveBeenCalled();
+      expect(d.fitMapBounds).not.toHaveBeenCalled();
+
+      // Nor on the reader's next variable change, now the flag is gone.
+      await c.ensureInhouseGroupLayers("temperature");
+      expect(d.easeToMap).not.toHaveBeenCalled();
+      expect(d.fitMapBounds).not.toHaveBeenCalled();
+    });
+
+    describe("framing a first visit", () => {
+      const catalog = (models: unknown[]) =>
+        stubFetch({
+          "models.json": { models },
+          "analyses.json": { analyses: ["2026-03-04_00"] },
+          "variables.json": { variables: [] },
+        });
+      const iceland = { west: -26.5, south: 62.6, east: -11.5, north: 67.3 };
+      const world = { west: -180, south: -90, east: 179.75, north: 90 };
+
+      it("frames the chosen model around the guessed location, at once", async () => {
+        const reykjavik = { lat: 64.2, lon: -21.8 };
+        const d = makeDeps({
+          dom,
+          getAutoSelectLocation: () => reykjavik,
+          getFirstVisitLanding: () => ({ guess: reykjavik }),
+        });
+        const c = new InhouseCatalogController(d);
+        catalog([
+          { id: "GLOBAL", resolution_km: 25, bbox: world, default: true },
+          { id: "LOCAL", resolution_km: 2, bbox: iceland },
+        ]);
+        await c.loadInhouseCatalog();
+        expect(c.inhouseSelectedModel).toBe("LOCAL");
+        expect(d.fitMapBounds).toHaveBeenCalledWith(
+          [-26.5, 62.6, -11.5, 67.3],
+          expect.objectContaining({ duration: 0 }),
+        );
+        // The layer build that follows has nothing left to decide.
+        c.centerMapOnInhouseDomain("LOCAL", "2026-03-04_00", [-26.5, 62.6, -11.5, 67.3]);
+        expect(d.fitMapBounds).toHaveBeenCalledTimes(1);
+      });
+
+      it("frames the default model at once when the reader's location is unknown", async () => {
+        const d = makeDeps({ dom, getFirstVisitLanding: () => ({ guess: null }) });
+        const c = new InhouseCatalogController(d);
+        catalog([
+          { id: "LOCAL", bbox: iceland, view: { center: [-19, 65], zoom: 6 }, default: true },
+        ]);
+        await c.loadInhouseCatalog();
+        expect(d.easeToMap).toHaveBeenCalledWith({ center: [-19, 65], zoom: 6, duration: 0 });
+      });
+
+      it("leaves a global default on the view the map was built with", async () => {
+        const d = makeDeps({ dom, getFirstVisitLanding: () => ({ guess: null }) });
+        const c = new InhouseCatalogController(d);
+        catalog([{ id: "GLOBAL", bbox: world, default: true }]);
+        await c.loadInhouseCatalog();
+        expect(d.easeToMap).not.toHaveBeenCalled();
+        expect(d.fitMapBounds).not.toHaveBeenCalled();
+      });
+
+      it("frames a model the catalog says nothing about at the first layer build, still at once", async () => {
+        const d = makeDeps({ dom, getFirstVisitLanding: () => ({ guess: null }) });
+        const c = new InhouseCatalogController(d);
+        catalog([{ id: "BARE", default: true }]);
+        await c.loadInhouseCatalog();
+        expect(d.fitMapBounds).not.toHaveBeenCalled();
+        c.centerMapOnInhouseDomain("BARE", "2026-03-04_00", [-8, 61, -6, 62.5]);
+        expect(d.fitMapBounds).toHaveBeenCalledWith(
+          [-8, 61, -6, 62.5],
+          expect.objectContaining({ duration: 0 }),
+        );
+      });
+
+      it("leaves the camera alone on any other visit", async () => {
+        const d = makeDeps({ dom, getFirstVisitLanding: () => null });
+        const c = new InhouseCatalogController(d);
+        catalog([{ id: "LOCAL", bbox: iceland, default: true }]);
+        await c.loadInhouseCatalog();
+        expect(d.easeToMap).not.toHaveBeenCalled();
+        expect(d.fitMapBounds).not.toHaveBeenCalled();
+      });
     });
 
     it("shows warning on models.json failure", async () => {

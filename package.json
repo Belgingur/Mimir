@@ -14,6 +14,7 @@
     "preview": "vite preview",
     "postinstall": "patch-package",
     "places:build": "node scripts/build-places.mjs",
+    "timezones:build": "node scripts/build-timezones.mjs",
     "meteogram:sync": "node scripts/vendor-meteogram.mjs sync",
     "meteogram:check": "node scripts/vendor-meteogram.mjs check"
   },

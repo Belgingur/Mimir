@@ -1,17 +1,20 @@
 import type * as maplibregl from "maplibre-gl";
+import type { ModelBBox } from "./inhouseTypes";
 
 /**
- * First-visit landing (task A1).
+ * First-visit landing.
  *
- * The app never prompts for the Geolocation API on first paint. Instead:
- *   1. A location cached from a previous session (localStorage) is reused
- *      immediately — zero latency, zero permission friction.
- *   2. Otherwise the map stays on the Iceland overview and the coverage-aware
- *      model picker falls back to Reykjavík (see InhouseCatalogController's
- *      getAutoSelectLocation), landing on the finest healthy model for Iceland.
- *   3. The user may opt in to precise positioning via the explicit
- *      "use my location" button, which is the ONLY place the browser
- *      Geolocation permission prompt can appear.
+ * The app never prompts for the Geolocation API on first paint. A first visit
+ * (no saved camera) opens on, in order:
+ *   1. a location remembered from an earlier session (localStorage), centred;
+ *   2. else the reader's region, guessed from the browser's time zone (see
+ *      timeZoneLocation), which the catalog then frames with the most detailed
+ *      model that has data there;
+ *   3. else the whole world, until the catalog frames its `default` model.
+ * The map is built at that view, so it never opens somewhere else and flies.
+ *
+ * The reader may opt in to precise positioning with the "use my location"
+ * button, the ONLY place the browser's Geolocation permission prompt appears.
  */
 
 /** localStorage key holding the last resolved approximate user location. */
@@ -22,17 +25,80 @@ export interface UserLocation {
   lon: number;
 }
 
-/**
- * Reykjavík / Iceland fallback used when no location is known. The app is
- * Iceland-centric, so this is the "sensible default" the landing brief asks for.
- */
-export const REYKJAVIK_VIEW: { center: [number, number]; zoom: number } = {
-  center: [-21.94, 64.15],
-  zoom: 8,
-};
-
 /** Zoom used when we centre on the user's own (opt-in) position. */
 export const LOCATED_ZOOM = 8;
+
+/** Where the map opens when nothing says where the reader is. */
+export const WORLD_VIEW: { center: [number, number]; zoom: number } = {
+  center: [0, 30],
+  zoom: 1.5,
+};
+
+/**
+ * How far around a guessed location the landing view reaches, in degrees of
+ * latitude (about 670 km): a region the size of a country, which is as much
+ * as a time zone can say.
+ */
+export const LANDING_RADIUS_DEG = 6;
+
+/** The camera a map is built with: a point and zoom, or bounds to fit. */
+export type InitialView =
+  | { center: [number, number]; zoom: number }
+  | {
+      bounds: [number, number, number, number];
+      fitBoundsOptions: { padding: number };
+    };
+
+/**
+ * The view around a guessed location: the box within LANDING_RADIUS_DEG of
+ * it, cut to a model's bbox when one is given. A small domain is then framed
+ * whole; a large one, or a global model, is cut down to the reader's region.
+ */
+export function landingBounds(
+  point: UserLocation,
+  bbox?: ModelBBox | null,
+): [number, number, number, number] {
+  const lonRadius =
+    LANDING_RADIUS_DEG / Math.max(Math.cos((point.lat * Math.PI) / 180), 0.2);
+  const around: [number, number, number, number] = [
+    point.lon - lonRadius,
+    Math.max(-85, point.lat - LANDING_RADIUS_DEG),
+    point.lon + lonRadius,
+    Math.min(85, point.lat + LANDING_RADIUS_DEG),
+  ];
+  // A domain spanning every longitude has nothing to cut there, and cutting at
+  // its seam would only squash a view near the antimeridian.
+  if (!bbox || bbox.east - bbox.west >= 359) return around;
+  const cut: [number, number, number, number] = [
+    Math.max(around[0], bbox.west),
+    Math.max(around[1], bbox.south),
+    Math.min(around[2], bbox.east),
+    Math.min(around[3], bbox.north),
+  ];
+  return cut[0] < cut[2] && cut[1] < cut[3] ? cut : around;
+}
+
+/**
+ * The view a first visit (no saved camera) is built with. A remembered
+ * location is centred; a guessed one is framed as a region, which the catalog
+ * tightens to the chosen model's domain once it knows it; with neither, the
+ * whole world.
+ */
+export function firstVisitView(opts: {
+  stored: UserLocation | null;
+  guessed: UserLocation | null;
+}): InitialView {
+  if (opts.stored) {
+    return { center: [opts.stored.lon, opts.stored.lat], zoom: LOCATED_ZOOM };
+  }
+  if (opts.guessed) {
+    return {
+      bounds: landingBounds(opts.guessed),
+      fitBoundsOptions: { padding: 40 },
+    };
+  }
+  return { center: [...WORLD_VIEW.center], zoom: WORLD_VIEW.zoom };
+}
 
 /** Read the cached approximate location, or null when absent/corrupt. */
 export function readStoredLocation(): UserLocation | null {
@@ -61,42 +127,6 @@ export function writeStoredLocation(loc: UserLocation): void {
   } catch {
     // Storage unavailable (private mode / quota) — non-fatal.
   }
-}
-
-export interface InitialCameraDeps {
-  /**
-   * Suppress the model's one-shot domain auto-centre for this first load, so it
-   * can't clobber the located view when the first model finishes loading.
-   * Consumed once by the next centerMapOnInhouseDomain() call.
-   */
-  suppressAutoCenter?: () => void;
-  /** Injectable for tests; defaults to reading localStorage. */
-  storedLocation?: UserLocation | null;
-}
-
-/**
- * First-visit camera (task A1). Only called when there is no persisted camera
- * to restore. When a cached location exists we centre on it (and suppress the
- * model domain auto-centre so it can't override the point); otherwise we do
- * nothing and let the coverage-aware model picker centre on its domain
- * (Iceland overview fallback). Never triggers a permission prompt.
- */
-export function applyInitialCamera(
-  map: Pick<maplibregl.Map, "easeTo">,
-  deps: InitialCameraDeps = {},
-): void {
-  const stored =
-    deps.storedLocation !== undefined ? deps.storedLocation : readStoredLocation();
-  if (!stored) return;
-
-  // We own the camera for this first load — keep the model's domain auto-centre
-  // from moving us off the user's point.
-  deps.suppressAutoCenter?.();
-  map.easeTo({
-    center: [stored.lon, stored.lat],
-    zoom: LOCATED_ZOOM,
-    duration: 600,
-  });
 }
 
 export interface BrowserLocationDeps {

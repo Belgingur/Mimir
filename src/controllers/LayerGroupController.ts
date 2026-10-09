@@ -1,6 +1,5 @@
 import type * as WeatherLayers from "weatherlayers-gl";
 import { resolveSelectionChange, GWES_MODEL_ID } from "../lib/selectionRules";
-import { DEFAULT_NON_WAVES_MODEL } from "../lib/modelConfig";
 import { LAYER_GROUPS } from "../lib/inhouseTypes";
 import type { UiState, ViewMode } from "../lib/inhouseTypes";
 import type { IconographyStyle } from "../lib/viewerTypes";
@@ -61,6 +60,19 @@ export interface LayerGroupDeps {
   }) => void;
   resizeMap: () => void;
   jumpToMap: (view: MapView) => void;
+  /**
+   * How many camera moves the app has made on its own so far, such as framing
+   * a model's domain. updateMode compares it with the count it started with,
+   * so restoring the view never undoes a move made after the view was saved.
+   */
+  getProgrammaticCameraMoves: () => number;
+  /** Whether the camera is animating or being dragged right now. */
+  isMapMoving: () => boolean;
+  /**
+   * The model to move to when the reader leaves the wave model for another
+   * layer; see InhouseCatalogController.nonWavesFallbackModel.
+   */
+  getNonWavesFallbackModel: () => string;
 
   scheduleUpdateLayers: () => void;
   schedulePersistState: () => void;
@@ -312,13 +324,11 @@ export class LayerGroupController {
     const uiState = this.deps.getUiState();
     const prevMode = uiState.layerMode;
     const view = this.deps.getMapView();
-    const availableModels = this.deps.getInhouseModels();
-    const defaultModelForNonWaves = availableModels.includes(
-      DEFAULT_NON_WAVES_MODEL,
-    )
-      ? DEFAULT_NON_WAVES_MODEL
-      : (availableModels.find((m) => m !== GWES_MODEL_ID) ??
-        DEFAULT_NON_WAVES_MODEL);
+    // Only a camera at rest is worth returning to: a view saved mid-flight is
+    // just wherever the animation had got to.
+    const viewIsSettled = !this.deps.isMapMoving();
+    const cameraMovesAtStart = this.deps.getProgrammaticCameraMoves();
+    const defaultModelForNonWaves = this.deps.getNonWavesFallbackModel();
     const resolve = resolveSelectionChange({
       action: "layerChange",
       fromModel: this.deps.getInhouseSelectedModel(),
@@ -380,9 +390,13 @@ export class LayerGroupController {
     if (!isSwitchingToWaves && prevMode !== "waves") {
       this.syncTooltipAndLegendForMode(nextMode);
       const restoreView = () => {
-        // Every model, BEL-IS included: a variable change keeps the camera. The
-        // exemption here was half of why BEL-IS snapped back to the Iceland
-        // overview whenever the reader picked a different variable.
+        // A layer change keeps the camera where the reader had it, for every
+        // model. Not when the app is moving it, though: the layer build may
+        // frame a model's domain (centerMapOnInhouseDomain), before or after
+        // the view was saved, and jumping back here used to cut that flight
+        // short wherever it had got to, often over empty sea.
+        if (!viewIsSettled) return;
+        if (this.deps.getProgrammaticCameraMoves() !== cameraMovesAtStart) return;
         this.deps.resizeMap();
         this.deps.jumpToMap(view);
       };

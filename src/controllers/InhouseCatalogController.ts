@@ -23,6 +23,7 @@ import {
   filterTimesByRange,
 } from "../lib/timelineHelpers";
 import { decodeScalarGrid } from "../lib/imageProcessing";
+import { landingBounds } from "../lib/initialCamera";
 import { selectModel } from "../lib/selectModel";
 import { processTexturePixels } from "../lib/textureProcessing";
 import {
@@ -97,15 +98,10 @@ export function createCloudForecastProvider(
 import {
   DEFAULT_MODEL_MAX_ZOOM,
   WEB_MERCATOR_METERS_PER_PIXEL_AT_Z0,
-  DEFAULT_NON_WAVES_MODEL,
-  MODEL_RESOLUTION_METERS,
-  shouldCenterOnBounds,
-  modelCoversPoint,
-  MODEL_REFOCUS_VIEW,
-  getModelResolutionMeters,
-  getModelDefaultCenter,
   getMetersPerPixelAtLatitude,
-  sortModels,
+  modelCoversPoint,
+  modelFraming,
+  modelResolutionMeters,
 } from "../lib/modelConfig";
 
 // ---------------------------------------------------------------------------
@@ -170,15 +166,23 @@ export interface InhouseCatalogDeps {
   isRestoringFromPersisted: () => boolean;
   setRestoringFromPersisted: (v: boolean) => void;
   /** True while the first-visit geolocation view owns the camera, so the model
-   *  domain auto-centre is skipped (see applyInitialCamera / task A1). */
+   *  domain auto-centre is skipped (task A1). */
   isInitialAutoCenterSuppressed?: () => boolean;
   /** Clear the above once the user explicitly switches models. */
   clearInitialAutoCenterSuppression?: () => void;
   /**
-   * Approximate user location used to re-rank models when the current one turns
-   * out to render no data (task A3 health safety net). Null when unknown.
+   * Approximate user location: chooses the first model on a first visit, and
+   * re-ranks models when the current one turns out to render no data (task A3
+   * health safety net). Null when unknown.
    */
   getAutoSelectLocation?: () => { lat: number; lon: number } | null;
+  /**
+   * Set on a first visit whose camera nothing has chosen yet (no saved camera,
+   * no remembered location). The catalog then frames the model it picks, at
+   * once rather than animated, around `guess` when the browser's time zone gave
+   * one. Null on every other visit.
+   */
+  getFirstVisitLanding?: () => { guess: { lat: number; lon: number } | null } | null;
   /**
    * Switch to another model programmatically (runs the same flow as the model
    * `<select>`). Used by the empty-model safety net and the "use my location"
@@ -347,6 +351,14 @@ export class InhouseCatalogController {
   /** Model whose domain the camera was last framed for. Guards against
    *  re-framing on variable changes and new analysis runs of the same model. */
   private _lastCenteredModel = "";
+  /** The model models.json marks `default`, or "" when it marks none. */
+  private _inhouseDefaultModel = "";
+  /**
+   * The next domain framing is a first visit's and should not animate: the
+   * catalog could not frame the model when it loaded, because models.json
+   * says nothing about its domain.
+   */
+  private _firstFramingIsInstant = false;
   private _inhouseHoverLastTs = 0;
   readonly WIND_STREAMLINE_FLIP = false;
 
@@ -565,12 +577,22 @@ export class InhouseCatalogController {
       manifest?: InhouseManifest | null;
     },
   ): number {
-    const resolutionMeters = getModelResolutionMeters(model, options?.manifest);
+    const coverage = this._inhouseModelMeta.get(model);
+    const resolutionMeters = modelResolutionMeters(coverage, options?.manifest);
     if (!resolutionMeters) {
       return DEFAULT_MODEL_MAX_ZOOM;
     }
-    const center = getModelDefaultCenter(model, options?.bounds);
-    const latitude = clamp(center[1], -85, 85);
+    // Ground per pixel depends on latitude, so the cap is worked out where the
+    // reader is looking, kept inside the model's domain.
+    const domain = coverage?.bbox;
+    const south = domain?.south ?? options?.bounds?.[1] ?? -85;
+    const north = domain?.north ?? options?.bounds?.[3] ?? 85;
+    const center = this.deps.getMapCenter();
+    const latitude = clamp(
+      clamp(center[1], Math.min(south, north), Math.max(south, north)),
+      -85,
+      85,
+    );
     // Cap where MAX_ZOOM_CELLS model cells span MAX_ZOOM_REFERENCE_PX pixels
     // (~43 px per cell). A fixed reference, not the viewport: on-screen cell
     // size depends only on zoom, so tying the cap to the viewport's short side
@@ -583,9 +605,7 @@ export class InhouseCatalogController {
     const rawZoom = Math.log2(
       Math.max(targetSpanMeters, 1) > 0 ? numerator / targetSpanMeters : 1,
     );
-    // BEL-IS: allow zooming to at least 7 so the Iceland overview (zoom 6) is reachable.
-    const minAllowed = model === "BEL-IS" ? 7 : 1;
-    const maxZoom = clamp(rawZoom, minAllowed, 14);
+    const maxZoom = clamp(rawZoom, 1, 14);
     if (this.deps.isDev) {
       const spanAtZoom =
         getMetersPerPixelAtLatitude(latitude, maxZoom) * MAX_ZOOM_REFERENCE_PX;
@@ -593,7 +613,7 @@ export class InhouseCatalogController {
         model,
         resolutionMeters,
         targetSpanMeters,
-        center,
+        latitude,
         finalMaxZoom: maxZoom,
         resultingSpanMeters: spanAtZoom,
       });
@@ -655,34 +675,72 @@ export class InhouseCatalogController {
     // the model you are already watching is not a reason to be moved.
     if (this._lastCenteredModel === model) return;
     this._lastCenteredModel = model;
+    const duration = this._firstFramingIsInstant ? 0 : 800;
+    this._firstFramingIsInstant = false;
 
     // The user is looking at ground this model covers: stay. Zoom is a separate
     // question, clamped by applyModelZoomConstraints for the model's resolution.
-    if (modelCoversPoint(model, bounds, this.deps.getMapCenter())) return;
+    // A global model covers every view, so it never gets past this.
+    const coverage = this._inhouseModelMeta.get(model);
+    if (modelCoversPoint(coverage, bounds, this.deps.getMapCenter())) return;
 
-    const preset = MODEL_REFOCUS_VIEW[model];
-    if (preset) {
-      // BEL-IS reframes on the next frame at duration 0: the Iceland overview is
-      // set up while other map events are still settling, and an animated ease
-      // there gets cancelled by them.
-      if (model === "BEL-IS") {
-        window.requestAnimationFrame(() => {
-          this.deps.easeToMap({ ...preset, duration: 0 });
-        });
-      } else {
-        this.deps.easeToMap({ ...preset, duration: 800 });
-      }
+    const framing = modelFraming(coverage, bounds);
+    if (!framing) return;
+    if ("view" in framing) {
+      this.deps.easeToMap({ ...framing.view, duration });
       return;
     }
-    // No branch for global models: modelCoversPoint() answers `true` for every
-    // one of them, so a global model has already returned above — it can show
-    // wherever the reader is standing and never needs reframing.
-    if (!shouldCenterOnBounds(model, bounds)) return;
-    this.deps.fitMapBounds(bounds, {
+    this.deps.fitMapBounds(framing.bounds, {
       padding: 40,
-      duration: 800,
+      duration,
       maxZoom: this.computeModelMaxZoom(model, { bounds }),
     });
+  }
+
+  /**
+   * Frame the model a first visit opens on, without animating: the map was
+   * built over the reader's region (or the world) before the catalog knew
+   * which model it would be. This usually runs while the start-up splash
+   * still covers the map.
+   *
+   * With a guessed location the model was chosen for, frame the part of its
+   * domain around the reader: a small domain whole, a large one cut down to
+   * their region. Otherwise frame the model as a model switch would, except
+   * that a global model covers the region the map was built over and stays.
+   * When models.json says nothing about the domain, the first layer build
+   * frames it from the manifest instead, also without animating.
+   */
+  private frameFirstVisit(
+    model: string,
+    guess: { lat: number; lon: number } | null,
+  ): void {
+    if (!model) return;
+    const coverage = this._inhouseModelMeta.get(model);
+    if (guess) {
+      this._lastCenteredModel = model;
+      this.deps.fitMapBounds(landingBounds(guess, coverage?.bbox), {
+        padding: 40,
+        duration: 0,
+        maxZoom: this.computeModelMaxZoom(model),
+      });
+      return;
+    }
+    if (!coverage?.bbox && !coverage?.view) {
+      this._firstFramingIsInstant = true;
+      return;
+    }
+    this._lastCenteredModel = model;
+    const framing = modelFraming(coverage, null);
+    if (!framing) return;
+    if ("view" in framing) {
+      this.deps.easeToMap({ ...framing.view, duration: 0 });
+    } else {
+      this.deps.fitMapBounds(framing.bounds, {
+        padding: 40,
+        duration: 0,
+        maxZoom: this.computeModelMaxZoom(model),
+      });
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -1456,6 +1514,35 @@ export class InhouseCatalogController {
     return [...this._inhouseModelMeta.values()];
   }
 
+  /**
+   * A model's resolution in metres, for the model chooser: models.json's
+   * resolution_km, else the grid of a manifest already loaded for the model.
+   */
+  getModelResolutionMeters(model: string): number | null {
+    const manifest =
+      this._inhouseLayers.find((layer) => layer.model === model)?.manifest ??
+      null;
+    return modelResolutionMeters(this._inhouseModelMeta.get(model), manifest);
+  }
+
+  /**
+   * The model to switch to when the reader picks a non-wave layer while on the
+   * wave model: the finest one with data where they are looking, else the
+   * catalog's default, else the first listed.
+   */
+  nonWavesFallbackModel(): string {
+    const candidates = [...this._inhouseModelMeta.values()].filter(
+      (model) => model.id !== GWES_MODEL_ID,
+    );
+    const [lon, lat] = this.deps.getMapCenter();
+    const covering = selectModel(lat, lon, candidates);
+    if (covering) return covering;
+    if (this._inhouseDefaultModel && this._inhouseDefaultModel !== GWES_MODEL_ID) {
+      return this._inhouseDefaultModel;
+    }
+    return candidates[0]?.id ?? "";
+  }
+
   selectModelForLocation(lat?: number, lon?: number): string | null {
     let point: { lat: number; lon: number } | null;
     if (typeof lat === "number" && typeof lon === "number") {
@@ -1732,16 +1819,14 @@ export class InhouseCatalogController {
         `${root}/${FORECAST_DATA_SEGMENT}/models.json`,
       );
       const modelsNorm = normalizeModelList(modelsRaw);
-      this._inhouseModels = sortModels(modelsNorm.ids);
-      this._inhouseModelMeta = new Map(Object.entries(modelsNorm.meta));
-      // Backfill resolution from the built-in table when models.json omits it,
-      // so coverage-aware ranking works even before ops populate resolution_km.
-      for (const meta of this._inhouseModelMeta.values()) {
-        if (meta.resolutionKm == null) {
-          const meters = MODEL_RESOLUTION_METERS[meta.id];
-          if (typeof meters === "number") meta.resolutionKm = meters / 1000;
-        }
-      }
+      // Listed, and ranked on ties, in the order models.json gives them. The
+      // map is built from the ids rather than Object.entries(meta), which
+      // would move an id that looks like an integer ("2024") to the front.
+      this._inhouseModels = modelsNorm.ids;
+      this._inhouseModelMeta = new Map(
+        modelsNorm.ids.map((id) => [id, modelsNorm.meta[id]]),
+      );
+      this._inhouseDefaultModel = modelsNorm.defaultId;
       const preferredModel =
         this.deps.persistedModelId &&
         this._inhouseModels.includes(this.deps.persistedModelId)
@@ -1758,6 +1843,20 @@ export class InhouseCatalogController {
         preferredModel ||
         autoSelected ||
         pickDefaultId(this._inhouseModels, modelsNorm.defaultId);
+      // A reload hands back the camera the reader left with this model, so the
+      // framing decision for it is already made. Record it here rather than
+      // relying on isRestoringFromPersisted in centerMapOnInhouseDomain: the
+      // layer build's time sync clears that flag before the centring runs.
+      if (preferredModel && this.deps.isRestoringFromPersisted()) {
+        this._lastCenteredModel = preferredModel;
+      }
+      const landing = this.deps.getFirstVisitLanding?.();
+      if (landing) {
+        this.frameFirstVisit(
+          this._inhouseSelectedModel,
+          autoSelected ? landing.guess : null,
+        );
+      }
     } catch (error) {
       this.setInhouseWarning(
         `Failed to load models.json: ${error instanceof Error ? error.message : String(error)}`,
@@ -2644,7 +2743,7 @@ export class InhouseCatalogController {
       fromLayer: callbacks.getLayerMode(),
       toModel: nextModel,
       defaults: {
-        defaultModelForNonWaves: DEFAULT_NON_WAVES_MODEL,
+        defaultModelForNonWaves: this.nonWavesFallbackModel(),
         defaultLayer: "temperature",
       },
       isGroupAvailableForModel: (groupId) =>
@@ -2655,7 +2754,9 @@ export class InhouseCatalogController {
     this.deps.clearInitialAutoCenterSuppression?.();
     // Reset the framing guard: a deliberate model switch gets a fresh coverage
     // decision, so A→B→A can reframe on A again if B took the camera elsewhere.
+    // And it animates, whatever a first visit left pending.
     this._lastCenteredModel = "";
+    this._firstFramingIsInstant = false;
     this.setInhouseWarning(t("status.loadingModel"));
     if (resolve.model === GWES_MODEL_ID) {
       callbacks.setLayerMode("waves");

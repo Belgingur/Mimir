@@ -4,6 +4,13 @@ import { queryDom } from "./lib/domRegistry";
 import { loadPersistedState } from "./lib/persistence";
 import { initEdgeHitWiring } from "./lib/edgeHitWiring";
 import { restoreMapTransformForDeck } from "./lib/deckMaplibreCompat";
+import { reloadAfterContextLoss } from "./lib/contextLossReload";
+import {
+  firstVisitView,
+  readStoredLocation,
+  type InitialView,
+} from "./lib/initialCamera";
+import { timeZoneLocation } from "./lib/timeZoneLocation";
 import { translateDOM, registerLocale, setLocale, hasLocale } from "./lib/i18n";
 import { is } from "./locales/is";
 import { pl } from "./locales/pl";
@@ -36,16 +43,29 @@ translateDOM();
 
 document.body.classList.add("is-loading");
 
+const persistedState = loadPersistedState();
+const timeZoneGuess = timeZoneLocation();
+
+// Build the map where it should open, so it never starts somewhere else and
+// flies: the saved camera for a returning reader, otherwise the first-visit
+// view (a remembered location, else the time-zone region, else the world).
+// This is the only place the initial camera is set.
+const initialView: InitialView = persistedState?.mapCamera
+  ? {
+      center: persistedState.mapCamera.center,
+      zoom: persistedState.mapCamera.zoom,
+    }
+  : firstVisitView({
+      stored: readStoredLocation(),
+      guessed: timeZoneGuess,
+    });
+
 let map: maplibregl.Map;
 try {
   map = new maplibregl.Map({
     container: "map",
     style: `https://api.maptiler.com/maps/positron/style.json?key=${mapTilerKey}`,
-    // Iceland overview as the initial paint (the app is Iceland-centric); on a
-    // first visit applyInitialCamera() then refines this to the user's location
-    // or the Reykjavík fallback once the map loads (task A1).
-    center: [-19, 65],
-    zoom: 5.5,
+    ...initialView,
     pitch: 0,
     bearing: 0,
     // Lock the map to a flat, north-up 2D view: no rotation, no tilt.
@@ -73,6 +93,9 @@ try {
 }
 
 restoreMapTransformForDeck(map);
+// The forecast layers cannot survive a lost WebGL context; reload instead of
+// leaving a bare basemap behind. See contextLossReload.
+reloadAfterContextLoss(map);
 
 // The splash in index.html covers the page until the basemap has drawn; the
 // top loading bar then carries on until the forecast itself is in.
@@ -91,8 +114,6 @@ const preventNativeGesture = (event: Event) => event.preventDefault();
 for (const type of ["gesturestart", "gesturechange", "gestureend"]) {
   document.addEventListener(type, preventNativeGesture, { passive: false });
 }
-
-const persistedState = loadPersistedState();
 
 // Locale resolution: URL param (?lang=is) > URL path (/is or /en) > persisted preference > browser language > 'en'
 const urlLocale = new URLSearchParams(location.search)
@@ -144,7 +165,14 @@ initEdgeHitWiring(dom);
 // deck.gl/WeatherLayers controller graph is downloaded and evaluated.
 void import("./lib/controllerFactory")
   .then(({ createControllers }) => {
-    createControllers({ map, dom, isDev, persistedState, localeIsUrlDriven });
+    createControllers({
+      map,
+      dom,
+      isDev,
+      persistedState,
+      localeIsUrlDriven,
+      timeZoneGuess,
+    });
   })
   .catch((error) => {
     document.body.classList.remove("is-loading");

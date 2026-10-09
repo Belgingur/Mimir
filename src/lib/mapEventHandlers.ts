@@ -1,9 +1,7 @@
 import type * as maplibregl from "maplibre-gl";
 import type { MapboxOverlay } from "@deck.gl/mapbox";
-import type { PersistedStateV1 } from "./viewerTypes";
 import type { InhouseGroupId, UiState } from "./inhouseTypes";
 import { resolveMapClickTarget } from "./mapClickRouting";
-import { applyInitialCamera } from "./initialCamera";
 import { getPresentSettlementLayerIds, pickPlaceLabel } from "./placeLabelPick";
 import type { PlaceResolver, ResolvedPlace } from "./resolveClickedPlace";
 import { t } from "./i18n";
@@ -31,10 +29,6 @@ export interface MapEventDeps {
   getMeteogramController?: () => MeteogramController | null;
   meteogramEnabled?: boolean;
   getUiState: () => UiState;
-  getPersistedState: () => PersistedStateV1 | null;
-  /** Suppress the next model domain auto-centre so it doesn't clobber the
-   *  first-visit geolocation camera (see applyInitialCamera). */
-  suppressNextAutoCenter?: () => void;
   /** Resolves a clicked point to a named place — basemap label first, bundled
    *  dataset as fallback. Optional so the handlers still work headless. */
   getPlaceResolver?: () => PlaceResolver | null;
@@ -143,17 +137,8 @@ export function attachMapEventHandlers(
     // Inside the load handler: reading or restyling the style before it has
     // loaded either throws or silently no-ops.
     deps.onStyleReady?.();
-    const persisted = deps.getPersistedState();
-    if (persisted?.mapCamera) {
-      map.jumpTo(persisted.mapCamera);
-    } else {
-      // First visit (no saved camera): centre on a cached location if we have
-      // one (no permission prompt); otherwise stay put and let the coverage-aware
-      // model picker centre on its domain (Iceland overview fallback). Task A1.
-      applyInitialCamera(map, {
-        suppressAutoCenter: deps.suppressNextAutoCenter,
-      });
-    }
+    // No camera move here: main.ts builds the map where it should open (the
+    // saved camera, or the first-visit view), so there is nothing to correct.
     map.addControl(deps.getOverlay());
     await deps.initWeather();
 

@@ -110,11 +110,38 @@ public/forecast-data/
 {
   "schemaVersion": 1,
   "models": [
-    { "id": "GFS", "title": "GFS", "default": true },
-    { "id": "GWES", "title": "GWES", "default": false }
+    {
+      "id": "REGIONAL",
+      "title": "My regional model",
+      "resolution_km": 2.5,
+      "bbox": { "west": -26.5, "south": 62.6, "east": -11.5, "north": 67.3 },
+      "domain_mask": { "cols": 108, "rows": 86, "runs": "0.108/..." },
+      "preferred": true
+    },
+    { "id": "GFS", "title": "GFS", "default": true, "resolution_km": 25 }
   ]
 }
 ```
+
+Only `id` is required. Everything the viewer does with a model comes from this file and the model's manifests; no model is named in the code.
+
+| Field | Meaning |
+| ----- | ------- |
+| `id` | Directory name of the model under `forecast-data/`. |
+| `title` | Name shown in the model chooser. |
+| `default` | The model for a reader whose location is unknown or covered by no model. |
+| `resolution_km` | Grid spacing. Ranks models (finer wins), caps zoom, and is shown in the chooser. Without it, it is estimated from the model's manifests once loaded. |
+| `bbox` | `{ west, south, east, north }` of the model's data. |
+| `domain_mask` | Which cells of `bbox` hold data. Needed for Lambert and rotated grids, whose lat/lon bbox is far larger than their data. |
+| `domain_polygon` | Alternative to the mask: the domain as a GeoJSON Polygon. |
+| `margin_km` | Shrinks the domain inward when choosing a model for a location, to stay clear of edge effects. |
+| `preferred` | Wins the choice of model wherever it has data, ahead of finer models. For a deployment's own model of a region. |
+| `view` | `{ "center": [lon, lat], "zoom": z }` to frame the model when the reader is looking outside it. Without it, the extent of its data is framed. Useful for domains over a pole, whose data spans every longitude. |
+| `available` / `disabled` | `"available": false` or `"disabled": true` keeps a listed model out of automatic choices. |
+
+The order of `models` is the order of the model chooser, and settles ties between equally fine models. `netcdf2image.py` fills `bbox`, `domain_mask` and `resolution_km` in as it converts each model; `scripts/build_model_coverage.py` does it for an existing catalog. Both leave every other field, and the order, as they found it. See [Model Coverage](scripts/README.md#model-coverage).
+
+With coverage present, a first-time visitor opens on the most detailed model for their region (guessed from the browser's time zone, with no permission prompt), and a reader who pans away from a model's domain is offered the one that covers the view. Without it, a first visit opens on the `default` model.
 
 `<model>/analyses.json` - lists available forecast runs:
 
@@ -180,7 +207,8 @@ The credentials are passed to the widget (as its `api-user`/`api-password` attri
 
 The [`scripts/`](scripts/) directory contains tools for building forecast datasets from NetCDF model output:
 
-- **`netcdf2image.py`** — converts NetCDF variables to WebP/PNG frames and writes the catalog structure (`models.json`, `analyses.json`, `variables.json`, per-variable `manifest.json`). Output lands in `<out-root>/forecast-data/`; copy those files into `public/forecast-data/` for local development.
+- **`netcdf2image.py`** — converts NetCDF variables to WebP/PNG frames and writes the catalog structure (`models.json`, `analyses.json`, `variables.json`, per-variable `manifest.json`), including each model's coverage. Output lands in `<out-root>/forecast-data/`; copy those files into `public/forecast-data/` for local development.
+- **`build_model_coverage.py`** — fills in model coverage for a catalog that already exists, from a local directory or a served origin.
 - **`stitch_rap_forecast.py`** and **`stitch_icon_forecast.py`** — extend short RAP or ICON-EU runs with tail frames from the previous long run, for operational update schedules that alternate run lengths.
 
 Example YAML configs (`config_GFS.yml`, `config_GWES.yml`) and a curated scaling policy (`manifest_scaling_v2.yml`) are included. See [`scripts/README.md`](scripts/README.md) for installation, usage examples, and stitching workflow details.

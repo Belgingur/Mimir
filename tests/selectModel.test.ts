@@ -67,22 +67,12 @@ describe("selectModel", () => {
     expect(selectModel(64.15, -21.94, set)).toBe("RAP");
   });
 
-  it("tie-breaks equal-resolution models by display order (BEL-IS before UWC-IG)", () => {
-    const set: ModelCoverage[] = [
-      {
-        id: "UWC-IG",
-        resolutionKm: 2,
-        bbox: { west: -25.6, south: 62.9, east: -12.4, north: 67.3 },
-        available: true,
-      },
-      {
-        id: "BEL-IS",
-        resolutionKm: 2,
-        bbox: { west: -25.6, south: 62.9, east: -12.4, north: 67.3 },
-        available: true,
-      },
-    ];
-    expect(selectModel(65, -19, set)).toBe("BEL-IS");
+  it("breaks a resolution tie in the order models.json lists the models", () => {
+    const iceland = { west: -25.6, south: 62.9, east: -12.4, north: 67.3 };
+    const a: ModelCoverage = { id: "A", resolutionKm: 2, bbox: iceland, available: true };
+    const b: ModelCoverage = { id: "B", resolutionKm: 2, bbox: iceland, available: true };
+    expect(selectModel(65, -19, [a, b])).toBe("A");
+    expect(selectModel(65, -19, [b, a])).toBe("B");
   });
 
   it("respects a domain_polygon that carves out part of the bbox", () => {
@@ -126,6 +116,47 @@ describe("selectModel", () => {
       },
     ];
     expect(selectModel(0, 0, set)).toBe("GFS");
+  });
+});
+
+describe("selectModel — data masks and preferred models", () => {
+  // A wide bbox whose data fills only its northern half, like a Lambert
+  // domain reprojected to lat/lon.
+  const lambert: ModelCoverage = {
+    id: "LAMBERT",
+    resolutionKm: 2,
+    bbox: { west: -10, south: 40, east: 20, north: 70 },
+    domainMask: { cols: 2, rows: 2, runs: "0.2/2" },
+    available: true,
+  };
+  const global: ModelCoverage = {
+    id: "GLOBAL",
+    resolutionKm: 25,
+    bbox: { west: -180, south: -90, east: 180, north: 90 },
+    available: true,
+  };
+  const local: ModelCoverage = {
+    id: "LOCAL",
+    resolutionKm: 3,
+    bbox: { west: -8.8, south: 60.9, east: -5, north: 62.9 },
+    preferred: true,
+    available: true,
+  };
+
+  it("picks a model where its mask has data", () => {
+    expect(selectModel(60, 5, [lambert, global])).toBe("LAMBERT");
+  });
+
+  it("passes over a model whose bbox, but not its data, covers the point", () => {
+    expect(selectModel(45, 5, [lambert, global])).toBe("GLOBAL");
+  });
+
+  it("lets a preferred model win over a finer one where it has data", () => {
+    expect(selectModel(62, -6.8, [lambert, local, global])).toBe("LOCAL");
+  });
+
+  it("does not let a preferred model win anywhere else", () => {
+    expect(selectModel(60, 5, [lambert, local, global])).toBe("LAMBERT");
   });
 });
 

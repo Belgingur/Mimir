@@ -1,182 +1,199 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  REGIONAL_MODELS,
-  GLOBAL_MODELS,
-  DEFAULT_VIEW,
   WEB_MERCATOR_METERS_PER_PIXEL_AT_Z0,
-  MODEL_RESOLUTION_METERS,
-  shouldCenterOnBounds,
-  modelCoversPoint,
-  getModelResolutionMeters,
-  getModelDefaultCenter,
   getMetersPerPixelAtLatitude,
+  isGlobalDomain,
+  manifestGridSpacingMeters,
+  modelCoversPoint,
+  modelFraming,
+  modelResolutionMeters,
+  type Bounds,
 } from "../src/lib/modelConfig";
+import type { InhouseManifest, ModelCoverage } from "../src/lib/inhouseTypes";
 
-describe("model constants", () => {
-  it("REGIONAL_MODELS contains expected models", () => {
-    expect(REGIONAL_MODELS.has("UWC-IG")).toBe(true);
-    expect(REGIONAL_MODELS.has("BEL-IS")).toBe(true);
-    expect(REGIONAL_MODELS.has("RAP")).toBe(true);
-    expect(REGIONAL_MODELS.has("GFS")).toBe(false);
-  });
+const manifest = (overrides: Partial<InhouseManifest> = {}): InhouseManifest =>
+  ({
+    bounds: [-180, -90, 179.75, 90],
+    shape: { width: 1440, height: 720 },
+    srcMin: 0,
+    srcMax: 1,
+    fileTemplate: "f_{index:03d}.webp",
+    count: 1,
+    ...overrides,
+  }) as InhouseManifest;
 
-  it("GLOBAL_MODELS contains expected models", () => {
-    expect(GLOBAL_MODELS.has("GFS")).toBe(true);
-    expect(GLOBAL_MODELS.has("GWES")).toBe(true);
-    expect(GLOBAL_MODELS.has("RAP")).toBe(false);
-  });
-
-  it("DEFAULT_VIEW has expected shape", () => {
-    expect(DEFAULT_VIEW.center).toEqual([-20, 55]);
-    expect(DEFAULT_VIEW.zoom).toBe(3.2);
-  });
-
-  it("MODEL_RESOLUTION_METERS has entries for known models", () => {
-    expect(MODEL_RESOLUTION_METERS["GFS"]).toBe(25000);
-    expect(MODEL_RESOLUTION_METERS["BEL-IS"]).toBe(2000);
-  });
-});
-
-describe("shouldCenterOnBounds", () => {
-  it("returns true for regional models regardless of bounds", () => {
-    expect(shouldCenterOnBounds("UWC-IG", [-180, -90, 180, 90])).toBe(true);
-    expect(shouldCenterOnBounds("RAP", [0, 0, 10, 10])).toBe(true);
-  });
-
-  it("returns true for non-regional models with small bounds", () => {
-    expect(shouldCenterOnBounds("GFS", [-30, 50, 10, 80])).toBe(true);
-  });
-
-  it("returns false for non-regional models with global bounds", () => {
-    expect(shouldCenterOnBounds("GFS", [-180, -90, 180, 90])).toBe(false);
-  });
-});
-
-describe("getModelResolutionMeters", () => {
-  it("returns manifest resolution when available", () => {
-    const manifest = {
-      bounds: [0, 0, 10, 10] as [number, number, number, number],
-      shape: { width: 100, height: 100 },
-      srcMin: 0,
-      srcMax: 1,
-      fileTemplate: "f_{index:03d}.webp",
-      count: 1,
-      analysisTime: "2026-01-01_00",
-      historyIntervalMinutes: 60,
-      rendering: { resolutionMeters: 5000 },
-    };
-    expect(getModelResolutionMeters("GFS", manifest)).toBe(5000);
-  });
-
-  it("falls back to MODEL_RESOLUTION_METERS", () => {
-    expect(getModelResolutionMeters("GFS")).toBe(25000);
-    expect(getModelResolutionMeters("BEL-FO")).toBe(3000);
-  });
-
-  it("returns null for unknown model without manifest", () => {
-    expect(getModelResolutionMeters("UNKNOWN")).toBeNull();
-  });
-
-  it("ignores non-positive manifest resolution", () => {
-    const manifest = {
-      bounds: [0, 0, 10, 10] as [number, number, number, number],
-      shape: { width: 100, height: 100 },
-      srcMin: 0,
-      srcMax: 1,
-      fileTemplate: "f_{index:03d}.webp",
-      count: 1,
-      analysisTime: "2026-01-01_00",
-      historyIntervalMinutes: 60,
-      rendering: { resolutionMeters: 0 },
-    };
-    expect(getModelResolutionMeters("GFS", manifest)).toBe(25000);
-  });
-});
-
-describe("getModelDefaultCenter", () => {
-  it("returns hardcoded center for UWC-IG", () => {
-    expect(getModelDefaultCenter("UWC-IG")).toEqual([-36, 68.5]);
-  });
-
-  it("returns hardcoded center for RAP", () => {
-    expect(getModelDefaultCenter("RAP")).toEqual([-60, 62]);
-  });
-
-  it("returns DEFAULT_VIEW center for global models", () => {
-    expect(getModelDefaultCenter("GFS")).toEqual(DEFAULT_VIEW.center);
-    expect(getModelDefaultCenter("GWES")).toEqual(DEFAULT_VIEW.center);
-  });
-
-  it("returns bounds center for non-global models with bounds", () => {
-    expect(getModelDefaultCenter("BEL-FO", [-30, 60, -10, 70])).toEqual([
-      -20, 65,
-    ]);
-  });
-
-  it("returns DEFAULT_VIEW center when no bounds provided for unknown model", () => {
-    expect(getModelDefaultCenter("UNKNOWN")).toEqual(DEFAULT_VIEW.center);
-  });
-});
+const ICELAND: Bounds = [-25, 63, -13, 67];
+const GLOBE: Bounds = [-180, -90, 179.75, 90];
 
 describe("getMetersPerPixelAtLatitude", () => {
   it("returns expected value at equator zoom 0", () => {
-    const result = getMetersPerPixelAtLatitude(0, 0);
-    expect(result).toBeCloseTo(WEB_MERCATOR_METERS_PER_PIXEL_AT_Z0, 0);
+    expect(getMetersPerPixelAtLatitude(0, 0)).toBeCloseTo(
+      WEB_MERCATOR_METERS_PER_PIXEL_AT_Z0,
+      0,
+    );
   });
 
-  it("returns half value at equator zoom 1", () => {
-    const z0 = getMetersPerPixelAtLatitude(0, 0);
-    const z1 = getMetersPerPixelAtLatitude(0, 1);
-    expect(z1).toBeCloseTo(z0 / 2, 0);
+  it("halves with every zoom level", () => {
+    expect(getMetersPerPixelAtLatitude(0, 1)).toBeCloseTo(
+      getMetersPerPixelAtLatitude(0, 0) / 2,
+      0,
+    );
   });
 
-  it("returns smaller value at higher latitudes (cos factor)", () => {
-    const equator = getMetersPerPixelAtLatitude(0, 5);
-    const lat60 = getMetersPerPixelAtLatitude(60, 5);
-    expect(lat60).toBeLessThan(equator);
-    expect(lat60).toBeCloseTo(equator * 0.5, 0);
+  it("shrinks with the cosine of latitude", () => {
+    expect(getMetersPerPixelAtLatitude(60, 5)).toBeCloseTo(
+      getMetersPerPixelAtLatitude(0, 5) * 0.5,
+      0,
+    );
+  });
+});
+
+describe("isGlobalDomain", () => {
+  it("recognises a global grid, including one without the poles", () => {
+    expect(isGlobalDomain(GLOBE)).toBe(true);
+    expect(isGlobalDomain([-180, -80, 179.75, 80])).toBe(true); // a wave model
+    expect(isGlobalDomain({ west: -180, south: -90, east: 180, north: 90 })).toBe(true);
+  });
+
+  it("does not mistake a domain over the pole for a global one", () => {
+    // Every longitude, because it crosses the pole, but only half the latitudes.
+    expect(isGlobalDomain([-180, -10.6, 180, 90])).toBe(false);
+  });
+
+  it("says no for a regional domain", () => {
+    expect(isGlobalDomain(ICELAND)).toBe(false);
+  });
+});
+
+describe("manifestGridSpacingMeters", () => {
+  it("reads the north-south spacing from bounds and image height", () => {
+    // 0.25° rows, as GFS's grid.
+    expect(manifestGridSpacingMeters(manifest())).toBeCloseTo(27_830, -1);
+  });
+
+  it("accepts a [width, height] shape", () => {
+    const m = manifest({ bounds: [0, 0, 1, 1], shape: [10, 10] });
+    expect(manifestGridSpacingMeters(m)).toBeCloseTo(11_132, 0);
+  });
+
+  it("prefers a resolution the manifest declares", () => {
+    const m = manifest({ rendering: { resolutionMeters: 2500 } } as Partial<InhouseManifest>);
+    expect(manifestGridSpacingMeters(m)).toBe(2500);
+  });
+
+  it("is null without a manifest or a usable shape", () => {
+    expect(manifestGridSpacingMeters(null)).toBeNull();
+    expect(
+      manifestGridSpacingMeters(manifest({ shape: { width: 0, height: 0 } })),
+    ).toBeNull();
+  });
+});
+
+describe("modelResolutionMeters", () => {
+  it("takes the catalog's resolution_km first", () => {
+    const coverage: ModelCoverage = { id: "M", resolutionKm: 3.2, available: true };
+    expect(modelResolutionMeters(coverage, manifest())).toBe(3200);
+  });
+
+  it("falls back to the manifest's grid", () => {
+    const coverage: ModelCoverage = { id: "M", available: true };
+    expect(modelResolutionMeters(coverage, manifest())).toBeCloseTo(27_830, -1);
+  });
+
+  it("is null when neither knows", () => {
+    expect(modelResolutionMeters(null)).toBeNull();
   });
 });
 
 describe("modelCoversPoint", () => {
   // The single question that decides whether a model switch may move the
-  // camera: does this model have data where the user is looking?
-  const ICELAND: [number, number, number, number] = [-25, 63, -13, 67];
+  // camera: does this model have data where the reader is looking?
 
-  it("says yes inside the domain and no outside it", () => {
-    expect(modelCoversPoint("BEL-IS", ICELAND, [-21.9, 64.1])).toBe(true);
-    expect(modelCoversPoint("BEL-IS", ICELAND, [10.7, 59.9])).toBe(false); // Oslo
+  it("says yes inside the bounds and no outside them", () => {
+    expect(modelCoversPoint(null, ICELAND, [-21.9, 64.1])).toBe(true);
+    expect(modelCoversPoint(null, ICELAND, [10.7, 59.9])).toBe(false); // Oslo
   });
 
   it("counts the boundary as covered", () => {
-    expect(modelCoversPoint("BEL-IS", ICELAND, [-25, 63])).toBe(true);
-    expect(modelCoversPoint("BEL-IS", ICELAND, [-13, 67])).toBe(true);
-  });
-
-  it("always says yes for a global model, wherever the reader is", () => {
-    for (const center of [[-21.9, 64.1], [151.2, -33.9], [0, 0]] as [
-      number,
-      number,
-    ][]) {
-      expect(modelCoversPoint("GFS", null, center)).toBe(true);
-      expect(modelCoversPoint("GWES", ICELAND, center)).toBe(true);
-    }
-  });
-
-  it("says no for a regional model with unknown bounds", () => {
-    // Better to reframe on a domain we cannot reason about than to leave the
-    // reader on a blank map.
-    expect(modelCoversPoint("BEL-IS", null, [-21.9, 64.1])).toBe(false);
-  });
-
-  it("handles a domain crossing the antimeridian", () => {
-    const pacific: [number, number, number, number] = [170, -10, -170, 10];
-    expect(modelCoversPoint("SOME-PAC", pacific, [179, 0])).toBe(true);
-    expect(modelCoversPoint("SOME-PAC", pacific, [-179, 0])).toBe(true);
-    expect(modelCoversPoint("SOME-PAC", pacific, [0, 0])).toBe(false);
+    expect(modelCoversPoint(null, ICELAND, [-25, 63])).toBe(true);
+    expect(modelCoversPoint(null, ICELAND, [-13, 67])).toBe(true);
   });
 
   it("ignores latitude outside the band even at a covered longitude", () => {
-    expect(modelCoversPoint("BEL-IS", ICELAND, [-19, 50])).toBe(false);
+    expect(modelCoversPoint(null, ICELAND, [-19, 50])).toBe(false);
+  });
+
+  it("always says yes for a global domain, wherever the reader is", () => {
+    const sea: ModelCoverage = {
+      id: "WAVES",
+      bbox: { west: -180, south: -80, east: 179.75, north: 80 },
+      // Data over the sea only: still global, so it never reframes.
+      domainMask: { cols: 2, rows: 1, runs: "1.1" },
+      available: true,
+    };
+    for (const center of [[-21.9, 64.1], [151.2, -33.9], [0, 0]] as [number, number][]) {
+      expect(modelCoversPoint(null, GLOBE, center)).toBe(true);
+      expect(modelCoversPoint(sea, GLOBE, center)).toBe(true);
+    }
+  });
+
+  it("uses the catalog's data mask over the bounds", () => {
+    // Data in the northern half of the bbox only.
+    const lambert: ModelCoverage = {
+      id: "LAMBERT",
+      bbox: { west: -10, south: 40, east: 20, north: 70 },
+      domainMask: { cols: 1, rows: 2, runs: "0.1/1" },
+      available: true,
+    };
+    expect(modelCoversPoint(lambert, null, [5, 60])).toBe(true);
+    expect(modelCoversPoint(lambert, null, [5, 45])).toBe(false);
+  });
+
+  it("says no for a model with nothing to reason about", () => {
+    // Better to reframe on a domain than to leave the reader on a blank map.
+    expect(modelCoversPoint(null, null, [-21.9, 64.1])).toBe(false);
+  });
+
+  it("handles a domain crossing the antimeridian", () => {
+    const pacific: Bounds = [170, -10, -170, 10];
+    expect(modelCoversPoint(null, pacific, [179, 0])).toBe(true);
+    expect(modelCoversPoint(null, pacific, [-179, 0])).toBe(true);
+    expect(modelCoversPoint(null, pacific, [0, 0])).toBe(false);
+  });
+});
+
+describe("modelFraming", () => {
+  it("leaves a global model alone", () => {
+    expect(modelFraming(null, GLOBE)).toBeNull();
+  });
+
+  it("uses the view models.json gives", () => {
+    const coverage: ModelCoverage = {
+      id: "M",
+      bbox: { west: -180, south: -10, east: 180, north: 90 },
+      view: { center: [-60, 62], zoom: 2.5 },
+      available: true,
+    };
+    expect(modelFraming(coverage, null)).toEqual({
+      view: { center: [-60, 62], zoom: 2.5 },
+    });
+  });
+
+  it("frames the extent of the data when the mask is narrower than the bbox", () => {
+    const coverage: ModelCoverage = {
+      id: "M",
+      bbox: { west: 0, south: 0, east: 4, north: 2 },
+      domainMask: { cols: 4, rows: 2, runs: "1.2/4" },
+      available: true,
+    };
+    expect(modelFraming(coverage, null)).toEqual({ bounds: [1, 1, 3, 2] });
+  });
+
+  it("frames the bounds when that is all there is", () => {
+    expect(modelFraming(null, ICELAND)).toEqual({ bounds: ICELAND });
+  });
+
+  it("has nothing to frame without coverage or bounds", () => {
+    expect(modelFraming(null, null)).toBeNull();
   });
 });
