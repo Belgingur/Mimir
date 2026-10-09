@@ -188,10 +188,18 @@ def merge_coverage(entry: dict[str, Any], coverage: dict[str, Any]) -> dict[str,
     A models.json entry with its coverage brought up to date. bbox and
     domain_mask are replaced; a mask from an earlier run is dropped when this
     run has none, since the data now fills the bbox. resolution_km is added only
-    when the entry has none. Every other field is kept.
+    when the entry has none. Every other field is kept, and every field keeps
+    its place, so converting the same model again rewrites the same bytes.
     """
-    merged = {k: v for k, v in entry.items() if k not in REFRESHED_FIELDS}
-    merged.update({k: coverage[k] for k in REFRESHED_FIELDS if k in coverage})
+    merged: dict[str, Any] = {}
+    for key, value in entry.items():
+        if key not in REFRESHED_FIELDS:
+            merged[key] = value
+        elif key in coverage:
+            merged[key] = coverage[key]
+    for key in REFRESHED_FIELDS:
+        if key in coverage and key not in merged:
+            merged[key] = coverage[key]
     if merged.get("resolution_km") is None and "resolution_km" in coverage:
         merged["resolution_km"] = coverage["resolution_km"]
     return merged
