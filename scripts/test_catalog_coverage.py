@@ -145,6 +145,16 @@ class MergeCoverage(unittest.TestCase):
     def test_fills_in_a_missing_resolution(self):
         self.assertEqual(merge_coverage(self.ENTRY, {"resolution_km": 2.1})["resolution_km"], 2.1)
 
+    def test_is_idempotent_down_to_the_order_of_fields(self):
+        coverage = {"bbox": {"west": -1}, "resolution_km": 2.6, "domain_mask": {"cols": 1, "rows": 1, "runs": "0.1"}}
+        once = merge_coverage({"id": "M", "title": "M"}, coverage)
+        twice = merge_coverage(once, coverage)
+        self.assertEqual(json.dumps(twice), json.dumps(once))
+
+    def test_keeps_each_field_in_its_place(self):
+        merged = merge_coverage(self.ENTRY, {"bbox": {"west": -1}, "domain_mask": {"cols": 2, "rows": 1, "runs": "0.2"}})
+        self.assertEqual(list(merged), list(self.ENTRY))
+
     def test_keeps_a_resolution_written_by_hand(self):
         entry = {**self.ENTRY, "resolution_km": 3.2}
         self.assertEqual(merge_coverage(entry, {"resolution_km": 3.5})["resolution_km"], 3.2)
