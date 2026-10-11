@@ -380,14 +380,3 @@ input[type="range"] {
   display: grid;
   gap: 8px;
 }
-
-/* "Use my location" map control button (task A1). */
-.mimir-locate-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text, #14202b);
-}
-.mimir-locate-btn svg {
-  display: block;
-}
