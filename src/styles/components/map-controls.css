@@ -55,6 +55,28 @@
   box-shadow: 0 8px 18px var(--accent-orange-glow);
 }
 
+/* Phones keep only "use my location" from the stack (see controllerFactory),
+   bottom-right above the bottom bar, across from the info button. Two classes
+   so the narrow layouts' top-left .zoom-buttons rules cannot pull it back;
+   the button keeps the desktop size, a full touch target with the padding. */
+.zoom-buttons.zoom-buttons--locate-only {
+  top: auto;
+  left: auto;
+  right: calc(8px + var(--safe-area-right));
+  bottom: calc(var(--bottom-bar-height) + var(--safe-area-bottom) + 8px);
+}
+
+.zoom-buttons.zoom-buttons--locate-only button {
+  width: 34px;
+  height: 34px;
+}
+
+/* The model popover opens over that corner; don't let the button show
+   through its glass. */
+body:has(.model-pill[aria-expanded="true"]) .zoom-buttons--locate-only {
+  visibility: hidden;
+}
+
 /* "Use my location": yellow like the reader's dot while it is on the map. */
 .zoom-buttons__locate.is-tracking {
   color: #f5a623;
