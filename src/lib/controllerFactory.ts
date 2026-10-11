@@ -81,7 +81,8 @@ export function createControllers(config: ControllerFactoryConfig) {
   // hidden, so they cannot intercept touches near the top-left corner. Zooming
   // is by pinch / double-tap / two-finger tap / double-tap-drag — all native
   // MapLibre handlers, all enabled by default (see main.ts). The stack keeps
-  // the "use my location" button alone: a phone is where it matters most.
+  // the "use my location" button alone, a phone being where it matters most,
+  // and moves to the bottom-right corner, clear of the top-left.
   // Desktop keeps the whole stack: it has no pinch gesture and still needs
   // +/−. shouldForceMobileMapControls() is the accessibility escape hatch for
   // anyone who cannot perform those gestures — see lib/mobileMapControls.ts.
@@ -96,6 +97,9 @@ export function createControllers(config: ControllerFactoryConfig) {
     dom.zoomIn?.remove();
     dom.zoomOut?.remove();
     dom.gridToggleButton?.remove();
+    dom.mapWrap
+      .querySelector(".zoom-buttons")
+      ?.classList.add("zoom-buttons--locate-only");
     dom.zoomIn = null;
     dom.zoomOut = null;
     dom.gridToggleButton = null;
