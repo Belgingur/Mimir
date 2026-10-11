@@ -49,7 +49,7 @@ import {
   writeStoredLocation,
   type UserLocation,
 } from "./initialCamera";
-import { createUserLocationWatch } from "./userLocationWatch";
+import { createUserLocationWatch, PERMISSION_DENIED } from "./userLocationWatch";
 import { createDatasetLoadingOverlay } from "./datasetLoadingOverlay";
 import { createNewRunNotice } from "./newRunNotice";
 import { createTransientNotice } from "./transientNotice";
@@ -57,6 +57,9 @@ import { modelIntersectsViewport } from "./selectModel";
 import { LanguageSwitcherController } from "../controllers/LanguageSwitcherController";
 import { isMeteogramEnabled } from "../features/meteogram/enabled";
 import type { MeteogramController } from "../features/meteogram/MeteogramController";
+
+/** The "location is blocked" notice names a settings screen; give it time. */
+const LOCATION_NOTICE_MS = 6000;
 
 export interface ControllerFactoryConfig {
   map: maplibregl.Map;
@@ -859,9 +862,13 @@ export function createControllers(config: ControllerFactoryConfig) {
   });
   void userLocationWatch.resumeIfGranted();
 
+  // Feedback for a click the app declines — see MapEventDeps.showTransientNotice.
+  // The location button below uses it too.
+  const transientNotice = createTransientNotice(dom.mapWrap);
+
   // "Use my location" button (task A1): the ONLY entry point to the browser
   // Geolocation prompt. On success it re-selects the covering model (if any)
-  // and centres on the user's point; failures are surfaced as a transient warning.
+  // and centres on the user's point; failures are surfaced as a transient notice.
   dom.locateButton?.addEventListener("click", () => {
     requestBrowserLocation({
       onLocated: (loc) => {
@@ -880,8 +887,15 @@ export function createControllers(config: ControllerFactoryConfig) {
           });
         });
       },
-      onError: () => {
-        catalogController.setInhouseWarning(t("map.locationUnavailable"));
+      // A refusal is often a setting the reader never saw (iOS Location
+      // Services, a site blocked long ago), and the browser asks nothing, so
+      // say so for long enough to read where to look.
+      onError: (error) => {
+        if (error?.code === PERMISSION_DENIED) {
+          transientNotice.show(t("map.locationBlocked"), LOCATION_NOTICE_MS);
+        } else {
+          transientNotice.show(t("map.locationUnavailable"));
+        }
       },
     });
   });
@@ -1139,9 +1153,6 @@ export function createControllers(config: ControllerFactoryConfig) {
   // Labels map points with the resolved place name, so the meteogram panel
   // shows "Reykjavík" rather than "64.143, -21.937".
   const placeLabeller = createPlaceLabeller();
-
-  // Feedback for a click the app declines — see MapEventDeps.showTransientNotice.
-  const transientNotice = createTransientNotice(dom.mapWrap);
 
   attachMapEventHandlers(map, {
     showTransientNotice: (message: string) => transientNotice.show(message),

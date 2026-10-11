@@ -37,7 +37,7 @@ const WATCH_OPTIONS: PositionOptions = {
 };
 
 /** GeolocationPositionError.PERMISSION_DENIED. */
-const PERMISSION_DENIED = 1;
+export const PERMISSION_DENIED = 1;
 
 export function createUserLocationWatch(
   deps: UserLocationWatchDeps,

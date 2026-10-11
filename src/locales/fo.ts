@@ -34,6 +34,7 @@ export const fo: Record<string, string> = {
   "map.close": "Lat aftur",
   "map.myLocation": "Brúka mína staðseting",
   "map.locationUnavailable": "Kundi ikki finna staðseting tína.",
+  "map.locationBlocked": "Staðseting er stongd fyri hesa síðuna. Loyv henni í stillingunum í kaganum ella telefonini.",
   "map.noForecastHere": "Eingin forsøgn her — punktið er uttanfyri spáøkið.",
   "map.variable": "Stødd",
   "map.variables": "Støddir",
