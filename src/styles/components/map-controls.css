@@ -55,6 +55,11 @@
   box-shadow: 0 8px 18px var(--accent-orange-glow);
 }
 
+/* "Use my location": yellow like the reader's dot while it is on the map. */
+.zoom-buttons__locate.is-tracking {
+  color: #f5a623;
+}
+
 .zoom-buttons button:focus-visible {
   outline: 2px solid rgba(255, 255, 255, 0.22);
   outline-offset: 1px;

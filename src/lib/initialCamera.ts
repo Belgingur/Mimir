@@ -14,6 +14,7 @@ import type { ModelBBox } from "./inhouseTypes";
  *
  * The reader may opt in to precise positioning with the "use my location"
  * button, the ONLY place the browser's Geolocation permission prompt appears.
+ * Once granted, userLocationWatch keeps the reader's dot on the map.
  */
 
 /** localStorage key holding the last resolved approximate user location. */
@@ -139,8 +140,9 @@ export interface BrowserLocationDeps {
 
 /**
  * Explicit, user-initiated precise positioning (the "use my location" button).
- * This is the ONLY caller of the Geolocation API. On success the location is
- * persisted and handed to `onLocated`; failures go to `onError`.
+ * This is the ONLY Geolocation call made before the permission is granted, so
+ * the only one that can prompt. On success the location is persisted and
+ * handed to `onLocated`; failures go to `onError`.
  */
 export function requestBrowserLocation(deps: BrowserLocationDeps): void {
   const geolocation =

@@ -46,8 +46,10 @@ import {
   readStoredLocation,
   requestBrowserLocation,
   LOCATED_ZOOM,
+  writeStoredLocation,
   type UserLocation,
 } from "./initialCamera";
+import { createUserLocationWatch } from "./userLocationWatch";
 import { createDatasetLoadingOverlay } from "./datasetLoadingOverlay";
 import { createNewRunNotice } from "./newRunNotice";
 import { createTransientNotice } from "./transientNotice";
@@ -827,12 +829,40 @@ export function createControllers(config: ControllerFactoryConfig) {
     void changeModel(dom.inhouseModelSelect.value);
   });
 
+  // The reader's own position as a yellow dot, as on belgingur.is. It follows
+  // the device once the permission is granted, and comes back on later visits
+  // without asking when the browser still holds that grant.
+  let userLocationDot: maplibregl.Marker | null = null;
+  const showUserLocation = (loc: UserLocation): void => {
+    if (!userLocationDot) {
+      const el = document.createElement("div");
+      el.className = "mimir-user-location";
+      el.setAttribute("aria-hidden", "true");
+      userLocationDot = new maplibregl.Marker({ element: el });
+    }
+    userLocationDot.setLngLat([loc.lon, loc.lat]).addTo(map);
+    dom.locateButton?.classList.add("is-tracking");
+  };
+  const userLocationWatch = createUserLocationWatch({
+    onFix: (loc) => {
+      writeStoredLocation(loc);
+      showUserLocation(loc);
+    },
+    onLost: () => {
+      userLocationDot?.remove();
+      dom.locateButton?.classList.remove("is-tracking");
+    },
+  });
+  void userLocationWatch.resumeIfGranted();
+
   // "Use my location" button (task A1): the ONLY entry point to the browser
   // Geolocation prompt. On success it re-selects the covering model (if any)
   // and centres on the user's point; failures are surfaced as a transient warning.
   dom.locateButton?.addEventListener("click", () => {
     requestBrowserLocation({
       onLocated: (loc) => {
+        showUserLocation(loc);
+        userLocationWatch.start();
         const next = catalogController.selectModelForLocation(loc.lat, loc.lon);
         const switched =
           next && next !== catalogController.inhouseSelectedModel
