@@ -42,6 +42,7 @@ export const pl: Record<string, string> = {
   "map.close": "Zamknij",
   "map.myLocation": "Użyj mojej lokalizacji",
   "map.locationUnavailable": "Nie udało się ustalić Twojej lokalizacji.",
+  "map.locationBlocked": "Dostęp do lokalizacji jest zablokowany dla tej strony. Zezwól na niego w ustawieniach przeglądarki lub telefonu.",
   "map.noForecastHere": "Brak prognozy w tym miejscu — punkt jest poza obszarem prognozy.",
   "map.variable": "Zmienna",
   "map.variables": "Zmienne",

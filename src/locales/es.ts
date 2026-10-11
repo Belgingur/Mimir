@@ -35,6 +35,7 @@ export const es: Record<string, string> = {
   "map.close": "Cerrar",
   "map.myLocation": "Usar mi ubicación",
   "map.locationUnavailable": "No se pudo obtener tu ubicación.",
+  "map.locationBlocked": "La ubicación está bloqueada para este sitio. Permítela en los ajustes del navegador o del teléfono.",
   "map.noForecastHere": "Sin pronóstico aquí: el punto está fuera del área de pronóstico.",
   "map.variable": "Variable",
   "map.variables": "Variables",
