@@ -1,4 +1,3 @@
-import type * as maplibregl from "maplibre-gl";
 import type { ModelBBox } from "./inhouseTypes";
 
 /**
@@ -163,41 +162,4 @@ export function requestBrowserLocation(deps: BrowserLocationDeps): void {
     (error) => deps.onError?.(error),
     { enableHighAccuracy: false, timeout: 8000, maximumAge: 600_000 },
   );
-}
-
-const LOCATE_ICON =
-  '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" ' +
-  'stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
-  'stroke-linejoin="round" aria-hidden="true">' +
-  '<circle cx="12" cy="12" r="3"></circle>' +
-  '<path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path></svg>';
-
-/**
- * A small MapLibre control button that triggers the opt-in Geolocation prompt.
- * Kept framework-light so it can be added alongside the other map controls.
- */
-export function createLocateControl(opts: {
-  label: string;
-  onClick: () => void;
-}): maplibregl.IControl {
-  let container: HTMLDivElement | null = null;
-  return {
-    onAdd() {
-      container = document.createElement("div");
-      container.className = "maplibregl-ctrl maplibregl-ctrl-group";
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "mimir-locate-btn";
-      btn.title = opts.label;
-      btn.setAttribute("aria-label", opts.label);
-      btn.innerHTML = LOCATE_ICON;
-      btn.addEventListener("click", opts.onClick);
-      container.appendChild(btn);
-      return container;
-    },
-    onRemove() {
-      container?.remove();
-      container = null;
-    },
-  };
 }

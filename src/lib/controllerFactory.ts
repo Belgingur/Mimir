@@ -45,7 +45,6 @@ import { getLocale, onLocaleChange, t } from "./i18n";
 import {
   readStoredLocation,
   requestBrowserLocation,
-  createLocateControl,
   LOCATED_ZOOM,
   type UserLocation,
 } from "./initialCamera";
@@ -75,12 +74,13 @@ export function createControllers(config: ControllerFactoryConfig) {
   const { map, dom, isDev, persistedState, localeIsUrlDriven } = config;
   const timeZoneGuess = config.timeZoneGuess ?? null;
 
-  // --- Mobile: gesture-only zoom, no on-map control stack ---
-  // On phones the whole `.zoom-buttons` stack (+, −, grid, meteogram) is removed
-  // from the DOM rather than hidden, so it cannot intercept touches near the
-  // top-left corner. Zooming is by pinch / double-tap / two-finger tap /
-  // double-tap-drag — all native MapLibre handlers, all enabled by default (see
-  // main.ts). Desktop keeps the stack: it has no pinch gesture and still needs
+  // --- Mobile: gesture-only zoom, only "my location" left on the map ---
+  // On phones the +, − and grid buttons are removed from the DOM rather than
+  // hidden, so they cannot intercept touches near the top-left corner. Zooming
+  // is by pinch / double-tap / two-finger tap / double-tap-drag — all native
+  // MapLibre handlers, all enabled by default (see main.ts). The stack keeps
+  // the "use my location" button alone: a phone is where it matters most.
+  // Desktop keeps the whole stack: it has no pinch gesture and still needs
   // +/−. shouldForceMobileMapControls() is the accessibility escape hatch for
   // anyone who cannot perform those gestures — see lib/mobileMapControls.ts.
   //
@@ -91,7 +91,9 @@ export function createControllers(config: ControllerFactoryConfig) {
     isMobileControlsViewport() &&
     !shouldForceMobileMapControls()
   ) {
-    dom.mapWrap.querySelector(".zoom-buttons")?.remove();
+    dom.zoomIn?.remove();
+    dom.zoomOut?.remove();
+    dom.gridToggleButton?.remove();
     dom.zoomIn = null;
     dom.zoomOut = null;
     dom.gridToggleButton = null;
@@ -825,39 +827,30 @@ export function createControllers(config: ControllerFactoryConfig) {
     void changeModel(dom.inhouseModelSelect.value);
   });
 
-  // "Use my location" control (task A1): the ONLY entry point to the browser
+  // "Use my location" button (task A1): the ONLY entry point to the browser
   // Geolocation prompt. On success it re-selects the covering model (if any)
   // and centres on the user's point; failures are surfaced as a transient warning.
-  map.addControl(
-    createLocateControl({
-      label: t("map.myLocation"),
-      onClick: () => {
-        requestBrowserLocation({
-          onLocated: (loc) => {
-            const next = catalogController.selectModelForLocation(
-              loc.lat,
-              loc.lon,
-            );
-            const switched =
-              next && next !== catalogController.inhouseSelectedModel
-                ? changeModel(next)
-                : Promise.resolve();
-            void switched.then(() => {
-              map.easeTo({
-                center: [loc.lon, loc.lat],
-                zoom: LOCATED_ZOOM,
-                duration: 800,
-              });
-            });
-          },
-          onError: () => {
-            catalogController.setInhouseWarning(t("map.locationUnavailable"));
-          },
+  dom.locateButton?.addEventListener("click", () => {
+    requestBrowserLocation({
+      onLocated: (loc) => {
+        const next = catalogController.selectModelForLocation(loc.lat, loc.lon);
+        const switched =
+          next && next !== catalogController.inhouseSelectedModel
+            ? changeModel(next)
+            : Promise.resolve();
+        void switched.then(() => {
+          map.easeTo({
+            center: [loc.lon, loc.lat],
+            zoom: LOCATED_ZOOM,
+            duration: 800,
+          });
         });
       },
-    }),
-    "top-right",
-  );
+      onError: () => {
+        catalogController.setInhouseWarning(t("map.locationUnavailable"));
+      },
+    });
+  });
 
   dom.inhouseAnalysisSelect.addEventListener("change", async () => {
     const mode = uiState.layerMode === "waves" ? "waves" : uiState.layerMode;
