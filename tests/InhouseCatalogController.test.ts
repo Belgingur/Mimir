@@ -509,9 +509,11 @@ describe("InhouseCatalogController", () => {
       };
       internals._inhouseModelMeta = new Map([
         ["HUGE", { id: "HUGE", resolutionKm: 50_000, available: true }],
-        ["TINY", { id: "TINY", resolutionKm: 0.001, available: true }],
       ]);
       expect(ctrl.computeModelMaxZoom("HUGE")).toBe(1);
+      internals._inhouseModelMeta = new Map([
+        ["TINY", { id: "TINY", resolutionKm: 0.001, available: true }],
+      ]);
       expect(ctrl.computeModelMaxZoom("TINY")).toBe(14);
     });
   });
@@ -524,11 +526,27 @@ describe("InhouseCatalogController", () => {
     };
 
     it("caps zoom from the catalog's resolution_km", () => {
+      setCoverage(ctrl, [{ id: "FINE", resolutionKm: 2, available: true }]);
+      const fine = ctrl.computeModelMaxZoom("FINE");
+      setCoverage(ctrl, [{ id: "COARSE", resolutionKm: 25, available: true }]);
+      expect(fine).toBeGreaterThan(ctrl.computeModelMaxZoom("COARSE") + 3);
+    });
+
+    it("lets every model zoom as far in as the catalog's finest", () => {
       setCoverage(ctrl, [
         { id: "FINE", resolutionKm: 2, available: true },
         { id: "COARSE", resolutionKm: 25, available: true },
+        { id: "UNKNOWN", available: true },
       ]);
-      expect(ctrl.computeModelMaxZoom("FINE")).toBeGreaterThan(
+      const fine = ctrl.computeModelMaxZoom("FINE");
+      expect(ctrl.computeModelMaxZoom("COARSE")).toBe(fine);
+      expect(ctrl.computeModelMaxZoom("UNKNOWN")).toBe(fine);
+    });
+
+    it("keeps a model's own finer grid when the catalog knows only coarser ones", () => {
+      setCoverage(ctrl, [{ id: "COARSE", resolutionKm: 25, available: true }]);
+      const manifest = makeManifest({ bounds: [-25, 63, -13, 67], shape: { width: 100, height: 200 } });
+      expect(ctrl.computeModelMaxZoom("M", { manifest })).toBeGreaterThan(
         ctrl.computeModelMaxZoom("COARSE") + 3,
       );
     });

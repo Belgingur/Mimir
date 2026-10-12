@@ -228,8 +228,8 @@ export interface InhouseCatalogDeps {
   ) => void;
 }
 
-/** Model cells that must span MAX_ZOOM_REFERENCE_PX at the deepest zoom. */
 const MB = 1024 * 1024;
+/** Cells of the finest model that must span MAX_ZOOM_REFERENCE_PX at the deepest zoom. */
 const MAX_ZOOM_CELLS = 24;
 const MAX_ZOOM_REFERENCE_PX = 1024;
 
@@ -570,6 +570,24 @@ export class InhouseCatalogController {
   // Zoom / centering
   // ---------------------------------------------------------------------------
 
+  /**
+   * The grid spacing the zoom cap is worked out from: the finest in the
+   * catalog, so every model zooms as far in as the finest one. A coarse model
+   * zoomed that far is smoothly interpolated, not blocky. The model's own
+   * spacing counts too, for a catalog without resolution_km once the model's
+   * manifest is loaded.
+   */
+  private zoomCapResolutionMeters(
+    model: string,
+    manifest?: InhouseManifest | null,
+  ): number | null {
+    const spacings = [
+      modelResolutionMeters(this._inhouseModelMeta.get(model), manifest),
+      ...[...this._inhouseModelMeta.values()].map((m) => modelResolutionMeters(m)),
+    ].filter((m): m is number => m !== null);
+    return spacings.length ? Math.min(...spacings) : null;
+  }
+
   computeModelMaxZoom(
     model: string,
     options?: {
@@ -578,7 +596,7 @@ export class InhouseCatalogController {
     },
   ): number {
     const coverage = this._inhouseModelMeta.get(model);
-    const resolutionMeters = modelResolutionMeters(coverage, options?.manifest);
+    const resolutionMeters = this.zoomCapResolutionMeters(model, options?.manifest);
     if (!resolutionMeters) {
       return DEFAULT_MODEL_MAX_ZOOM;
     }
@@ -593,7 +611,7 @@ export class InhouseCatalogController {
       -85,
       85,
     );
-    // Cap where MAX_ZOOM_CELLS model cells span MAX_ZOOM_REFERENCE_PX pixels
+    // Cap where MAX_ZOOM_CELLS of those cells span MAX_ZOOM_REFERENCE_PX pixels
     // (~43 px per cell). A fixed reference, not the viewport: on-screen cell
     // size depends only on zoom, so tying the cap to the viewport's short side
     // gave phones ~1.4 zoom levels less than desktops for no visual reason.

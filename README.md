@@ -130,7 +130,7 @@ Only `id` is required. Everything the viewer does with a model comes from this f
 | `id` | Directory name of the model under `forecast-data/`. |
 | `title` | Name shown in the model chooser. |
 | `default` | The model for a reader whose location is unknown or covered by no model. |
-| `resolution_km` | Grid spacing. Ranks models (finer wins), caps zoom, and is shown in the chooser. Without it, it is estimated from the model's manifests once loaded. |
+| `resolution_km` | Grid spacing. Ranks models (finer wins), is shown in the chooser, and the finest one in the catalog sets how far in every model can zoom. Without it, it is estimated from the model's manifests once loaded. |
 | `bbox` | `{ west, south, east, north }` of the model's data. |
 | `domain_mask` | Which cells of `bbox` hold data. Needed for Lambert and rotated grids, whose lat/lon bbox is far larger than their data. |
 | `domain_polygon` | Alternative to the mask: the domain as a GeoJSON Polygon. |
