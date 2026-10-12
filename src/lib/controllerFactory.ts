@@ -45,10 +45,11 @@ import { getLocale, onLocaleChange, t } from "./i18n";
 import {
   readStoredLocation,
   requestBrowserLocation,
-  createLocateControl,
   LOCATED_ZOOM,
+  writeStoredLocation,
   type UserLocation,
 } from "./initialCamera";
+import { createUserLocationWatch, PERMISSION_DENIED } from "./userLocationWatch";
 import { createDatasetLoadingOverlay } from "./datasetLoadingOverlay";
 import { createNewRunNotice } from "./newRunNotice";
 import { createTransientNotice } from "./transientNotice";
@@ -56,6 +57,9 @@ import { modelIntersectsViewport } from "./selectModel";
 import { LanguageSwitcherController } from "../controllers/LanguageSwitcherController";
 import { isMeteogramEnabled } from "../features/meteogram/enabled";
 import type { MeteogramController } from "../features/meteogram/MeteogramController";
+
+/** The "location is blocked" notice names a settings screen; give it time. */
+const LOCATION_NOTICE_MS = 6000;
 
 export interface ControllerFactoryConfig {
   map: maplibregl.Map;
@@ -75,12 +79,14 @@ export function createControllers(config: ControllerFactoryConfig) {
   const { map, dom, isDev, persistedState, localeIsUrlDriven } = config;
   const timeZoneGuess = config.timeZoneGuess ?? null;
 
-  // --- Mobile: gesture-only zoom, no on-map control stack ---
-  // On phones the whole `.zoom-buttons` stack (+, −, grid, meteogram) is removed
-  // from the DOM rather than hidden, so it cannot intercept touches near the
-  // top-left corner. Zooming is by pinch / double-tap / two-finger tap /
-  // double-tap-drag — all native MapLibre handlers, all enabled by default (see
-  // main.ts). Desktop keeps the stack: it has no pinch gesture and still needs
+  // --- Mobile: gesture-only zoom, only "my location" left on the map ---
+  // On phones the +, − and grid buttons are removed from the DOM rather than
+  // hidden, so they cannot intercept touches near the top-left corner. Zooming
+  // is by pinch / double-tap / two-finger tap / double-tap-drag — all native
+  // MapLibre handlers, all enabled by default (see main.ts). The stack keeps
+  // the "use my location" button alone, a phone being where it matters most,
+  // and moves to the bottom-right corner, clear of the top-left.
+  // Desktop keeps the whole stack: it has no pinch gesture and still needs
   // +/−. shouldForceMobileMapControls() is the accessibility escape hatch for
   // anyone who cannot perform those gestures — see lib/mobileMapControls.ts.
   //
@@ -91,7 +97,12 @@ export function createControllers(config: ControllerFactoryConfig) {
     isMobileControlsViewport() &&
     !shouldForceMobileMapControls()
   ) {
-    dom.mapWrap.querySelector(".zoom-buttons")?.remove();
+    dom.zoomIn?.remove();
+    dom.zoomOut?.remove();
+    dom.gridToggleButton?.remove();
+    dom.mapWrap
+      .querySelector(".zoom-buttons")
+      ?.classList.add("zoom-buttons--locate-only");
     dom.zoomIn = null;
     dom.zoomOut = null;
     dom.gridToggleButton = null;
@@ -825,39 +836,69 @@ export function createControllers(config: ControllerFactoryConfig) {
     void changeModel(dom.inhouseModelSelect.value);
   });
 
-  // "Use my location" control (task A1): the ONLY entry point to the browser
+  // The reader's own position as a yellow dot, as on belgingur.is. It follows
+  // the device once the permission is granted, and comes back on later visits
+  // without asking when the browser still holds that grant.
+  let userLocationDot: maplibregl.Marker | null = null;
+  const showUserLocation = (loc: UserLocation): void => {
+    if (!userLocationDot) {
+      const el = document.createElement("div");
+      el.className = "mimir-user-location";
+      el.setAttribute("aria-hidden", "true");
+      userLocationDot = new maplibregl.Marker({ element: el });
+    }
+    userLocationDot.setLngLat([loc.lon, loc.lat]).addTo(map);
+    dom.locateButton?.classList.add("is-tracking");
+  };
+  const userLocationWatch = createUserLocationWatch({
+    onFix: (loc) => {
+      writeStoredLocation(loc);
+      showUserLocation(loc);
+    },
+    onLost: () => {
+      userLocationDot?.remove();
+      dom.locateButton?.classList.remove("is-tracking");
+    },
+  });
+  void userLocationWatch.resumeIfGranted();
+
+  // Feedback for a click the app declines — see MapEventDeps.showTransientNotice.
+  // The location button below uses it too.
+  const transientNotice = createTransientNotice(dom.mapWrap);
+
+  // "Use my location" button (task A1): the ONLY entry point to the browser
   // Geolocation prompt. On success it re-selects the covering model (if any)
-  // and centres on the user's point; failures are surfaced as a transient warning.
-  map.addControl(
-    createLocateControl({
-      label: t("map.myLocation"),
-      onClick: () => {
-        requestBrowserLocation({
-          onLocated: (loc) => {
-            const next = catalogController.selectModelForLocation(
-              loc.lat,
-              loc.lon,
-            );
-            const switched =
-              next && next !== catalogController.inhouseSelectedModel
-                ? changeModel(next)
-                : Promise.resolve();
-            void switched.then(() => {
-              map.easeTo({
-                center: [loc.lon, loc.lat],
-                zoom: LOCATED_ZOOM,
-                duration: 800,
-              });
-            });
-          },
-          onError: () => {
-            catalogController.setInhouseWarning(t("map.locationUnavailable"));
-          },
+  // and centres on the user's point; failures are surfaced as a transient notice.
+  dom.locateButton?.addEventListener("click", () => {
+    requestBrowserLocation({
+      onLocated: (loc) => {
+        showUserLocation(loc);
+        userLocationWatch.start();
+        const next = catalogController.selectModelForLocation(loc.lat, loc.lon);
+        const switched =
+          next && next !== catalogController.inhouseSelectedModel
+            ? changeModel(next)
+            : Promise.resolve();
+        void switched.then(() => {
+          map.easeTo({
+            center: [loc.lon, loc.lat],
+            zoom: LOCATED_ZOOM,
+            duration: 800,
+          });
         });
       },
-    }),
-    "top-right",
-  );
+      // A refusal is often a setting the reader never saw (iOS Location
+      // Services, a site blocked long ago), and the browser asks nothing, so
+      // say so for long enough to read where to look.
+      onError: (error) => {
+        if (error?.code === PERMISSION_DENIED) {
+          transientNotice.show(t("map.locationBlocked"), LOCATION_NOTICE_MS);
+        } else {
+          transientNotice.show(t("map.locationUnavailable"));
+        }
+      },
+    });
+  });
 
   dom.inhouseAnalysisSelect.addEventListener("change", async () => {
     const mode = uiState.layerMode === "waves" ? "waves" : uiState.layerMode;
@@ -1112,9 +1153,6 @@ export function createControllers(config: ControllerFactoryConfig) {
   // Labels map points with the resolved place name, so the meteogram panel
   // shows "Reykjavík" rather than "64.143, -21.937".
   const placeLabeller = createPlaceLabeller();
-
-  // Feedback for a click the app declines — see MapEventDeps.showTransientNotice.
-  const transientNotice = createTransientNotice(dom.mapWrap);
 
   attachMapEventHandlers(map, {
     showTransientNotice: (message: string) => transientNotice.show(message),

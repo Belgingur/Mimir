@@ -12,7 +12,8 @@
  * close button would be one more thing to aim at for no benefit.
  */
 export interface TransientNotice {
-  show(message: string): void;
+  /** `durationMs` overrides the notice's default for a longer sentence. */
+  show(message: string, durationMs?: number): void;
   hide(): void;
   destroy(): void;
 }
@@ -52,14 +53,14 @@ export function createTransientNotice(
   };
 
   return {
-    show(message: string): void {
+    show(message: string, durationMs = duration): void {
       if (!message) return hide();
       // Re-showing restarts the clock rather than stacking pills: repeated
       // clicks on the same dead water should read as one answer, not a queue.
       clearTimer();
       text.textContent = message;
       root.hidden = false;
-      timer = window.setTimeout(hide, duration);
+      timer = window.setTimeout(hide, durationMs);
     },
     hide,
     destroy(): void {

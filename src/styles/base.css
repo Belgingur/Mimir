@@ -381,13 +381,18 @@ input[type="range"] {
   gap: 8px;
 }
 
-/* "Use my location" map control button (task A1). */
-.mimir-locate-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text, #14202b);
-}
-.mimir-locate-btn svg {
-  display: block;
+/* The reader's own position (a maplibre Marker), drawn like the belgingur.is
+   forecast map's: a yellow dot in a white ring and a soft dark one, readable
+   over any weather colour. z-index lifts it above the interleaved map canvas
+   (see .meteogram-pin); it lets clicks through to the map. */
+.mimir-user-location {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #f5a623;
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 4px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  z-index: 3;
 }

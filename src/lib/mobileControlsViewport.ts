@@ -1,6 +1,6 @@
 /**
- * Whether this device gets the mobile map layout, where the on-map `.zoom-buttons`
- * stack (+ / − / grid / meteogram) is removed and zooming is gesture-only.
+ * Whether this device gets the mobile map layout, where the on-map +, − and
+ * grid buttons are removed and zooming is gesture-only.
  *
  * Capability **and** viewport, deliberately — unlike `CENTER_READOUT_MEDIA`,
  * which is capability *or* viewport:

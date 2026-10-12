@@ -1,10 +1,12 @@
 export interface AppDom {
   // -- map chrome --
   mapWrap: HTMLDivElement;
-  /** Null once the mobile layout has removed the on-map control stack from the
-   *  DOM (gesture-only zoom) — see lib/mobileControlsViewport.ts. */
+  /** Null once the mobile layout has removed the zoom buttons from the DOM
+   *  (gesture-only zoom) — see lib/mobileControlsViewport.ts. */
   zoomIn: HTMLButtonElement | null;
   zoomOut: HTMLButtonElement | null;
+  /** "Use my location"; stays in the stack on phones too. */
+  locateButton: HTMLButtonElement | null;
   infoButton: HTMLButtonElement;
   infoPanel: HTMLDivElement;
 
@@ -118,6 +120,7 @@ export function queryDom(): AppDom {
     mapWrap: bySelector<HTMLDivElement>(".map-wrap"),
     zoomIn: byIdOrNull<HTMLButtonElement>("zoom-in"),
     zoomOut: byIdOrNull<HTMLButtonElement>("zoom-out"),
+    locateButton: byIdOrNull<HTMLButtonElement>("locate-button"),
     infoButton: byId<HTMLButtonElement>("info-button"),
     infoPanel: byId<HTMLDivElement>("info-panel"),
 
