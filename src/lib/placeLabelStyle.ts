@@ -97,7 +97,7 @@ export const SETTLEMENT_MAX_ZOOM = 24;
  */
 export const KEPT_SETTLEMENT_MIN_ZOOM: Record<string, number> = {
   place_town: 7,
-  place_village: 9,
+  place_village: 8,
   place_suburb: 10,
   place_other: 11,
 };
