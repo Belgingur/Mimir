@@ -32,23 +32,31 @@ export const LANDMARK_HALO_WIDTH = 1.2;
 export const LANDMARK_FONT = ["Metropolis Medium Italic", "Noto Sans Italic"];
 
 /**
- * Lower than this, a "peak" is a hill (Denmark's highest is 170 m) that helps
- * no one find their way at these zooms.
+ * Only the big peaks: the height a peak needs rises as you zoom out. The
+ * tiles carry no prominence, so height stands in for it. Over south Iceland
+ * at z8 this leaves Hekla, Katla, Eyjafjallajökull and Ýmir; a region of
+ * lower hills (the Faroes, the Westfjords) shows its peaks only from z9.
  */
-export const PEAK_MIN_ELEVATION_M = 200;
-
-/**
- * The tiles rank peaks 1–5 within each patch of a tile, so rank 1 is spread
- * evenly instead of crowding into the high Alps. One per patch at first,
- * two from z9.
- */
-export const PEAK_MAX_RANK_BY_ZOOM: maplibregl.ExpressionSpecification = [
+export const PEAK_MIN_ELEVATION_BY_ZOOM: maplibregl.ExpressionSpecification = [
   "step",
   ["zoom"],
-  1,
+  1400,
+  8,
+  1200,
   9,
-  2,
+  800,
+  10,
+  500,
 ];
+
+/**
+ * Below this a peak is a triangle with no name: it says "mountain here"
+ * without filling the map with text. Name and height come in from z9.
+ */
+export const PEAK_NAME_MIN_ZOOM = 9;
+
+/** Space kept clear around each peak, so a high range shows a few, not all. */
+export const PEAK_PADDING_PX = 30;
 
 /** Islands rank 1 (largest) to 4: the big ones from z7, all from z9. */
 export const ISLAND_MAX_RANK_BY_ZOOM: maplibregl.ExpressionSpecification = [
@@ -65,8 +73,10 @@ export const PEAK_FILTER = [
   "all",
   ["match", ["get", "class"], ["peak", "volcano"], true, false],
   ["has", "name"],
-  [">=", ["to-number", ["get", "ele"], 0], PEAK_MIN_ELEVATION_M],
-  ["<=", ["to-number", ["get", "rank"], 99], PEAK_MAX_RANK_BY_ZOOM],
+  [">=", ["to-number", ["get", "ele"], 0], PEAK_MIN_ELEVATION_BY_ZOOM],
+  // The tiles rank peaks 1–5 within each patch of a tile; rank 1 spreads
+  // them evenly instead of crowding the high Alps.
+  ["==", ["to-number", ["get", "rank"], 99], 1],
 ] as maplibregl.FilterSpecification;
 
 /** Seas and oceans are left to the country names that own the far-out view. */
@@ -232,7 +242,8 @@ export function ensureLandmarkLabels(
     paint: paint(LANDMARK_TEXT_COLOR),
   });
 
-  // The name, and the height in metres on a smaller second line.
+  // A triangle; from PEAK_NAME_MIN_ZOOM, the name and the height in metres
+  // on a smaller second line.
   add({
     id: LANDMARK_LAYER_IDS.peaks,
     type: "symbol",
@@ -243,19 +254,26 @@ export function ensureLandmarkLabels(
     layout: {
       "icon-image": PEAK_ICON_ID,
       "text-field": [
-        "format",
-        NAME,
-        {},
-        "\n",
-        {},
-        ["concat", ["to-string", ["get", "ele"]], " m"],
-        { "font-scale": 0.82 },
+        "step",
+        ["zoom"],
+        "",
+        PEAK_NAME_MIN_ZOOM,
+        [
+          "format",
+          NAME,
+          {},
+          "\n",
+          {},
+          ["concat", ["to-string", ["get", "ele"]], " m"],
+          { "font-scale": 0.82 },
+        ],
       ] as maplibregl.ExpressionSpecification,
       "text-font": LANDMARK_FONT,
       "text-size": TEXT_SIZE,
       "text-anchor": "top",
       "text-offset": [0, 0.55],
       "text-max-width": 8,
+      "icon-padding": PEAK_PADDING_PX,
       // Higher peaks win collisions against lower neighbours.
       "symbol-sort-key": ["-", 0, ["to-number", ["get", "ele"], 0]],
     },
