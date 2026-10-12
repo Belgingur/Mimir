@@ -12,6 +12,7 @@ import {
   LANDMARK_LAYER_IDS,
   PEAK_FILTER,
   PEAK_ICON_ID,
+  PEAK_NAME_MIN_ZOOM,
   WATER_NAME_FILTER,
 } from "../src/lib/landmarkLabels";
 
@@ -81,6 +82,17 @@ describe("ensureLandmarkLabels", () => {
     expect(noPlaces.addLayer).not.toHaveBeenCalled();
   });
 
+  it("draws peaks as bare triangles until the name zoom", () => {
+    const { map, addLayer } = makeMap();
+    ensureLandmarkLabels(map, "place_other");
+    const peaks = addLayer.mock.calls
+      .map(([layer]) => layer as { id: string; layout?: Record<string, unknown> })
+      .find((layer) => layer.id === LANDMARK_LAYER_IDS.peaks);
+    const field = peaks?.layout?.["text-field"] as unknown[];
+    expect(field.slice(0, 4)).toEqual(["step", ["zoom"], "", PEAK_NAME_MIN_ZOOM]);
+    expect(peaks?.layout?.["icon-image"]).toBe(PEAK_ICON_ID);
+  });
+
   it("produces layers the style spec accepts", () => {
     const { map, addLayer } = makeMap();
     ensureLandmarkLabels(map, "place_other");
@@ -103,20 +115,29 @@ describe("landmark filters", () => {
     ...props,
   });
 
-  it("labels peaks and volcanoes, not hills", () => {
+  it("shows peaks and volcanoes, not hills", () => {
     expect(passes(PEAK_FILTER, 8, peak({}))).toBe(true);
     expect(passes(PEAK_FILTER, 8, peak({ class: "volcano" }))).toBe(true);
     // Denmark's rank-1 "peaks" are 25–170 m hills.
-    expect(passes(PEAK_FILTER, 8, peak({ name: "Vissenbjerg", ele: 129 }))).toBe(false);
+    expect(passes(PEAK_FILTER, 12, peak({ name: "Vissenbjerg", ele: 129 }))).toBe(false);
     expect(passes(PEAK_FILTER, 8, peak({ ele: undefined }))).toBe(false);
     expect(passes(PEAK_FILTER, 8, peak({ class: "saddle" }))).toBe(false);
     expect(passes(PEAK_FILTER, 8, peak({ name: undefined }))).toBe(false);
   });
 
-  it("thins peaks by the tiles' rank, admitting more from z9", () => {
-    expect(passes(PEAK_FILTER, 8, peak({ rank: 2 }))).toBe(false);
-    expect(passes(PEAK_FILTER, 9, peak({ rank: 2 }))).toBe(true);
-    expect(passes(PEAK_FILTER, 9, peak({ rank: 3 }))).toBe(false);
+  it("shows only the big peaks zoomed out, smaller ones as you zoom in", () => {
+    // South Iceland: Hekla (1491 m) from z7, Tindafjall (1056 m) from z9,
+    // Þríhyrningur (691 m) from z10.
+    expect(passes(PEAK_FILTER, 7, peak({ ele: 1491 }))).toBe(true);
+    expect(passes(PEAK_FILTER, 8, peak({ ele: 1056 }))).toBe(false);
+    expect(passes(PEAK_FILTER, 9, peak({ ele: 1056 }))).toBe(true);
+    expect(passes(PEAK_FILTER, 9, peak({ ele: 691 }))).toBe(false);
+    expect(passes(PEAK_FILTER, 10, peak({ ele: 691 }))).toBe(true);
+  });
+
+  it("keeps only the top-ranked peak of each patch", () => {
+    expect(passes(PEAK_FILTER, 9, peak({ rank: 1 }))).toBe(true);
+    expect(passes(PEAK_FILTER, 9, peak({ rank: 2 }))).toBe(false);
   });
 
   it("names bays, straits and lakes, leaving seas to the country names", () => {
