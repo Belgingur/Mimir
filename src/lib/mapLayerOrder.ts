@@ -67,6 +67,8 @@ export function resolveWeatherBeforeId(
 
 export const FORECAST_REFERENCE_LAYER_IDS = {
   lakeFill: "mimir-reference-lake-fill",
+  glacierFill: "mimir-reference-glacier-fill",
+  glacierStipple: "mimir-reference-glacier-stipple",
   coastHalo: "mimir-reference-coast-halo",
   coast: "mimir-reference-coast",
   riverHalo: "mimir-reference-river-halo",
@@ -96,13 +98,55 @@ const LAKE_FILTER = [
   false,
 ] as maplibregl.FilterSpecification;
 
+const GLACIER_FILTER = [
+  "==",
+  ["get", "subclass"],
+  "glacier",
+] as maplibregl.FilterSpecification;
+
+export const GLACIER_PATTERN_ID = "mimir-glacier-stipple";
+
+/**
+ * The glacier stipple: two light dots, staggered, in a 10 px cell, drawn at
+ * twice its CSS size. A repeating pattern is anchored to the world, not to
+ * the tile, so it carries across tile edges without a seam.
+ */
+export function buildGlacierPattern(): {
+  width: number;
+  height: number;
+  data: Uint8Array;
+} {
+  const size = 20;
+  const radius = 1.9;
+  const centres: [number, number][] = [
+    [5, 5],
+    [15, 15],
+  ];
+  const data = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const d = Math.min(
+        ...centres.map(([cx, cy]) => Math.hypot(x + 0.5 - cx, y + 0.5 - cy)),
+      );
+      const alpha = Math.max(0, Math.min(1, radius + 0.5 - d));
+      if (alpha === 0) continue;
+      const i = (y * size + x) * 4;
+      data[i] = 0xf4;
+      data[i + 1] = 0xfb;
+      data[i + 2] = 0xfd;
+      data[i + 3] = Math.round(255 * alpha);
+    }
+  }
+  return { width: size, height: size, data };
+}
+
 type ReferenceLayerId =
   (typeof FORECAST_REFERENCE_LAYER_IDS)[keyof typeof FORECAST_REFERENCE_LAYER_IDS];
 
 /**
  * Add a restrained cartographic reference stack above the forecast, reusing
  * the basemap's vector source. This replaces the former 7 MB country GeoJSON
- * download and adds lakes, coastlines, major waterways, and country borders
+ * download and adds lakes, glaciers, coastlines, major waterways, and country borders
  * without another network source.
  *
  * Returns the first reference layer id, which is the correct `beforeId` for
@@ -141,6 +185,7 @@ export function ensureForecastReferenceLayers(
   };
 
   const waterSource = sourceFor("water");
+  const landcoverSource = sourceFor("landcover");
   const waterwaySource = sourceFor("waterway");
   const transportationSource = sourceFor("transportation");
   const boundarySource = sourceFor("boundary");
@@ -149,6 +194,7 @@ export function ensureForecastReferenceLayers(
   const addFill = (
     id: ReferenceLayerId,
     source: string | undefined,
+    sourceLayer: string,
     options: {
       minzoom?: number;
       filter: maplibregl.FilterSpecification;
@@ -162,7 +208,7 @@ export function ensureForecastReferenceLayers(
       id,
       type: "fill",
       source,
-      "source-layer": "water",
+      "source-layer": sourceLayer,
       filter: options.filter,
       paint: options.paint,
     };
@@ -202,7 +248,7 @@ export function ensureForecastReferenceLayers(
   // Keep lake shading inside the polygon. A blurred line is centered on the
   // shore and necessarily spills onto land, especially badly where small lake
   // polygons overlap; the shared crisp coastline layers provide the edge.
-  addFill(FORECAST_REFERENCE_LAYER_IDS.lakeFill, waterSource, {
+  addFill(FORECAST_REFERENCE_LAYER_IDS.lakeFill, waterSource, "water", {
     minzoom: 3,
     filter: LAKE_FILTER,
     paint: {
@@ -218,6 +264,42 @@ export function ensureForecastReferenceLayers(
         11,
         0.13,
       ],
+    },
+  });
+
+  // Glaciers: a faint icy wash under a light stipple, the atlas convention.
+  // Ice caps are among the most recognisable shapes on a map of Iceland,
+  // Norway or the Alps, and the wash is as faint as the lakes' so the forecast
+  // colours still read true. Not an outline: from z7 the tiles cut glacier
+  // polygons exactly at the tile edge, with no buffer, so an outline (or a
+  // fill's antialiased edge) draws the tile grid across every ice cap.
+  if (landcoverSource && !map.hasImage(GLACIER_PATTERN_ID)) {
+    map.addImage(GLACIER_PATTERN_ID, buildGlacierPattern(), { pixelRatio: 2 });
+  }
+  addFill(FORECAST_REFERENCE_LAYER_IDS.glacierFill, landcoverSource, "landcover", {
+    minzoom: 5,
+    filter: GLACIER_FILTER,
+    paint: {
+      "fill-color": "#eef7fa",
+      "fill-antialias": false,
+      "fill-opacity": [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        5,
+        0.08,
+        9,
+        0.12,
+      ],
+    },
+  });
+  addFill(FORECAST_REFERENCE_LAYER_IDS.glacierStipple, landcoverSource, "landcover", {
+    minzoom: 5,
+    filter: GLACIER_FILTER,
+    paint: {
+      "fill-pattern": GLACIER_PATTERN_ID,
+      "fill-antialias": false,
+      "fill-opacity": 0.75,
     },
   });
 

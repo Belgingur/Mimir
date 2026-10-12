@@ -26,6 +26,7 @@ import {
   resolveWeatherBeforeId,
 } from "./mapLayerOrder";
 import { applyPlaceLabelStyle } from "./placeLabelStyle";
+import { ensureLandmarkLabels } from "./landmarkLabels";
 import { createPlaceLabeller } from "./placeLabeller";
 import { addCityLabelLayer, CITY_LABEL_LAYER_ID } from "./cityLabelLayer";
 import { createStyleLoadedRunner } from "./styleLoadedRunner";
@@ -189,6 +190,9 @@ export function createControllers(config: ControllerFactoryConfig) {
     }
     const next =
       ensureForecastReferenceLayers(map, labelBeforeId) ?? labelBeforeId;
+    // Peaks, water and island names, above the reference lines and below the
+    // place labels, so towns win the space.
+    ensureLandmarkLabels(map, labelBeforeId);
     // Keep the basemap's capitals and large cities as a fallback until Mímir's
     // population-tiered city layer is definitely present. A failed or stale
     // places response must never leave the map with no major settlements.

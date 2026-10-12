@@ -1,7 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  validateStyleMin,
+  type StyleSpecification,
+} from "@maplibre/maplibre-gl-style-spec";
+import {
+  buildGlacierPattern,
   ensureForecastReferenceLayers,
   FORECAST_REFERENCE_LAYER_IDS,
+  GLACIER_PATTERN_ID,
   resolveWeatherBeforeId,
 } from "../src/lib/mapLayerOrder";
 
@@ -13,6 +19,12 @@ const POSITRON_LAYERS = [
     type: "fill",
     source: "openmaptiles",
     "source-layer": "water",
+  },
+  {
+    id: "landcover_glacier",
+    type: "fill",
+    source: "openmaptiles",
+    "source-layer": "landcover",
   },
   {
     id: "waterway",
@@ -101,13 +113,19 @@ describe("ensureForecastReferenceLayers", () => {
       },
     );
     const setLayoutProperty = vi.fn();
+    const images = new Set<string>();
+    const addImage = vi.fn((id: string) => {
+      images.add(id);
+    });
     const map = {
       getStyle: () => ({ layers }),
       getLayer: (id: string) => (present.has(id) ? { id } : undefined),
+      hasImage: (id: string) => images.has(id),
+      addImage,
       addLayer,
       setLayoutProperty,
     };
-    return { map: map as never, addLayer, setLayoutProperty };
+    return { map: map as never, addLayer, addImage, setLayoutProperty };
   }
 
   it("reuses basemap sources for all forecast reference details", () => {
@@ -164,6 +182,53 @@ describe("ensureForecastReferenceLayers", () => {
     expect(fill?.paint?.["fill-opacity"]).toEqual(
       expect.arrayContaining(["interpolate", ["linear"], ["zoom"]]),
     );
+  });
+
+  it("marks glaciers with a wash and a stipple, never an outline", () => {
+    const { map, addLayer, addImage } = makeMap();
+    ensureForecastReferenceLayers(map, "place_other");
+    ensureForecastReferenceLayers(map, "place_other");
+    const glacierLayers = addLayer.mock.calls
+      .map(([layer]) => layer)
+      .filter((layer) => JSON.stringify(layer.filter).includes('"glacier"')) as {
+      id: string;
+      type?: string;
+      "source-layer"?: string;
+      paint?: Record<string, unknown>;
+    }[];
+
+    expect(glacierLayers.map((layer) => layer.id)).toEqual([
+      FORECAST_REFERENCE_LAYER_IDS.glacierFill,
+      FORECAST_REFERENCE_LAYER_IDS.glacierStipple,
+    ]);
+    // The tiles cut glacier polygons at the tile edge: any line, or a fill's
+    // antialiased edge, would draw the tile grid across the ice.
+    expect(glacierLayers.every((layer) => layer.type === "fill")).toBe(true);
+    expect(glacierLayers.every((layer) => layer.paint?.["fill-antialias"] === false)).toBe(true);
+    expect(glacierLayers.every((layer) => layer["source-layer"] === "landcover")).toBe(true);
+    expect(glacierLayers[1].paint?.["fill-pattern"]).toBe(GLACIER_PATTERN_ID);
+    expect(addImage).toHaveBeenCalledTimes(1);
+  });
+
+  it("produces layers the style spec accepts", () => {
+    const { map, addLayer } = makeMap();
+    ensureForecastReferenceLayers(map, "place_other");
+    const style = {
+      version: 8,
+      sources: { openmaptiles: { type: "vector", url: "https://example.test/tiles.json" } },
+      layers: addLayer.mock.calls.map(([layer]) => layer),
+    } as unknown as StyleSpecification;
+    expect(validateStyleMin(style)).toEqual([]);
+  });
+
+  it("draws the stipple as two soft dots on a clear ground", () => {
+    const { width, height, data } = buildGlacierPattern();
+    const alpha = (x: number, y: number) => data[(y * width + x) * 4 + 3];
+    expect(data).toHaveLength(width * height * 4);
+    expect(alpha(4, 4)).toBe(255);
+    expect(alpha(14, 14)).toBe(255);
+    expect(alpha(14, 4)).toBe(0);
+    expect(alpha(0, 19)).toBe(0);
   });
 
   it("excludes maritime boundaries while retaining land borders", () => {
