@@ -203,6 +203,24 @@ It is a self-contained module under [`src/features/meteogram/`](src/features/met
 
 The credentials are passed to the widget (as its `api-user`/`api-password` attributes) so it can authenticate its forecast-data requests with HTTP Basic auth — without them the chart fails to load on any client that has no existing WOD session (e.g. a phone). The widget's config/data requests go to `VITE_METEOGRAM_API_BASE` (default `https://wod-odinn.belgingur.is`). GWES models keep routing map clicks to the wavegram, so the two features never collide.
 
+## Embedding
+
+Mímir can be shown in another page with an `<iframe>` (the server's `Content-Security-Policy: frame-ancestors` must list that page's origin). Give the iframe `allow="fullscreen; geolocation"` so "use my location" can work inside it.
+
+The language is chosen in the address:
+
+- `?lang=is` sets the language and hides Mímir's language button, for a page that offers its own language choice.
+- `?lang=is&lang_menu=1` only sets the starting language; Mímir's language button stays and the reader changes the language there.
+
+Inside an iframe, Mímir tells the page around it what it is doing with `postMessage` (check `event.origin` before trusting these):
+
+| Message                                          | Sent                                                          |
+| ------------------------------------------------ | ------------------------------------------------------------- |
+| `{ source: "mimir", type: "locale", locale }`    | at start, and whenever the reader changes the language        |
+| `{ source: "mimir", type: "ready" }`             | once, when the start screen has gone and the map is showing   |
+
+The page can use `locale` to keep its own text, and links such as a user guide, in Mímir's language, and `ready` to show its own map controls only once the map is up. See [`src/lib/hostPage.ts`](src/lib/hostPage.ts).
+
 ## Data Preparation
 
 The [`scripts/`](scripts/) directory contains tools for building forecast datasets from NetCDF model output:
