@@ -121,6 +121,7 @@ export const es: Record<string, string> = {
   "status.loadingFrame": "Cargando vista…",
   "status.loadingModel": "Cargando modelo…",
   "status.loadingDataset": "Cargando {{model}}…",
+  "status.loadingLayer": "Cargando {{layer}}…",
   "status.datasetFailed": "No se pudo cargar {{model}}. Puede que no tenga datos ahora.",
   "action.backToModel": "Volver a {{model}}",
   "status.newRun": "Hay una previsión más reciente disponible.",

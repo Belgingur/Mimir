@@ -124,7 +124,8 @@ function makeDeps(overrides: Partial<LayerGroupDeps> = {}): {
     getInhouseModels: vi.fn(() => ["GFS", "GWES"]),
     isGroupAvailableForModel: vi.fn(() => true),
     loadInhouseAnalyses: vi.fn(async () => {}),
-    ensureInhouseGroupLayers: vi.fn(),
+    ensureInhouseGroupLayers: vi.fn(async () => {}),
+    beginLayerLoad: vi.fn(() => vi.fn()),
     saveNonWavesSelection: vi.fn(),
     restoreNonWavesSelection: vi.fn(() => null),
     updateLayers: vi.fn(),
@@ -741,6 +742,56 @@ describe("LayerGroupController", () => {
       });
       await ctrl.updateMode("precip");
       expect(deps.ensureInhouseGroupLayers).toHaveBeenCalledWith("precip");
+    });
+
+    it("shows the loader until the new layer's first frame is in", async () => {
+      let finishLoad!: () => void;
+      const endLoad = vi.fn();
+      (deps.beginLayerLoad as ReturnType<typeof vi.fn>).mockReturnValue(
+        endLoad,
+      );
+      (
+        deps.ensureInhouseGroupLayers as ReturnType<typeof vi.fn>
+      ).mockReturnValue(
+        new Promise<void>((resolve) => {
+          finishLoad = resolve;
+        }),
+      );
+      uiState.layerMode = "temperature";
+
+      await ctrl.updateMode("precip");
+      expect(deps.beginLayerLoad).toHaveBeenCalledWith("precip");
+      expect(endLoad).not.toHaveBeenCalled();
+
+      finishLoad();
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(endLoad).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows no loader for the layer already on screen", async () => {
+      uiState.layerMode = "wind";
+      await ctrl.updateMode("wind");
+      expect(deps.beginLayerLoad).not.toHaveBeenCalled();
+    });
+
+    it("ends the loader when the switch fails before the layer loads", async () => {
+      const endLoad = vi.fn();
+      (deps.beginLayerLoad as ReturnType<typeof vi.fn>).mockReturnValue(
+        endLoad,
+      );
+      (deps.loadInhouseAnalyses as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error("offline"),
+      );
+      mockResolveSelectionChange.mockReturnValue({
+        model: "GWES",
+        layer: "waves",
+        appliedException: null,
+      });
+
+      await expect(ctrl.updateMode("waves")).rejects.toThrow("offline");
+      expect(endLoad).toHaveBeenCalledTimes(1);
+      expect(deps.ensureInhouseGroupLayers).not.toHaveBeenCalled();
     });
 
     it("does not restore saved non-waves selection when leaving GWES by layer", async () => {

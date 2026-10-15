@@ -118,6 +118,7 @@ export const fo: Record<string, string> = {
   "status.loadingFrame": "Heinti mynd…",
   "status.loadingModel": "Heinti líkan…",
   "status.loadingDataset": "Heinti {{model}}…",
+  "status.loadingLayer": "{{layer}} — heinti…",
   "status.datasetFailed": "Kundi ikki heinta {{model}}. Kanska eru eingi dátur tøk júst nú.",
   "action.backToModel": "Aftur til {{model}}",
   "status.newRun": "Nýggjari forsøgn er tøk.",

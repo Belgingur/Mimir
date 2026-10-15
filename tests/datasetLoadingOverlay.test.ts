@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createDatasetLoadingOverlay } from "../src/lib/datasetLoadingOverlay";
 
 describe("dataset loading overlay", () => {
@@ -51,5 +51,59 @@ describe("dataset loading overlay", () => {
     overlay.end();
     expect(root().hidden).toBe(true);
     expect(root().querySelector(".dataset-loader__card")?.children).toHaveLength(0);
+  });
+
+  describe("with a delay", () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    it("never shows a load that is over before the delay", () => {
+      const overlay = createDatasetLoadingOverlay(host);
+      const ticket = overlay.begin("Loading Wind…", { delayMs: 200 });
+      vi.advanceTimersByTime(150);
+      overlay.end(ticket);
+      vi.advanceTimersByTime(500);
+      expect(root().hidden).toBe(true);
+    });
+
+    it("shows a slower load once the delay has passed", () => {
+      const overlay = createDatasetLoadingOverlay(host);
+      overlay.begin("Loading Wind…", { delayMs: 200 });
+      expect(root().hidden).toBe(true);
+      vi.advanceTimersByTime(200);
+      expect(root().hidden).toBe(false);
+      expect(root().querySelector(".dataset-loader__text")?.textContent).toBe(
+        "Loading Wind…",
+      );
+    });
+
+    it("takes the new label at once when it is already showing", () => {
+      const overlay = createDatasetLoadingOverlay(host);
+      overlay.begin("Loading BEL-IS…");
+      overlay.begin("Loading Wind…", { delayMs: 200 });
+      expect(root().hidden).toBe(false);
+      expect(root().querySelector(".dataset-loader__text")?.textContent).toBe(
+        "Loading Wind…",
+      );
+    });
+  });
+
+  it("lets only the latest load hide it", () => {
+    const overlay = createDatasetLoadingOverlay(host);
+    const first = overlay.begin("Loading Wind…");
+    const second = overlay.begin("Loading Precipitation…");
+    overlay.end(first);
+    expect(root().hidden).toBe(false);
+    overlay.end(second);
+    expect(root().hidden).toBe(true);
+  });
+
+  it("keeps an error up when a load still in flight finishes", () => {
+    const overlay = createDatasetLoadingOverlay(host);
+    const ticket = overlay.begin("Loading Wind…");
+    overlay.fail({ message: "No data" });
+    overlay.end(ticket);
+    expect(root().hidden).toBe(false);
+    expect(root().classList.contains("dataset-loader--error")).toBe(true);
   });
 });

@@ -117,6 +117,7 @@ export const en: Record<string, string> = {
   "status.loadingFrame": "Loading frame…",
   "status.loadingModel": "Loading model...",
   "status.loadingDataset": "Loading {{model}}…",
+  "status.loadingLayer": "Loading {{layer}}…",
   "status.datasetFailed": "Couldn't load {{model}}. It may have no data right now.",
   "action.backToModel": "Back to {{model}}",
   "status.newRun": "A newer forecast run is available.",
