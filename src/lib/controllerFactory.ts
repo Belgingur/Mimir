@@ -774,6 +774,7 @@ export function createControllers(config: ControllerFactoryConfig) {
         iconographyController?.onModelChange();
         scheduleUpdateLayers();
         schedulePersistState();
+        await catalogController.whenFramesLoaded();
       }
       newRunNotice.hide();
     } finally {
@@ -812,6 +813,9 @@ export function createControllers(config: ControllerFactoryConfig) {
       },
       schedulePersistState,
       });
+      // Until the new model's frame is on screen: the switch's own frame load
+      // can be superseded by the time sync it sets off, and return early.
+      await catalogController.whenFramesLoaded();
     } finally {
       setSelectorsBusy(false);
     }
@@ -917,6 +921,7 @@ export function createControllers(config: ControllerFactoryConfig) {
         dom.inhouseAnalysisSelect.value,
       );
       await catalogController.ensureInhouseGroupLayers(mode);
+      await catalogController.whenFramesLoaded();
     } finally {
       setSelectorsBusy(false);
       datasetLoader.end();
