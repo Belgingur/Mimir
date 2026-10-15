@@ -115,6 +115,10 @@ export function setupMeteogram(deps: SetupMeteogramDeps): MeteogramController {
       // Always show the exact clicked coordinate, never snap the label to the
       // nearest station (the point is a map click, not a station pick).
       el.setAttribute("prefer-coordinates", "");
+      // The language follows Mímir's own language button (MeteogramController
+      // sets `language`), so the widget's settings leave theirs out: a second
+      // choice there would only switch the meteogram, out of step with the map.
+      el.setAttribute("hide-language", "");
       // The widget renders its own ✕ (and emits bel-meteogram-close) so the
       // modal needs no white chrome of its own — see meteogram.css.
       el.setAttribute("closable", "");
