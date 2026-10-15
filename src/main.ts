@@ -11,7 +11,14 @@ import {
   type InitialView,
 } from "./lib/initialCamera";
 import { timeZoneLocation } from "./lib/timeZoneLocation";
-import { translateDOM, registerLocale, setLocale, hasLocale } from "./lib/i18n";
+import {
+  translateDOM,
+  registerLocale,
+  setLocale,
+  hasLocale,
+  getLocale,
+  onLocaleChange,
+} from "./lib/i18n";
 import { is } from "./locales/is";
 import { pl } from "./locales/pl";
 import { es } from "./locales/es";
@@ -19,6 +26,7 @@ import { pt } from "./locales/pt";
 import { fo } from "./locales/fo";
 import "./styles/index.css";
 import { BOOT_SPLASH_MAX_MS, dismissBootSplash } from "./lib/bootSplash";
+import { connectHostPage, keepsLanguageMenu } from "./lib/hostPage";
 
 // maplibre-gl 6 locates its worker relative to its own module URL, which
 // breaks once Vite pre-bundles or chunks it. Hand it a self-contained
@@ -42,6 +50,15 @@ if (!mapTilerKey) {
 translateDOM();
 
 document.body.classList.add("is-loading");
+
+// When Mímir is shown inside another site's page, keep that page told about
+// the language and when the start screen has gone. See lib/hostPage.
+const hostPage = connectHostPage();
+
+function endBootSplash() {
+  dismissBootSplash();
+  hostPage.announceReady();
+}
 
 const persistedState = loadPersistedState();
 const timeZoneGuess = timeZoneLocation();
@@ -79,7 +96,7 @@ try {
   });
 } catch (err) {
   document.body.classList.remove("is-loading");
-  dismissBootSplash();
+  endBootSplash();
   const mapEl = document.getElementById("map");
   if (mapEl) {
     mapEl.innerHTML = `
@@ -99,8 +116,8 @@ reloadAfterContextLoss(map);
 
 // The splash in index.html covers the page until the basemap has drawn; the
 // top loading bar then carries on until the forecast itself is in.
-map.once("load", () => dismissBootSplash());
-setTimeout(dismissBootSplash, BOOT_SPLASH_MAX_MS);
+map.once("load", endBootSplash);
+setTimeout(endBootSplash, BOOT_SPLASH_MAX_MS);
 
 // Keep two-finger pinch-zoom but strip the rotation it would otherwise apply,
 // so the map stays north-up while zooming on touch.
@@ -136,12 +153,17 @@ const resolvedLocale =
           ? browserLocale
           : "en";
 setLocale(resolvedLocale);
+hostPage.announceLocale(resolvedLocale);
+onLocaleChange(() => hostPage.announceLocale(getLocale()));
 
 // Only hide the language toggle when locale comes from a ?lang= query param —
 // that pattern is used for WordPress/iframe embedding where the host page
 // controls the language.  Path-based locale (/en, /is) is a regular navigated
 // URL; the toggle stays visible so the user can see (and override) the locale.
-const localeIsUrlDriven = !!(urlLocale && hasLocale(urlLocale));
+// A host page that wants Mímir's toggle to own the language adds
+// `lang_menu=1`: ?lang= then only sets the starting language.
+const localeIsUrlDriven =
+  !!(urlLocale && hasLocale(urlLocale)) && !keepsLanguageMenu(location.search);
 
 map.addControl(
   new maplibregl.ScaleControl({ maxWidth: 120, unit: "metric" }),
