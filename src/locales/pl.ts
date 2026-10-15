@@ -128,6 +128,7 @@ export const pl: Record<string, string> = {
   "status.loadingFrame": "Wczytywanie klatki…",
   "status.loadingModel": "Wczytywanie modelu…",
   "status.loadingDataset": "Wczytywanie {{model}}…",
+  "status.loadingLayer": "{{layer}} — wczytywanie…",
   "status.datasetFailed": "Nie udało się wczytać {{model}}. Może teraz nie mieć danych.",
   "action.backToModel": "Powrót do {{model}}",
   "status.newRun": "Dostępna jest nowsza prognoza.",

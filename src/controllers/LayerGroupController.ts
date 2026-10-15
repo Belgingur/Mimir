@@ -92,7 +92,13 @@ export interface LayerGroupDeps {
   getInhouseModels: () => string[];
   isGroupAvailableForModel: (groupId: string) => boolean;
   loadInhouseAnalyses: (model: string) => Promise<void>;
-  ensureInhouseGroupLayers: (groupId: string) => void;
+  /** Loads the group's layers and their first frame. */
+  ensureInhouseGroupLayers: (groupId: string) => Promise<void>;
+  /**
+   * Show the map's loading overlay — the one a model switch shows — for a
+   * switch to `mode`, and return the function that ends it.
+   */
+  beginLayerLoad: (mode: UiState["layerMode"]) => () => void;
 
   saveNonWavesSelection: (model: string, analysis: string) => void;
   restoreNonWavesSelection: () => { model: string; analysis?: string } | null;
@@ -344,44 +350,57 @@ export class LayerGroupController {
     const nextMode = resolve.layer;
     const modelSwitched = resolve.model !== this.deps.getInhouseSelectedModel();
     const isSwitchingToWaves = nextMode === "waves";
-    // Entering or leaving waves no longer throws the camera at DEFAULT_VIEW.
-    // GWES is global, so it covers wherever the reader already is; whether a
-    // switch is allowed to move the camera is centerMapOnInhouseDomain's single
-    // coverage decision, not a per-layer special case.
-    if (modelSwitched) {
-      await this.deps.loadInhouseAnalyses(resolve.model);
-    }
-    uiState.layerMode = nextMode;
-    this.syncCheckedState();
-    this.deps.schedulePersistState();
-    this.deps.syncWindControls();
-    if (nextMode === "waves") {
-      if (
-        this.deps.getInhouseSelectedModel() &&
-        this.deps.getInhouseSelectedModel() !== GWES_MODEL_ID
-      ) {
-        this.deps.saveNonWavesSelection(
-          this.deps.getInhouseSelectedModel(),
-          this.deps.getInhouseSelectedAnalysis(),
-        );
+    // The loader a model switch shows, for as long as the new layer's first
+    // frame takes; picking the layer already on screen loads nothing new.
+    const endLoad =
+      nextMode !== prevMode || modelSwitched
+        ? this.deps.beginLayerLoad(nextMode)
+        : () => {};
+    let loaded: Promise<void> | null = null;
+    try {
+      // Entering or leaving waves no longer throws the camera at DEFAULT_VIEW.
+      // GWES is global, so it covers wherever the reader already is; whether a
+      // switch is allowed to move the camera is centerMapOnInhouseDomain's
+      // single coverage decision, not a per-layer special case.
+      if (modelSwitched) {
+        await this.deps.loadInhouseAnalyses(resolve.model);
       }
-      if (
-        this.deps.getInhouseModels().includes(GWES_MODEL_ID) &&
-        this.deps.getInhouseSelectedModel() !== GWES_MODEL_ID
-      ) {
-        await this.deps.loadInhouseAnalyses(GWES_MODEL_ID);
+      uiState.layerMode = nextMode;
+      this.syncCheckedState();
+      this.deps.schedulePersistState();
+      this.deps.syncWindControls();
+      if (nextMode === "waves") {
+        if (
+          this.deps.getInhouseSelectedModel() &&
+          this.deps.getInhouseSelectedModel() !== GWES_MODEL_ID
+        ) {
+          this.deps.saveNonWavesSelection(
+            this.deps.getInhouseSelectedModel(),
+            this.deps.getInhouseSelectedAnalysis(),
+          );
+        }
+        if (
+          this.deps.getInhouseModels().includes(GWES_MODEL_ID) &&
+          this.deps.getInhouseSelectedModel() !== GWES_MODEL_ID
+        ) {
+          await this.deps.loadInhouseAnalyses(GWES_MODEL_ID);
+        }
+        loaded = this.deps.ensureInhouseGroupLayers("waves");
+      } else {
+        const saved = this.deps.restoreNonWavesSelection();
+        if (
+          resolve.appliedException !== "LEAVE_GWES_BY_LAYER" &&
+          this.deps.getInhouseSelectedModel() === GWES_MODEL_ID &&
+          saved
+        ) {
+          await this.deps.loadInhouseAnalyses(saved.model);
+        }
+        loaded = this.deps.ensureInhouseGroupLayers(nextMode);
       }
-      void this.deps.ensureInhouseGroupLayers("waves");
-    } else {
-      const saved = this.deps.restoreNonWavesSelection();
-      if (
-        resolve.appliedException !== "LEAVE_GWES_BY_LAYER" &&
-        this.deps.getInhouseSelectedModel() === GWES_MODEL_ID &&
-        saved
-      ) {
-        await this.deps.loadInhouseAnalyses(saved.model);
-      }
-      void this.deps.ensureInhouseGroupLayers(nextMode);
+    } finally {
+      // With the load it started, or at once if a step before it threw.
+      if (loaded) void loaded.finally(endLoad);
+      else endLoad();
     }
     this.deps.setGridLabelsDirty();
     this.deps.scheduleLabelRender();

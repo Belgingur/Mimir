@@ -122,6 +122,7 @@ export const is: Record<string, string> = {
   "status.loadingFrame": "Sæki ramma…",
   "status.loadingModel": "Sæki líkani…",
   "status.loadingDataset": "Sæki {{model}}…",
+  "status.loadingLayer": "{{layer}} — sæki gögn…",
   "status.datasetFailed": "Tókst ekki að sækja {{model}}. Það kann að vera án gagna núna.",
   "action.backToModel": "Til baka í {{model}}",
   "status.newRun": "Nýrri spá er tilbúin.",

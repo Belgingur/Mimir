@@ -62,6 +62,13 @@ import type { MeteogramController } from "../features/meteogram/MeteogramControl
 /** The "location is blocked" notice names a settings screen; give it time. */
 const LOCATION_NOTICE_MS = 6000;
 
+/**
+ * How long a layer switch waits before showing the loader. Going back to a
+ * layer already seen is over at once (its frame is cached); a loader that
+ * flashed up and away for that would only be noise.
+ */
+const LAYER_LOADER_DELAY_MS = 200;
+
 export interface ControllerFactoryConfig {
   map: maplibregl.Map;
   dom: AppDom;
@@ -566,6 +573,10 @@ export function createControllers(config: ControllerFactoryConfig) {
     scheduleUpdateLayers,
   });
 
+  // Loading/error overlay shown while switching model, analysis or layer
+  // (task B2). Made before the layer controller, whose switches use it too.
+  const datasetLoader = createDatasetLoadingOverlay(dom.mapWrap);
+
   const layerGroupController = new LayerGroupController({
     dom: {
       viewForecastBtn: dom.viewForecastBtn,
@@ -621,10 +632,19 @@ export function createControllers(config: ControllerFactoryConfig) {
       catalogController.isGroupAvailableForModel(groupId as InhouseGroupId),
     loadInhouseAnalyses: (model) =>
       catalogController.loadInhouseAnalyses(model),
-    ensureInhouseGroupLayers: (groupId) => {
-      void catalogController.ensureInhouseGroupLayers(
+    ensureInhouseGroupLayers: async (groupId) => {
+      await catalogController.ensureInhouseGroupLayers(
         groupId as InhouseGroupId,
       );
+      await catalogController.whenFramesLoaded();
+    },
+    beginLayerLoad: (mode) => {
+      const group = LAYER_GROUPS.find((g) => g.id === mode);
+      const ticket = datasetLoader.begin(
+        t("status.loadingLayer", { layer: group ? t(group.title) : mode }),
+        { delayMs: LAYER_LOADER_DELAY_MS },
+      );
+      return () => datasetLoader.end(ticket);
     },
     saveNonWavesSelection: (model, analysis) =>
       modelChooserController.saveNonWavesSelection(model, analysis),
@@ -662,8 +682,6 @@ export function createControllers(config: ControllerFactoryConfig) {
   });
 
   // --- DOM event handlers ---
-  // Loading/error overlay shown while switching model or analysis (task B2).
-  const datasetLoader = createDatasetLoadingOverlay(dom.mapWrap);
 
   // Nothing in the app polls continuously. On returning to a tab, ask the
   // server whether a newer run exists and let the reader update the forecast

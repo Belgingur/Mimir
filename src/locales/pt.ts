@@ -101,6 +101,7 @@ export const pt: Record<string, string> = {
   "status.loadingFrame": "Carregando quadro…",
   "status.loadingModel": "Carregando modelo…",
   "status.loadingDataset": "Carregando {{model}}…",
+  "status.loadingLayer": "Carregando {{layer}}…",
   "status.datasetFailed": "Não foi possível carregar {{model}}. Pode não ter dados agora.",
   "action.backToModel": "Voltar para {{model}}",
   "status.newRun": "Está disponível uma previsão mais recente.",
