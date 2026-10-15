@@ -307,6 +307,8 @@ export class InhouseCatalogController {
   private _inhouseSelectedVariable = "";
   private _inhouseTimeIndex = 0;
   private _inhouseAbort: AbortController | null = null;
+  /** The newest foreground frame-set load, for {@link whenFramesLoaded}. */
+  private _frameSetLoad: Promise<void> = Promise.resolve();
   /** Separate abort for background neighbor-frame prefetch, so it never
    *  cancels the foreground frame load and is dropped when the view moves (B1). */
   private _prefetchAbort: AbortController | null = null;
@@ -1150,7 +1152,29 @@ export class InhouseCatalogController {
   // Frame set loading
   // ---------------------------------------------------------------------------
 
-  async loadInhouseFrameSet(): Promise<void> {
+  loadInhouseFrameSet(): Promise<void> {
+    const load = this.loadFrameSetNow();
+    this._frameSetLoad = load;
+    return load;
+  }
+
+  /**
+   * Resolves once the newest frame-set load has finished, so the frames on
+   * screen are the ones last asked for.
+   *
+   * Awaiting a single load is not enough: a newer one (a timeline step, the
+   * time sync a layer change sets off) aborts it, and an aborted load returns
+   * at once with nothing drawn. This follows each newer load instead.
+   */
+  async whenFramesLoaded(): Promise<void> {
+    for (;;) {
+      const load = this._frameSetLoad;
+      await load.catch(() => {});
+      if (load === this._frameSetLoad) return;
+    }
+  }
+
+  private async loadFrameSetNow(): Promise<void> {
     const base = this._inhouseLayers[0];
     if (!base) return;
     const targetTime = base.times[this._inhouseTimeIndex];

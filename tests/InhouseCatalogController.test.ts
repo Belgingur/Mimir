@@ -2425,6 +2425,39 @@ describe("InhouseCatalogController", () => {
       await ctrl.loadInhouseFrameSet();
       expect(dom.inhouseWarningEl.textContent).toContain("Frame load failed");
     });
+
+    it("resolves whenFramesLoaded at once when nothing is loading", async () => {
+      await expect(ctrl.whenFramesLoaded()).resolves.toBeUndefined();
+    });
+
+    it("follows a newer load in whenFramesLoaded, not the one it superseded", async () => {
+      const layer = makeLayer();
+      ctrl.inhouseLayers.push(layer);
+      const texture = { data: new Uint8Array(4), width: 1, height: 1 };
+      let finishSecond!: (v: WeatherLayers.TextureData | null) => void;
+      vi.spyOn(ctrl, "loadInhouseTexture")
+        // The first load is aborted by the second, and returns at once.
+        .mockImplementationOnce(() => Promise.reject(new Error("aborted")))
+        .mockImplementationOnce(
+          () =>
+            new Promise<WeatherLayers.TextureData | null>((resolve) => {
+              finishSecond = resolve;
+            }),
+        );
+
+      void ctrl.loadInhouseFrameSet();
+      let done = false;
+      const waiting = ctrl.whenFramesLoaded().then(() => {
+        done = true;
+      });
+      void ctrl.loadInhouseFrameSet();
+      await new Promise((r) => setTimeout(r, 0));
+      expect(done).toBe(false);
+
+      finishSecond(texture);
+      await waiting;
+      expect(done).toBe(true);
+    });
   });
 
   // -----------------------------------------------------------------------
