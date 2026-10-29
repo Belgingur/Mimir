@@ -318,6 +318,7 @@ describe("normalizeModelList", () => {
           domain_polygon: [[[0, 0], [1, 0], [1, 1], [0, 0]]],
           preferred: true,
           view: { center: [0, 55], zoom: 4.5 },
+          meteogram: { client: "site", forecast: "upstream/m" },
         },
       ],
     });
@@ -331,6 +332,7 @@ describe("normalizeModelList", () => {
       domainPolygon: [[[0, 0], [1, 0], [1, 1], [0, 0]]],
       preferred: true,
       view: { center: [0, 55], zoom: 4.5 },
+      meteogram: { client: "site", forecast: "upstream/m" },
       available: true,
     });
   });
@@ -344,6 +346,7 @@ describe("normalizeModelList", () => {
           domain_mask: { cols: 0, rows: 2, runs: "1.2" },
           view: { center: [0], zoom: 4 },
           preferred: "yes",
+          meteogram: { client: "site" },
         },
         { id: "N", domain_mask: { cols: 2, rows: 1, runs: "<script>" } },
       ],
@@ -352,6 +355,7 @@ describe("normalizeModelList", () => {
     expect(meta.M.bbox).toBeUndefined();
     expect(meta.M.domainMask).toBeUndefined();
     expect(meta.M.view).toBeUndefined();
+    expect(meta.M.meteogram).toBeUndefined();
     expect(meta.M.preferred).toBe(false);
     expect(meta.N.domainMask).toBeUndefined();
   });

@@ -1094,6 +1094,8 @@ export function createControllers(config: ControllerFactoryConfig) {
         meteogramController = setupMeteogram({
           mapWrap: dom.mapWrap,
           getSelectedModel: () => catalogController.inhouseSelectedModel,
+          getMeteogramRef: (model: string) =>
+            catalogController.getModelCoverage(model)?.meteogram,
           getLayerMode: () => uiState.layerMode,
           getLocale,
           // The coordinate the crosshair actually sampled its displayed value

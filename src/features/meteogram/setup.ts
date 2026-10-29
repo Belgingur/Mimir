@@ -7,7 +7,12 @@ import {
   MeteogramController,
   type MeteogramWidget,
 } from "./MeteogramController";
-import { resolveMeteogramClientName } from "./meteogramConfig";
+import type { MeteogramRef } from "../../lib/inhouseTypes";
+import {
+  forecastAttributes,
+  resolveMeteogramTarget,
+  type MeteogramTarget,
+} from "./meteogramConfig";
 import { injectMeteogramModal } from "./meteogramModal";
 import { createMeteogramTrigger } from "./meteogramTrigger";
 
@@ -30,6 +35,8 @@ export interface SetupMeteogramDeps {
    *  it can stay put while it is on screen. */
   readonly onOpenStateChange?: (open: boolean) => void;
   readonly getSelectedModel: () => string;
+  /** The `meteogram` field of a model's catalog entry, if it has one. */
+  readonly getMeteogramRef?: (modelId: string) => MeteogramRef | undefined;
   readonly getLayerMode: () => string;
   readonly getLocale: () => string;
   /** Current map centre — the point the mobile crosshair trigger loads. */
@@ -94,17 +101,29 @@ export function setupMeteogram(deps: SetupMeteogramDeps): MeteogramController {
 
   const controller = new MeteogramController({
     dom,
-    createWidget: (clientName: string): MeteogramWidget => {
+    createWidget: (target: MeteogramTarget): MeteogramWidget => {
       const el = document.createElement("bel-meteogram");
       el.id = "meteogram-widget";
-      el.setAttribute("client-name", clientName);
+      el.setAttribute("client-name", target.client);
       // The widget derives the config URL from its own script origin by
       // default; bundled into Mimir that would be Mimir's origin, so the
       // full config URL is passed explicitly.
       el.setAttribute(
         "api-url",
-        `${apiBase}/api/v2/widget/meteo/config/${clientName}`,
+        `${apiBase}/api/v2/widget/meteo/config/${encodeURIComponent(target.client)}`,
       );
+      // A config with many forecasts (one per map model): show the selected
+      // model's, and keep the widget's own model chips out of its settings, as
+      // picking another there would put the chart out of step with the map.
+      const forecast = target.forecast
+        ? forecastAttributes(target.forecast)
+        : null;
+      if (forecast) {
+        el.setAttribute("forecast-type", forecast.type);
+        el.setAttribute("forecast-name", forecast.name);
+        if (forecast.domain) el.setAttribute("domain", forecast.domain);
+        el.setAttribute("hide-models", "");
+      }
       // No `hours`: in full mode the widget takes the whole run — it sends no
       // `duration` and the API returns every timestep the forecast has, so the
       // graph ends where the data ends (a short-range model plots its three
@@ -136,7 +155,8 @@ export function setupMeteogram(deps: SetupMeteogramDeps): MeteogramController {
       return el;
     },
     getSelectedModel: deps.getSelectedModel,
-    resolveClientName: resolveMeteogramClientName,
+    resolveTarget: (modelId: string) =>
+      resolveMeteogramTarget(modelId, deps.getMeteogramRef?.(modelId)),
     getLocale: deps.getLocale,
     getLayerMode: deps.getLayerMode,
     isMeteogramTarget: deps.isMeteogramTarget,

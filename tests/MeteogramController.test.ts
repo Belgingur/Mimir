@@ -55,7 +55,7 @@ function buildController(overrides: Partial<MeteogramControllerDeps> = {}): {
     dom,
     createWidget,
     getSelectedModel: () => "GFS",
-    resolveClientName: (id) => id.toUpperCase(),
+    resolveTarget: (id) => ({ client: id.toUpperCase() }),
     getLocale: () => "en",
     getLayerMode: () => "temperature",
     isDev: false,
@@ -109,12 +109,37 @@ describe("MeteogramController", () => {
     await controller.openAt(-20, 64);
 
     expect(createWidget).toHaveBeenCalledTimes(2);
-    expect(createWidget).toHaveBeenLastCalledWith("ISLAND-9");
+    expect(createWidget).toHaveBeenLastCalledWith({ client: "ISLAND-9" });
     expect(dom.widgetHost.contains(widget)).toBe(false);
     expect(controller.getWidget()).not.toBe(widget);
     expect(controller.getWidget()?.getAttribute("forecast-label")).toBe(
       "ISLAND-9",
     );
+  });
+
+  it("replaces the widget for another forecast of the same config, keeps it for the same one", async () => {
+    const forecasts: Record<string, string> = {
+      GFS: "upstream/gfs",
+      "GFS-COPY": "upstream/gfs",
+      RAP: "upstream/rap",
+    };
+    let model = "GFS";
+    const { controller, createWidget } = buildController({
+      getSelectedModel: () => model,
+      resolveTarget: (id) => ({ client: "site", forecast: forecasts[id] }),
+    });
+    await controller.openAt(-20, 64);
+    model = "GFS-COPY";
+    await controller.openAt(-20, 64);
+    expect(createWidget).toHaveBeenCalledTimes(1);
+
+    model = "RAP";
+    await controller.openAt(-20, 64);
+    expect(createWidget).toHaveBeenCalledTimes(2);
+    expect(createWidget).toHaveBeenLastCalledWith({
+      client: "site",
+      forecast: "upstream/rap",
+    });
   });
 
   it("mirrors widget status events into the modal status line", async () => {
@@ -489,7 +514,7 @@ describe("MeteogramController", () => {
       model = "ISLAND-9";
       controller.syncOpenState();
       expect(createWidget).toHaveBeenCalledTimes(2);
-      expect(createWidget).toHaveBeenLastCalledWith("ISLAND-9");
+      expect(createWidget).toHaveBeenLastCalledWith({ client: "ISLAND-9" });
       expect(controller.isOpen).toBe(true);
     });
 

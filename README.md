@@ -137,6 +137,7 @@ Only `id` is required. Everything the viewer does with a model comes from this f
 | `margin_km` | Shrinks the domain inward when choosing a model for a location, to stay clear of edge effects. |
 | `preferred` | Wins the choice of model wherever it has data, ahead of finer models. For a deployment's own model of a region. |
 | `view` | `{ "center": [lon, lat], "zoom": z }` to frame the model when the reader is looking outside it. Without it, the extent of its data is framed. Useful for domains over a pole, whose data spans every longitude. |
+| `meteogram` | `{ "client": "<config>", "forecast": "<forecast id>" }`: the WOD meteo config the model's meteogram comes from, and which of its forecasts (`upstream/<name>` or `<type>/<name>/<domain>`). One config can serve every model of a site. Without it, the meteogram uses a config named after the model. |
 | `available` / `disabled` | `"available": false` or `"disabled": true` keeps a listed model out of automatic choices. |
 
 The order of `models` is the order of the model chooser, and settles ties between equally fine models. `netcdf2image.py` fills `bbox`, `domain_mask` and `resolution_km` in as it converts each model; `scripts/build_model_coverage.py` does it for an existing catalog. Both leave every other field, and the order, as they found it. See [Model Coverage](scripts/README.md#model-coverage).

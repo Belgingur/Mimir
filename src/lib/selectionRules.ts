@@ -1,6 +1,7 @@
 import type { LayerMode } from "./viewerTypes";
 import type {
   DomainMask,
+  MeteogramRef,
   ModelBBox,
   ModelCoverage,
   ModelView,
@@ -47,6 +48,14 @@ const parseView = (raw: unknown): ModelView | undefined => {
     return undefined;
   }
   return { center: [center[0], center[1]], zoom };
+};
+
+const parseMeteogramRef = (raw: unknown): MeteogramRef | undefined => {
+  if (!raw || typeof raw !== "object") return undefined;
+  const { client, forecast } = raw as Record<string, unknown>;
+  if (typeof client !== "string" || !client.trim()) return undefined;
+  if (typeof forecast !== "string" || !forecast.trim()) return undefined;
+  return { client: client.trim(), forecast: forecast.trim() };
 };
 
 /**
@@ -129,6 +138,7 @@ export const normalizeModelList = (
           typeof entry.margin_km === "number" ? entry.margin_km : undefined,
         preferred: entry.preferred === true,
         view: parseView(entry.view),
+        meteogram: parseMeteogramRef(entry.meteogram),
         // Healthy unless explicitly disabled by ops.
         available: !(entry.available === false || entry.disabled === true),
       };
