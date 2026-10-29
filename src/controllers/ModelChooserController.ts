@@ -13,6 +13,8 @@ export interface ModelChooserControllerDeps {
   readonly getModels: () => string[];
   readonly getSelectedModel: () => string;
   readonly getModelResolutionMeters: (model: string) => number | null;
+  /** The name models.json gives a model (`title`); the id is shown without one. */
+  readonly getModelTitle?: (model: string) => string | undefined;
   readonly onModelSelect: (model: string) => void;
   readonly isDev?: boolean;
 }
@@ -61,6 +63,31 @@ export class ModelChooserController {
       return `${parseFloat(km.toFixed(2))}km`;
     }
     return `${resolutionMeters}m`;
+  }
+
+  /** What the chooser calls a model: its catalog title, else its id. */
+  modelLabel(model: string): string {
+    return this.deps.getModelTitle?.(model) || model;
+  }
+
+  /**
+   * A model's name and resolution as spans. Set as text, never as HTML: the
+   * title comes from the served models.json.
+   */
+  private labelSpans(
+    model: string,
+    nameClass: string,
+    metaClass: string,
+  ): HTMLSpanElement[] {
+    const name = document.createElement("span");
+    if (nameClass) name.className = nameClass;
+    name.textContent = this.modelLabel(model);
+    const resolution = this.formatResolutionLabel(model);
+    if (!resolution) return [name];
+    const meta = document.createElement("span");
+    meta.className = metaClass;
+    meta.textContent = resolution;
+    return [name, meta];
   }
 
   getCollapsedSlots(): { visible: string[]; remaining: number } {
@@ -124,8 +151,9 @@ export class ModelChooserController {
       const button = document.createElement("button");
       button.type = "button";
       button.className = `model-slot${model === selectedModel ? " model-slot--active" : ""}`;
-      const resolution = this.formatResolutionLabel(model);
-      button.innerHTML = `<span class="model-slot__name">${model}</span>${resolution ? `<span class="model-slot__meta">${resolution}</span>` : ""}`;
+      button.replaceChildren(
+        ...this.labelSpans(model, "model-slot__name", "model-slot__meta"),
+      );
       button.addEventListener("click", () => this.selectModel(model));
       dom.barEl!.appendChild(button);
     });
@@ -146,8 +174,9 @@ export class ModelChooserController {
       const button = document.createElement("button");
       button.type = "button";
       button.className = `model-slot${model === selectedModel ? " model-slot--active" : ""}`;
-      const resolution = this.formatResolutionLabel(model);
-      button.innerHTML = `<span class="model-slot__name">${model}</span>${resolution ? `<span class="model-slot__meta">${resolution}</span>` : ""}`;
+      button.replaceChildren(
+        ...this.labelSpans(model, "model-slot__name", "model-slot__meta"),
+      );
       button.addEventListener("click", () => this.selectModel(model));
       dom.panelEl!.appendChild(button);
     });
@@ -162,7 +191,7 @@ export class ModelChooserController {
     const selected = this.deps.getSelectedModel();
     const resolution = this.formatResolutionLabel(selected);
 
-    pillNameEl.textContent = selected || "";
+    pillNameEl.textContent = selected ? this.modelLabel(selected) : "";
     pillMetaEl.textContent = resolution;
 
     popoverEl.innerHTML = "";
@@ -171,9 +200,9 @@ export class ModelChooserController {
       btn.type = "button";
       btn.className = `model-popover__item${model === selected ? " is-active" : ""}`;
       btn.dataset.model = model;
-      const res = this.formatResolutionLabel(model);
-      btn.dataset.modelMeta = res;
-      btn.innerHTML = `<span>${model}</span>${res ? `<span class="model-popover__meta">${res}</span>` : ""}`;
+      btn.dataset.modelTitle = this.modelLabel(model);
+      btn.dataset.modelMeta = this.formatResolutionLabel(model);
+      btn.replaceChildren(...this.labelSpans(model, "", "model-popover__meta"));
       popoverEl.appendChild(btn);
     }
   }
@@ -209,7 +238,7 @@ export class ModelChooserController {
 
       const name = item.dataset.model ?? "";
       const meta = item.dataset.modelMeta ?? "";
-      if (pillNameEl) pillNameEl.textContent = name;
+      if (pillNameEl) pillNameEl.textContent = item.dataset.modelTitle ?? name;
       if (pillMetaEl) pillMetaEl.textContent = meta;
 
       setTimeout(() => {

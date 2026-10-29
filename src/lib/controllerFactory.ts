@@ -358,6 +358,8 @@ export function createControllers(config: ControllerFactoryConfig) {
       getSelectedModel: () => catalogController.inhouseSelectedModel,
       getModelResolutionMeters: (model: string) =>
         catalogController.getModelResolutionMeters(model),
+      getModelTitle: (model: string) =>
+        catalogController.getModelCoverage(model)?.title,
       onModelSelect: (model: string) => {
         dom.inhouseModelSelect.value = model;
         dom.inhouseModelSelect.dispatchEvent(
