@@ -8,6 +8,7 @@ This directory contains Python helpers for converting NetCDF forecast model outp
 | `build_model_coverage.py` | Fill in model coverage (`bbox`, `domain_mask`, `resolution_km`) for an existing catalog's `models.json` |
 | `catalog_coverage.py` | Shared coverage code used by the two scripts above (tests: `test_catalog_coverage.py`) |
 | `catalog_io.py` | Safe catalog writes used by the same two scripts (tests: `test_catalog_io.py`) |
+| `build_site_catalog.py` | Build the `models.json` one site publishes: some of the models, in its own order, with its own default (tests: `test_build_site_catalog.py`) |
 | `stitch_rap_forecast.py` | Extend a short RAP run with frames from the previous long RAP run |
 | `stitch_icon_forecast.py` | Extend a short ICON-EU run with frames from the previous long ICON run |
 | `config_GFS.yml` | Example config for GFS atmospheric output |
@@ -96,6 +97,27 @@ python build_model_coverage.py https://example.org > models.json
 ```
 
 It reads each model's latest run, so run it while every model has one. Test the shared code with `python -m unittest discover -s scripts`.
+
+## Publishing to Several Sites
+
+When the same frames are published to more than one site, each site can show its own selection of the models. Keep one site file per site, listing the models it shows in the order its chooser lists them:
+
+```yaml
+models:
+  - id: ICON-EU
+    default: true
+  - id: GFS
+    title: GFS (global)
+  - GWES
+```
+
+and build that site's `models.json` from the full catalog as you publish to it:
+
+```bash
+python build_site_catalog.py <out-root>/forecast-data/models.json site.yml --out site-models.json
+```
+
+Each listed model keeps its catalog entry (coverage, `view`, `preferred`, ...), and any field the site file gives replaces the catalog's. The default is the site's alone: the model it marks `default: true`, or its first model. A listed model that is not in the catalog yet is reported and left out. A site file that lists no model of the catalog, lists one twice or marks two defaults is refused with exit code 1, and nothing is written. The full catalog is never changed. The script imports `catalog_io.py`; deploy the two together.
 
 ## Config Files
 
