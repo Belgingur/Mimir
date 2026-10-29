@@ -70,6 +70,8 @@ export type ModelCoverage = {
   preferred?: boolean;
   /** Where to frame the model when the reader is looking outside it. */
   view?: ModelView;
+  /** The WOD meteo config and forecast its meteogram comes from. */
+  meteogram?: MeteogramRef;
   /**
    * Health flag: `false` when ops mark the model as having no data, so
    * selection skips it. Defaults to `true`.
@@ -87,6 +89,16 @@ export type DomainMask = {
   cols: number;
   rows: number;
   runs: string;
+};
+
+/**
+ * A model's meteogram: `client` names the WOD meteo config (one per site, listing
+ * many forecasts), `forecast` the id of the forecast in it, e.g. `upstream/x` or
+ * `schedule/x/2`.
+ */
+export type MeteogramRef = {
+  client: string;
+  forecast: string;
 };
 
 /** A camera position for framing a model: `center` is [lon, lat]. */

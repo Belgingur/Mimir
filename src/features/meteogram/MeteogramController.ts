@@ -1,6 +1,7 @@
 import { t } from "../../lib/i18n";
 import type { BelMeteogramLocationDetail } from "../../vendor/bel-meteogram/bel-meteogram";
 import type { MeteogramTrigger } from "./meteogramTrigger";
+import { meteogramTargetKey, type MeteogramTarget } from "./meteogramConfig";
 import { readMapPanelPoint, writeMapPanelPoint, clearMapPanelPoint } from "./mapPanelState";
 
 /**
@@ -38,9 +39,9 @@ export interface MeteogramWidget extends HTMLElement {
 
 export interface MeteogramControllerDeps {
   readonly dom: MeteogramDomRefs;
-  readonly createWidget: (clientName: string) => MeteogramWidget;
+  readonly createWidget: (target: MeteogramTarget) => MeteogramWidget;
   readonly getSelectedModel: () => string;
-  readonly resolveClientName: (modelId: string) => string;
+  readonly resolveTarget: (modelId: string) => MeteogramTarget;
   readonly getLocale: () => string;
   readonly getLayerMode: () => string;
   /** True when the current model/layer/view selection would resolve a map click
@@ -74,7 +75,8 @@ export interface MeteogramControllerDeps {
 export class MeteogramController {
   private clickTimer: number | null = null;
   private widget: MeteogramWidget | null = null;
-  private currentClientName: string | null = null;
+  /** {@link meteogramTargetKey} of the target the widget was created for. */
+  private currentTargetKey: string | null = null;
   /** True when the point last opened/reloaded fell outside the selected model's
    *  domain bounds. Held across the widget's "loading" phase so the early hint
    *  survives until the fetch confirms (error) or refutes (ready) it. */
@@ -215,8 +217,8 @@ export class MeteogramController {
     this.trigger?.refresh();
   }
 
-  resolveClientNameForModel(modelId: string): string {
-    return this.deps.resolveClientName(modelId);
+  resolveTargetForModel(modelId: string): MeteogramTarget {
+    return this.deps.resolveTarget(modelId);
   }
 
   /** Locales the widget ships strings for (mirrors Mímir's registered locales).
@@ -246,32 +248,33 @@ export class MeteogramController {
   }
 
   /**
-   * Ensure the widget in `dom.widgetHost` targets `clientName` and `lat/lng`.
-   * A new element is created when the client changes; its attributes are set
-   * before it is appended so the widget loads exactly once, with the right
-   * config, on connect.
+   * Ensure the widget in `dom.widgetHost` shows `target` at `lat/lng`. A new
+   * element is created when the config or forecast changes, since the widget
+   * reads both once; its attributes are set before it is appended so it loads
+   * exactly once, with the right forecast, on connect.
    */
   configureMeteogram(
-    clientName: string,
+    target: MeteogramTarget,
     lat: number,
     lng: number,
-  ): { clientName: string } {
+  ): { target: MeteogramTarget } {
     const label = this.pointLabel(lng, lat);
     // Show Mímir's own model name in the widget rather than the WOD config's
     // (e.g. "ISLAND-9" instead of "Ísafjörður - 2.5km"). See the widget's
     // `forecast-label` attribute.
     const modelLabel = this.deps.getSelectedModel();
-    if (this.widget && this.currentClientName === clientName) {
+    const key = meteogramTargetKey(target);
+    if (this.widget && this.currentTargetKey === key) {
       this.widget.setAttribute("language", this.widgetLanguage());
       this.widget.setAttribute("forecast-label", modelLabel);
       this.applyLocationName(this.widget, lng, lat);
       this.widget.loadChartLocation(lat, lng, label);
-      return { clientName };
+      return { target };
     }
     if (this.widget) {
       this.widget.remove();
     }
-    const fresh = this.deps.createWidget(clientName);
+    const fresh = this.deps.createWidget(target);
     fresh.setAttribute("language", this.widgetLanguage());
     fresh.setAttribute("forecast-label", modelLabel);
     fresh.setAttribute("location-lat", String(lat));
@@ -280,8 +283,8 @@ export class MeteogramController {
     this.attachWidgetListeners(fresh);
     this.deps.dom.widgetHost.appendChild(fresh);
     this.widget = fresh;
-    this.currentClientName = clientName;
-    return { clientName };
+    this.currentTargetKey = key;
+    return { target };
   }
 
   /**
@@ -343,7 +346,7 @@ export class MeteogramController {
   async openAt(lng: number, lat: number): Promise<void> {
     const { dom } = this.deps;
     const modelId = this.deps.getSelectedModel();
-    const clientName = this.resolveClientNameForModel(modelId);
+    const target = this.resolveTargetForModel(modelId);
     const wasOpen = this.isOpen;
     writeMapPanelPoint(lat, lng);
     dom.modal.removeAttribute("inert");
@@ -367,12 +370,12 @@ export class MeteogramController {
 
     if (this.deps.isDev) {
       console.debug(
-        `Opening meteogram for model ${modelId} using deployment ${clientName}`,
+        `Opening meteogram for model ${modelId} using ${meteogramTargetKey(target)}`,
       );
     }
 
     try {
-      this.configureMeteogram(clientName, lat, lng);
+      this.configureMeteogram(target, lat, lng);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       dom.status.textContent = t("meteogram.loadFailed", {
@@ -390,7 +393,7 @@ export class MeteogramController {
    *   icons (iconography) view, the waves layer, or the GWES model — so the
    *   meteogram is only ever open in forecast view (request 1).
    * - Otherwise, when the bottom model selector picked a model that resolves to
-   *   a different WOD deployment, reloads the chart at the same point so the
+   *   a different WOD config or forecast, reloads the chart at the same point so the
    *   selector drives the meteogram (request 2).
    *
    * A no-op while closed, and while open with an unchanged target/model (so map
@@ -404,10 +407,8 @@ export class MeteogramController {
     }
     const point = readMapPanelPoint();
     if (!point) return;
-    const clientName = this.resolveClientNameForModel(
-      this.deps.getSelectedModel(),
-    );
-    if (clientName !== this.currentClientName) {
+    const target = this.resolveTargetForModel(this.deps.getSelectedModel());
+    if (meteogramTargetKey(target) !== this.currentTargetKey) {
       void this.openAt(point.lon, point.lat);
     }
   }
