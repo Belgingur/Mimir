@@ -365,6 +365,42 @@ describe("ModelChooserController", () => {
       expect(meta!.textContent).toBe("25km");
     });
 
+    it("names models by their catalog title, else their id", () => {
+      const ctrl = new ModelChooserController(
+        makeDeps({
+          getModelTitle: (model) =>
+            model === "gfs-1" ? "GFS (global)" : undefined,
+        }),
+      );
+      ctrl["expanded"] = true;
+      ctrl.render();
+      const names = (el: HTMLElement) =>
+        [...el.querySelectorAll(".model-slot__name")].map((n) => n.textContent);
+      expect(names(ctrl["deps"].dom.barEl!)).toEqual([
+        "GFS (global)",
+        "harmonie-2",
+        "icon-3",
+      ]);
+      expect(names(ctrl["deps"].dom.panelEl!)).toEqual([
+        "GFS (global)",
+        "harmonie-2",
+        "icon-3",
+      ]);
+    });
+
+    it("shows a title as text, not markup", () => {
+      const ctrl = new ModelChooserController(
+        makeDeps({
+          getModels: () => ["gfs-1"],
+          getModelTitle: () => "<b>GFS</b>",
+        }),
+      );
+      ctrl.render();
+      const name = ctrl["deps"].dom.barEl!.querySelector(".model-slot__name")!;
+      expect(name.textContent).toBe("<b>GFS</b>");
+      expect(name.querySelector("b")).toBeNull();
+    });
+
     it("toggles expanded state via more button click", () => {
       const ctrl = new ModelChooserController(
         makeDeps({
@@ -506,6 +542,58 @@ describe("ModelChooserController", () => {
       ctrl.saveNonWavesSelection("icon-3", "2026-03-18_12");
       expect(ctrl.lastNonWavesModel).toBe("icon-3");
       expect(ctrl.lastNonWavesAnalysis).toBe("2026-03-18_12");
+    });
+  });
+
+  describe("pill", () => {
+    function pillDeps(overrides: Partial<ModelChooserControllerDeps> = {}) {
+      const base = makeDeps(overrides);
+      const pillBtn = document.createElement("button");
+      const popoverEl = document.createElement("div");
+      const pillNameEl = document.createElement("span");
+      const pillMetaEl = document.createElement("span");
+      document.body.append(pillBtn, popoverEl);
+      return {
+        ...base,
+        dom: { ...base.dom, pillBtn, popoverEl, pillNameEl, pillMetaEl },
+      };
+    }
+
+    it("names the selected model and the popover items by title", () => {
+      const deps = pillDeps({
+        getModelTitle: (model) =>
+          model === "harmonie-2" ? "Harmonie (EC)" : undefined,
+      });
+      const ctrl = new ModelChooserController(deps);
+      ctrl.syncPill();
+      expect(deps.dom.pillNameEl.textContent).toBe("gfs-1");
+      const items = [
+        ...deps.dom.popoverEl.querySelectorAll(".model-popover__item"),
+      ];
+      expect(items.map((i) => i.firstElementChild!.textContent)).toEqual([
+        "gfs-1",
+        "Harmonie (EC)",
+        "icon-3",
+      ]);
+    });
+
+    it("selects by id and shows the title in the pill", () => {
+      const onModelSelect = vi.fn();
+      const deps = pillDeps({
+        getModelTitle: (model) =>
+          model === "harmonie-2" ? "Harmonie (EC)" : undefined,
+        onModelSelect,
+      });
+      const ctrl = new ModelChooserController(deps);
+      ctrl.initPill();
+      ctrl.syncPill();
+      const item = deps.dom.popoverEl.querySelector(
+        '[data-model="harmonie-2"]',
+      ) as HTMLElement;
+      item.click();
+      expect(onModelSelect).toHaveBeenCalledWith("harmonie-2");
+      expect(deps.dom.pillNameEl.textContent).toBe("Harmonie (EC)");
+      expect(deps.dom.pillMetaEl.textContent).toBe("2.5km");
     });
   });
 
