@@ -228,6 +228,8 @@ Both stitch scripts operate on the catalog layout inside `<out-root>/forecast-da
 
 RAP short runs contain 22 hourly frames; long runs contain 52. The stitcher copies tail frames from the previous long run and updates each variable's `manifest.json`.
 
+The long run must be 1–5 h older than the short run; an older one is never used. A late long run can arrive after the short run that follows it, so the stitcher waits up to `--wait-minutes` (default 20) for that run to be written in full. After that it stitches the variables that are ready and fails if none are.
+
 ```bash
 python stitch_rap_forecast.py \
     --root ./output/forecast-data \
@@ -235,7 +237,7 @@ python stitch_rap_forecast.py \
     --analysis 2026-03-11_05
 ```
 
-Options: `--link-mode hardlink|symlink|copy` (default: `hardlink`), `--dry-run`, `--verbose`.
+Options: `--link-mode hardlink|symlink|copy` (default: `hardlink`), `--wait-minutes N` (default: 20; `--dry-run` never waits), `--dry-run`, `--verbose`.
 
 ### ICON-EU (`stitch_icon_forecast.py`)
 

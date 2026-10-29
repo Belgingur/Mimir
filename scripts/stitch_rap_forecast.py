@@ -12,6 +12,10 @@ After exporting a short run, this script appends tail frames from the most
 recent compatible long run and rewrites each variable manifest. The age in
 hours between the two analysis times determines where the tail starts in the
 long run's index space (normally 1–5 h).
+
+A late long run can arrive after the short run that follows it, and its
+conversion can still be running when this script starts. The script waits for
+it (--wait-minutes) rather than stitching from a half-written run.
 """
 from __future__ import annotations
 
@@ -20,6 +24,7 @@ import json
 import os
 import shutil
 import sys
+import time
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -29,6 +34,7 @@ from typing import Any
 EXPECTED_SHORT_COUNT = 22
 EXPECTED_LONG_COUNT = 52
 VALID_AGE_STEPS = {1, 2, 3, 4, 5}
+POLL_SECONDS = 30
 COMPATIBILITY_KEYS = (
     "projection",
     "bounds",
@@ -52,6 +58,12 @@ def parse_args() -> argparse.Namespace:
         choices=("hardlink", "symlink", "copy"),
         default="hardlink",
         help="How to publish appended files (default: hardlink)",
+    )
+    parser.add_argument(
+        "--wait-minutes",
+        type=float,
+        default=20,
+        help="How long to wait for the previous long run to be complete (default: 20; 0 = no wait)",
     )
     parser.add_argument("--dry-run", action="store_true", help="Print what would happen without changing files")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
@@ -302,36 +314,67 @@ def stitch_variable_dir(
     write_manifest(current_manifest_path, stitched_manifest, dry_run, verbose)
 
 
-def find_previous_long_run(root: Path, model: str, current_analysis_time: datetime, verbose: bool) -> Path:
+def long_run_variables(run_dir: Path) -> set[str]:
+    """Names of the variables in *run_dir* whose manifest already has the long-run frame count."""
+    complete: set[str] = set()
+    for variable_dir in find_variable_dirs(run_dir):
+        try:
+            manifest = load_manifest(variable_dir / "manifest.json")
+        except RuntimeError:
+            continue  # being written
+        if manifest.get("count") == EXPECTED_LONG_COUNT:
+            complete.add(variable_dir.name)
+    return complete
+
+
+def find_previous_long_run(
+    root: Path,
+    model: str,
+    current_analysis_time: datetime,
+    required_variables: set[str],
+    wait_seconds: float,
+    verbose: bool,
+) -> Path:
+    """
+    Find the long run 1–5 h before the current run. Only one long run can be in that window,
+    so an older one is never used. While that run is missing or lacks any of
+    *required_variables*, poll until *wait_seconds* have passed, then settle for what is there.
+    """
     model_dir = root / model
     if not model_dir.is_dir():
         fail(f"Model directory does not exist: {model_dir}")
 
-    candidates: list[tuple[datetime, Path]] = []
-    for run_dir in sorted(path for path in model_dir.iterdir() if path.is_dir()):
-        try:
-            run_time = get_run_analysis_time(run_dir)
-        except RuntimeError as exc:
-            warn(f"Skipping run {run_dir}: {exc}")
-            continue
-        if run_time >= current_analysis_time:
-            continue
-        try:
-            run_count, _ = infer_run_count(run_dir)
-        except RuntimeError as exc:
-            warn(f"Skipping run {run_dir}: {exc}")
-            continue
-        if run_count == EXPECTED_LONG_COUNT:
-            candidates.append((run_time, run_dir))
+    deadline = time.monotonic() + wait_seconds
+    while True:
+        best: tuple[datetime, Path, set[str]] | None = None
+        for run_dir in sorted(path for path in model_dir.iterdir() if path.is_dir()):
+            try:
+                run_time = get_run_analysis_time(run_dir)
+            except RuntimeError:
+                continue  # no manifests yet
+            age_hours = (current_analysis_time - run_time).total_seconds() / 3600
+            if age_hours not in VALID_AGE_STEPS:
+                continue
+            variables = long_run_variables(run_dir)
+            if variables and (best is None or run_time > best[0]):
+                best = (run_time, run_dir, variables)
 
-    if not candidates:
-        fail(
-            f"No previous long RAP run ({EXPECTED_LONG_COUNT} steps) found under {model_dir} "
-            f"before {current_analysis_time.isoformat()}"
-        )
+        missing = required_variables - best[2] if best else required_variables
+        if best and not missing:
+            break
+        if time.monotonic() >= deadline:
+            if best is None:
+                fail(
+                    f"No long RAP run ({EXPECTED_LONG_COUNT} steps) from 1–5 h before "
+                    f"{current_analysis_time.isoformat()} under {model_dir}"
+                )
+            warn(f"{best[1].name} is still missing {sorted(missing)}; stitching without them")
+            break
+        what = f"{best[1].name} to finish ({len(missing)} variables to go)" if best else "the previous long run"
+        print(f"Waiting for {what}", flush=True)
+        time.sleep(min(POLL_SECONDS, max(0.0, deadline - time.monotonic())))
 
-    candidates.sort(key=lambda item: item[0])
-    previous_time, previous_dir = candidates[-1]
+    previous_time, previous_dir, _ = best
     log(f"Using previous long run {previous_dir.name} at {previous_time.isoformat()}", verbose=verbose)
     return previous_dir
 
@@ -343,6 +386,7 @@ def stitch_run(
     link_mode: str,
     dry_run: bool,
     verbose: bool,
+    wait_seconds: float = 0,
 ) -> int:
     run_dir = root / model / analysis
     if not run_dir.is_dir():
@@ -360,7 +404,14 @@ def stitch_run(
             f"Current run count for {run_dir} is {current_count}; expected {EXPECTED_SHORT_COUNT} or {EXPECTED_LONG_COUNT}"
         )
 
-    previous_long_run_dir = find_previous_long_run(root, model, current_analysis_time, verbose)
+    previous_long_run_dir = find_previous_long_run(
+        root,
+        model,
+        current_analysis_time,
+        {path.name for path in current_variable_dirs},
+        wait_seconds,
+        verbose,
+    )
     previous_count, previous_variable_dirs = infer_run_count(previous_long_run_dir)
     if previous_count != EXPECTED_LONG_COUNT:
         fail(f"Previous long run {previous_long_run_dir} did not resolve to {EXPECTED_LONG_COUNT} steps")
@@ -420,6 +471,7 @@ def main() -> int:
             link_mode=args.link_mode,
             dry_run=args.dry_run,
             verbose=args.verbose,
+            wait_seconds=0 if args.dry_run else args.wait_minutes * 60,
         )
     except RuntimeError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
