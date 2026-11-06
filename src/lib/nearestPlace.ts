@@ -57,9 +57,66 @@ export interface ExtraPlace {
 export const DEFAULT_MAX_DISTANCE_KM = 250;
 
 const DEFAULT_DATASET_URL = "/data/places.json";
+const DEFAULT_OVERRIDES_URL = "/data/places-overrides.json";
+
+/**
+ * One correction to a Natural Earth point, from public/data/places-overrides.json.
+ *
+ * Natural Earth is a small-scale dataset: at the zooms Mímir is read at, some
+ * of its points sit kilometres from the town they name (Borgarnes 4.5 km).
+ * Corrections live in their own file so a regenerated places.json can't wipe
+ * them. Each names the point it corrects (`from`, as [lon, lat]); an upstream
+ * update that moves or fixes that point leaves the override unused instead of
+ * dragging a new point somewhere wrong.
+ */
+export interface PlaceOverride {
+  readonly name: string;
+  readonly countryCode: string;
+  readonly from: readonly [lon: number, lat: number];
+  readonly to: readonly [lon: number, lat: number];
+}
+
+interface OverridesPayload {
+  readonly overrides?: readonly PlaceOverride[];
+}
+
+/** Coordinates in places.json carry 3 decimals; this only absorbs float noise. */
+const SAME_COORDINATE_DEG = 1e-6;
+
+/**
+ * The dataset with each override's place moved to its corrected point. Returns
+ * the input array itself when nothing applies, and reports overrides that no
+ * longer match a place (the dataset changed under them) so they can be revisited.
+ */
+export function applyPlaceOverrides(
+  places: readonly PlaceTuple[],
+  overrides: readonly PlaceOverride[],
+): { places: readonly PlaceTuple[]; unused: readonly PlaceOverride[] } {
+  if (overrides.length === 0) return { places, unused: [] };
+  const unused = new Set(overrides);
+  let corrected: PlaceTuple[] | null = null;
+  places.forEach((place, i) => {
+    const [name, lon, lat, , countryCode] = place;
+    const override = overrides.find(
+      (o) =>
+        unused.has(o) &&
+        o.name === name &&
+        o.countryCode === countryCode &&
+        Math.abs(o.from[0] - lon) < SAME_COORDINATE_DEG &&
+        Math.abs(o.from[1] - lat) < SAME_COORDINATE_DEG,
+    );
+    if (!override) return;
+    corrected ??= [...places];
+    corrected[i] = [name, override.to[0], override.to[1], ...place.slice(3)] as PlaceTuple;
+    unused.delete(override);
+  });
+  return { places: corrected ?? places, unused: [...unused] };
+}
 
 export interface NearestPlaceIndexOptions {
   readonly url?: string;
+  /** Corrections to the dataset's points; null loads none. */
+  readonly overridesUrl?: string | null;
   readonly maxDistanceKm?: number;
   /**
    * Additional, already-in-memory places to consider — the app's model-specific
@@ -81,6 +138,7 @@ export interface NearestPlaceIndexOptions {
  */
 export class NearestPlaceIndex {
   private readonly url: string;
+  private readonly overridesUrl: string | null;
   private readonly maxDistanceKm: number;
   private readonly getExtraPlaces?: () => readonly ExtraPlace[];
   private readonly isDev: boolean;
@@ -91,6 +149,10 @@ export class NearestPlaceIndex {
 
   constructor(options: NearestPlaceIndexOptions = {}) {
     this.url = options.url ?? DEFAULT_DATASET_URL;
+    this.overridesUrl =
+      options.overridesUrl === undefined
+        ? DEFAULT_OVERRIDES_URL
+        : options.overridesUrl;
     this.maxDistanceKm = options.maxDistanceKm ?? DEFAULT_MAX_DISTANCE_KM;
     this.getExtraPlaces = options.getExtraPlaces;
     this.isDev = options.isDev ?? false;
@@ -116,14 +178,27 @@ export class NearestPlaceIndex {
 
   private async doLoad(): Promise<void> {
     try {
+      // Fetched alongside the dataset, so the corrections cost no extra wait.
+      const overridesLoad = this.loadOverrides();
       // This public asset keeps a stable URL across deployments. Revalidate it
       // so a browser cannot keep an older tuple schema while loading new code;
       // a valid cached response can still be reused after a 304.
       const resp = await fetch(this.url, { cache: "no-cache" });
       if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
       const payload = (await resp.json()) as PlacesPayload;
-      const places = payload.places ?? [];
-      if (places.length === 0) throw new Error("dataset is empty");
+      if ((payload.places ?? []).length === 0) {
+        throw new Error("dataset is empty");
+      }
+      const { places, unused } = applyPlaceOverrides(
+        payload.places ?? [],
+        await overridesLoad,
+      );
+      if (unused.length > 0) {
+        console.warn(
+          `[nearestPlace] ${unused.length} override(s) no longer match the dataset:`,
+          unused.map((o) => o.name).join(", "),
+        );
+      }
 
       // kdbush packs into typed arrays, so building over ~7.3k points is well
       // under a millisecond and queries are O(log n) — never a linear scan.
@@ -143,6 +218,23 @@ export class NearestPlaceIndex {
         error instanceof Error ? error.message : error,
       );
       this.loading = null;
+    }
+  }
+
+  /** The coordinate overrides, or none. Never rejects: the dataset is usable without them. */
+  private async loadOverrides(): Promise<readonly PlaceOverride[]> {
+    if (!this.overridesUrl) return [];
+    try {
+      const resp = await fetch(this.overridesUrl, { cache: "no-cache" });
+      if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
+      const payload = (await resp.json()) as OverridesPayload;
+      return Array.isArray(payload.overrides) ? payload.overrides : [];
+    } catch (error) {
+      console.warn(
+        `[nearestPlace] could not load ${this.overridesUrl}:`,
+        error instanceof Error ? error.message : error,
+      );
+      return [];
     }
   }
 
