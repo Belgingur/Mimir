@@ -27,6 +27,7 @@ import {
 } from "./mapLayerOrder";
 import { applyPlaceLabelStyle } from "./placeLabelStyle";
 import { setCityDuplicates } from "./settlementLabelFilters";
+import { showPinnedPlaceLabels, type PinnedPlace } from "./pinnedPlaceLabels";
 import { ensureLandmarkLabels } from "./landmarkLabels";
 import { createPlaceLabeller } from "./placeLabeller";
 import { addCityLabelLayer, CITY_LABEL_LAYER_ID } from "./cityLabelLayer";
@@ -43,7 +44,7 @@ import { initCenterReadout, type CenterReadout } from "./centerReadout";
 import { isTransientCrosshairEnabled } from "./transientCrosshairFlag";
 import { isMobileControlsViewport } from "./mobileControlsViewport";
 import { shouldForceMobileMapControls } from "./mobileMapControls";
-import { getLocale, onLocaleChange, t } from "./i18n";
+import { getAvailableLocales, getLocale, onLocaleChange, t } from "./i18n";
 import {
   readStoredLocation,
   requestBrowserLocation,
@@ -1086,12 +1087,30 @@ export function createControllers(config: ControllerFactoryConfig) {
         // Selected-point pin for the docked-panel layout. A maplibre Marker
         // tracks the map on pan/zoom on its own; we just add/remove it.
         let meteogramPin: maplibregl.Marker | null = null;
-        const removePin = (): void => {
+        const removeMarker = (): void => {
           meteogramPin?.remove();
           meteogramPin = null;
         };
-        const showPin = (lng: number, lat: number, label: string): void => {
-          removePin();
+        // While the pin names a place, that place's own map label goes: the
+        // pin's label says the name, often a little away from the label.
+        const pinPlaceLabels = (pin: PinnedPlace | null): void =>
+          showPinnedPlaceLabels(
+            map,
+            placeResolver.loadedPlaces(),
+            pin,
+            getAvailableLocales(),
+          );
+        const removePin = (): void => {
+          removeMarker();
+          pinPlaceLabels(null);
+        };
+        const showPin = (
+          lng: number,
+          lat: number,
+          label: string,
+          placeName?: string,
+        ): void => {
+          removeMarker();
           const el = document.createElement("div");
           el.className = "meteogram-pin";
           const labelEl = document.createElement("div");
@@ -1105,6 +1124,7 @@ export function createControllers(config: ControllerFactoryConfig) {
           meteogramPin = new maplibregl.Marker({ element: el, anchor: "bottom" })
             .setLngLat([lng, lat])
             .addTo(map);
+          pinPlaceLabels(placeName ? { name: placeName, lng, lat } : null);
         };
         meteogramController = setupMeteogram({
           mapWrap: dom.mapWrap,

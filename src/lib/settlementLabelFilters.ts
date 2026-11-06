@@ -11,6 +11,9 @@
  * name within {@link DUPLICATE_RADIUS_M}. The radius, not the name alone, is
  * what keeps London, Ontario from being hidden for London, England.
  *
+ * It also hides the label of the place the meteogram pin names, while the pin
+ * is shown: the pin carries the name itself (see pinnedPlaceLabels.ts).
+ *
  * MapTiler's positron writes these filters in the legacy syntax, and MapLibre
  * cannot mix legacy and expression syntax in one filter (a mixed `all` is read
  * as an expression, so the legacy terms quietly stop matching). The style's
@@ -223,11 +226,61 @@ export function buildDuplicateCityFilter(
   return filter;
 }
 
+// ─── The pinned place ────────────────────────────────────────────────────────
+
+/** A place the meteogram pin names, at the pin's point. */
+export interface PinnedSettlement {
+  readonly name: string;
+  readonly lng: number;
+  readonly lat: number;
+}
+
+/** Compares names the way the click path does: ignoring case and accents. */
+const SAME_NAME = [
+  "collator",
+  { "case-sensitive": false, "diacritic-sensitive": false },
+];
+
+/**
+ * Hide basemap labels named like the pin, within `radiusM` of it. The pin's
+ * name can come from any of `nameKeys` (a click takes the app locale's
+ * `name:xx` first), so each is compared. `to-string` keeps a label without the
+ * property from failing the comparison, which would hide it.
+ */
+export function buildPinnedSettlementFilter(
+  pin: PinnedSettlement,
+  radiusM: number,
+  nameKeys: readonly string[],
+): Filter {
+  return [
+    "!",
+    [
+      "all",
+      [
+        "any",
+        ...nameKeys.map((key) => [
+          "==",
+          ["to-string", ["get", key]],
+          pin.name,
+          SAME_NAME,
+        ]),
+      ],
+      [
+        "<=",
+        ["distance", { type: "Point", coordinates: [pin.lng, pin.lat] }],
+        radiusM,
+      ],
+    ],
+  ];
+}
+
 // ─── Applying the filters ────────────────────────────────────────────────────
 
 interface FilterState {
   /** Hide basemap duplicates of Mímir's cities, or null to show them. */
   duplicates: Filter | null;
+  /** Hide the pinned place's label, or null when nothing is pinned. */
+  pinned: Filter | null;
 }
 
 const states = new WeakMap<maplibregl.Map, FilterState>();
@@ -241,7 +294,7 @@ const applied = new WeakMap<object, FilterState>();
 function stateOf(map: maplibregl.Map): FilterState {
   let state = states.get(map);
   if (!state) {
-    state = { duplicates: null };
+    state = { duplicates: null, pinned: null };
     states.set(map, state);
   }
   return state;
@@ -271,9 +324,17 @@ export function refreshSettlementLabelFilters(map: maplibregl.Map): void {
       styleFilters.set(layer, own);
     }
     const last = applied.get(layer);
-    if (last && last.duplicates === state.duplicates) continue;
+    if (
+      last &&
+      last.duplicates === state.duplicates &&
+      last.pinned === state.pinned
+    ) {
+      continue;
+    }
 
-    const extra = [state.duplicates].filter((term) => term !== null);
+    const extra = [state.duplicates, state.pinned].filter(
+      (term) => term !== null,
+    );
     const next =
       extra.length === 0
         ? own.raw // restore exactly what the style had
@@ -305,5 +366,35 @@ export function setCityDuplicates(
     return;
   }
   state.duplicates = next;
+  refreshSettlementLabelFilters(map);
+}
+
+/** The pin each map's `pinned` term was built for, to skip rebuilding it. */
+const pinnedFor = new WeakMap<maplibregl.Map, PinnedSettlement | null>();
+
+/**
+ * Hide the basemap label of the place the pin names (see
+ * {@link buildPinnedSettlementFilter}), or pass null to show it again. A pin
+ * re-shown at the same place leaves the layers alone.
+ */
+export function setPinnedSettlement(
+  map: maplibregl.Map,
+  pin: PinnedSettlement | null,
+  radiusM: number,
+  nameKeys: readonly string[],
+): void {
+  const previous = pinnedFor.get(map) ?? null;
+  const same =
+    previous === pin ||
+    (previous !== null &&
+      pin !== null &&
+      previous.name === pin.name &&
+      previous.lng === pin.lng &&
+      previous.lat === pin.lat);
+  if (same) return;
+  pinnedFor.set(map, pin);
+  stateOf(map).pinned = pin
+    ? buildPinnedSettlementFilter(pin, radiusM, nameKeys)
+    : null;
   refreshSettlementLabelFilters(map);
 }

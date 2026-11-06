@@ -7,10 +7,12 @@ import {
 } from "@maplibre/maplibre-gl-style-spec";
 import {
   buildDuplicateCityFilter,
+  buildPinnedSettlementFilter,
   DUPLICATE_RADIUS_M,
   FILTERED_SETTLEMENT_LAYER_IDS,
   refreshSettlementLabelFilters,
   setCityDuplicates,
+  setPinnedSettlement,
   toExpressionFilter,
 } from "../src/lib/settlementLabelFilters";
 import type { PlaceTuple } from "../src/lib/nearestPlace";
@@ -249,5 +251,90 @@ describe("setCityDuplicates", () => {
     setCityDuplicates(map, PLACES);
     expect(setFilter).toHaveBeenCalledTimes(1);
     expect(setFilter.mock.calls[0][0]).toBe("place_town");
+  });
+});
+
+// ─── The pinned place ────────────────────────────────────────────────────────
+
+describe("buildPinnedSettlementFilter", () => {
+  const KEYS = ["name:latin", "name", "name:en", "name:is"];
+  // A pin dropped on Njarðvík's basemap label.
+  const pin = { name: "Njarðvík", lng: -22.5427, lat: 63.9733 };
+  const kept = (lon: number, lat: number, props: Record<string, unknown>) =>
+    passes(buildPinnedSettlementFilter(pin, 25_000, KEYS), lon, lat, props);
+
+  it("hides the pinned place's label", () => {
+    expect(kept(-22.5427, 63.9733, { "name:latin": "Njarðvík" })).toBe(false);
+  });
+
+  it("ignores case and accents, as the click path does", () => {
+    expect(kept(-22.5427, 63.9733, { "name:latin": "NJARDVIK" })).toBe(false);
+  });
+
+  it("matches a name the click may have taken from another property", () => {
+    // A click in Icelandic takes name:is, which can differ from the drawn name.
+    const garður = { name: "Sveitarfélagið Garður", lng: -22.6512, lat: 64.0703 };
+    expect(
+      passes(buildPinnedSettlementFilter(garður, 25_000, KEYS), -22.6512, 64.0703, {
+        "name:latin": "Garður",
+        "name:is": "Sveitarfélagið Garður",
+      }),
+    ).toBe(false);
+  });
+
+  it("keeps other names, and the same name beyond the radius", () => {
+    expect(kept(-22.5565, 63.9998, { "name:latin": "Keflavík" })).toBe(true);
+    // ~30 km north: a different Njarðvík, if there were one.
+    expect(kept(-22.5427, 64.24, { "name:latin": "Njarðvík" })).toBe(true);
+  });
+
+  it("keeps a label that lacks the name properties", () => {
+    expect(kept(-22.5427, 63.9733, {})).toBe(true);
+  });
+});
+
+describe("setPinnedSettlement", () => {
+  const KEYS = ["name:latin", "name"];
+  const pin = { name: "Njarðvík", lng: -22.5427, lat: 63.9733 };
+
+  it("adds the pin term next to the duplicates term", () => {
+    const { map, filters } = makeMap();
+    setCityDuplicates(map, PLACES);
+    setPinnedSettlement(map, pin, 25_000, KEYS);
+    const town = filters.get("place_town");
+    expect(town).toContain(buildDuplicateCityFilter(PLACES));
+    expect(passes(town, -22.5427, 63.9733, { class: "town", "name:latin": "Njarðvík" })).toBe(false);
+    expect(passes(town, -22.5565, 63.9998, { class: "town", "name:latin": "Keflavík" })).toBe(false);
+    expect(passes(town, -22.6512, 64.0703, { class: "town", "name:latin": "Garður" })).toBe(true);
+  });
+
+  it("drops only the pin term when the pin goes", () => {
+    const { map, filters } = makeMap();
+    setCityDuplicates(map, PLACES);
+    setPinnedSettlement(map, pin, 25_000, KEYS);
+    setPinnedSettlement(map, null, 25_000, KEYS);
+    expect(filters.get("place_town")).toEqual([
+      "all",
+      toExpressionFilter(TOWN),
+      buildDuplicateCityFilter(PLACES),
+    ]);
+    setCityDuplicates(map, null);
+    expect(filters.get("place_town")).toEqual(TOWN);
+  });
+
+  it("leaves the layers alone when the same pin is shown again", () => {
+    const { map, setFilter } = makeMap();
+    setPinnedSettlement(map, pin, 25_000, KEYS);
+    setFilter.mockClear();
+    setPinnedSettlement(map, { ...pin }, 25_000, KEYS);
+    expect(setFilter).not.toHaveBeenCalled();
+  });
+
+  it("is re-applied over a reloaded style", () => {
+    const { map, filters, reloadStyle } = makeMap();
+    setPinnedSettlement(map, pin, 25_000, KEYS);
+    reloadStyle();
+    refreshSettlementLabelFilters(map);
+    expect(passes(filters.get("place_town"), -22.5427, 63.9733, { class: "town", "name:latin": "Njarðvík" })).toBe(false);
   });
 });

@@ -58,8 +58,15 @@ export interface SetupMeteogramDeps {
   /** Name of the place at a point (clicked city label, else nearest place), or
    *  undefined when nothing is close enough to fairly label it. */
   readonly getPlaceLabel?: (lng: number, lat: number) => string | undefined;
-  /** Drop/remove the selected-point pin on the map (docked-panel layout). */
-  readonly showPin: (lng: number, lat: number, label: string) => void;
+  /** Drop/remove the selected-point pin on the map (docked-panel layout).
+   *  `placeName` is the place the pin names, if any, whose own map label the
+   *  pin then stands in for. */
+  readonly showPin: (
+    lng: number,
+    lat: number,
+    label: string,
+    placeName?: string,
+  ) => void;
   readonly removePin: () => void;
   readonly isDev: boolean;
 }
