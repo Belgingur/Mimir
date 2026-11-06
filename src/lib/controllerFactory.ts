@@ -28,6 +28,7 @@ import {
 import { applyPlaceLabelStyle } from "./placeLabelStyle";
 import { setCityDuplicates } from "./settlementLabelFilters";
 import { showPinnedPlaceLabels, type PinnedPlace } from "./pinnedPlaceLabels";
+import { ModelStationLists } from "./modelStationLists";
 import { ensureLandmarkLabels } from "./landmarkLabels";
 import { createPlaceLabeller } from "./placeLabeller";
 import { addCityLabelLayer, CITY_LABEL_LAYER_ID } from "./cityLabelLayer";
@@ -170,7 +171,16 @@ export function createControllers(config: ControllerFactoryConfig) {
   };
 
   // --- Shared callbacks ---
+  // Each model's station list, for snapping a city click to its station. Loaded
+  // with the model, so a click snaps the same whatever view was opened before.
+  const stationLists = new ModelStationLists();
+  // Set once the catalog exists; scheduleUpdateLayers can run before that.
+  let preloadModelStations = (): void => {};
+
   function scheduleUpdateLayers() {
+    // Runs on every model change too: have the new model's stations ready
+    // before its first click.
+    preloadModelStations();
     // Keep the mobile meteogram trigger's availability in sync — this fires on
     // every model/layer-mode/analysis change (and map moves), which is exactly
     // when the click target may flip between meteogram / wavegram / none.
@@ -563,6 +573,9 @@ export function createControllers(config: ControllerFactoryConfig) {
       }),
     onContourWorkerResult: () => {},
   });
+  preloadModelStations = () => {
+    void stationLists.preload(catalogController.inhouseSelectedModel);
+  };
 
   void catalogController.start();
 
@@ -1203,9 +1216,10 @@ export function createControllers(config: ControllerFactoryConfig) {
   const placeResolver: PlaceResolver = createPlaceResolver({
     map,
     getLocale,
-    // The model-specific station lists the iconography already loads are much
-    // denser than Natural Earth in the areas the app cares about most.
-    getExtraPlaces: () => iconographyController?.namedPlaces ?? [],
+    // The selected model's station list: far denser than Natural Earth where
+    // the app is read most, and the points the forecast is computed for.
+    getExtraPlaces: () =>
+      stationLists.placesFor(catalogController.inhouseSelectedModel),
     isDev,
   });
 
