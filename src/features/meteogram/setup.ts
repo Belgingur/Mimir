@@ -74,6 +74,13 @@ export interface SetupMeteogramDeps {
     placeName?: string,
   ) => void;
   readonly removePin: () => void;
+  /** Change only the pin's text (a new value at the timeline's hour). */
+  readonly updatePinLabel?: (label: string) => void;
+  /** The map timeline's selected hour, as an ISO instant. */
+  readonly getSelectedTime?: () => string | null | undefined;
+  /** Move the map's timeline to the frame nearest the hour the reader picked
+   *  in the panel; returns that frame's time, or null with no timeline. */
+  readonly onUserSelectTime?: (time: string) => string | null;
   readonly isDev: boolean;
 }
 
@@ -178,6 +185,9 @@ export function setupMeteogram(deps: SetupMeteogramDeps): MeteogramController {
     getSnappedFrom: deps.getSnappedFrom,
     showPin: deps.showPin,
     removePin: deps.removePin,
+    updatePinLabel: deps.updatePinLabel,
+    getSelectedTime: deps.getSelectedTime,
+    onUserSelectTime: deps.onUserSelectTime,
     onOpenStateChange: deps.onOpenStateChange,
     isDev: deps.isDev,
   });

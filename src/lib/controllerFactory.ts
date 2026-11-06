@@ -1034,6 +1034,9 @@ export function createControllers(config: ControllerFactoryConfig) {
         setTimelineCurrentDatetime: (dt) => {
           timelineCurrentDatetime = dt;
         },
+        // The meteogram panel and its pin follow the timeline's hour. Every
+        // step, playback included: it only sets the widget's selected-time.
+        onCurrentDatetimeChange: (dt) => meteogramController?.setSelectedTime(dt),
       });
       timelineController = result.timelineController;
       // Wire the on-map forecast-time bubble to the freshly-created controller.
@@ -1100,9 +1103,11 @@ export function createControllers(config: ControllerFactoryConfig) {
         // Selected-point pin for the docked-panel layout. A maplibre Marker
         // tracks the map on pan/zoom on its own; we just add/remove it.
         let meteogramPin: maplibregl.Marker | null = null;
+        let meteogramPinLabel: HTMLElement | null = null;
         const removeMarker = (): void => {
           meteogramPin?.remove();
           meteogramPin = null;
+          meteogramPinLabel = null;
         };
         // While the pin names a place, that place's own map label goes: the
         // pin's label says the name, often a little away from the label.
@@ -1129,6 +1134,7 @@ export function createControllers(config: ControllerFactoryConfig) {
           const labelEl = document.createElement("div");
           labelEl.className = "meteogram-pin__label";
           labelEl.textContent = label;
+          meteogramPinLabel = labelEl;
           const stalk = document.createElement("div");
           stalk.className = "meteogram-pin__stalk";
           const dot = document.createElement("div");
@@ -1189,6 +1195,16 @@ export function createControllers(config: ControllerFactoryConfig) {
             placeLabeller.snappedFromAt(lng, lat),
           showPin,
           removePin,
+          // A new value for the same pin: only its text changes, so neither
+          // the marker nor the map's label filters are touched.
+          updatePinLabel: (label: string) => {
+            if (meteogramPinLabel) meteogramPinLabel.textContent = label;
+          },
+          getSelectedTime: () =>
+            timelineController?.currentDatetime ?? timelineCurrentDatetime,
+          // The reader moved the panel's hour: the map's timeline follows.
+          onUserSelectTime: (time: string) =>
+            timelineController?.selectNearestDatetime(time) ?? null,
           isDev,
         });
         // State may have loaded while the chunk was fetching — sync once now.
