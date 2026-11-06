@@ -1172,6 +1172,8 @@ export function createControllers(config: ControllerFactoryConfig) {
             catalogController.inhouseLayers[0]?.manifest.bounds ?? null,
           getPlaceLabel: (lng: number, lat: number) =>
             placeLabeller.labelAt(lng, lat),
+          getSnappedFrom: (lng: number, lat: number) =>
+            placeLabeller.snappedFromAt(lng, lat),
           showPin,
           removePin,
           isDev,

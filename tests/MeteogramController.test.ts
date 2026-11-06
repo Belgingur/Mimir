@@ -608,4 +608,42 @@ describe("MeteogramController", () => {
       expect(createWidget).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe("station-place note", () => {
+    /** Reykjavík's label at its centre; the point opened is its station. */
+    const reykjavik = { name: "Reykjavík", lng: -21.937, lat: 64.143 };
+
+    it("tells the widget the place and how far its station is", async () => {
+      const { controller, widget } = buildController({
+        getSnappedFrom: () => reykjavik,
+      });
+      await controller.openAt(-21.9079, 64.1288);
+      expect(widget.getAttribute("station-place")).toBe("Reykjavík");
+      // 2.1 km; the widget rounds it for display.
+      expect(Number(widget.getAttribute("station-place-km"))).toBeCloseTo(2.12, 1);
+    });
+
+    it("says nothing under half a kilometre", async () => {
+      // Selfoss's station is 0.15 km from its label.
+      const { controller, widget } = buildController({
+        getSnappedFrom: () => ({ name: "Selfoss", lng: -20.997, lat: 63.933 }),
+      });
+      await controller.openAt(-21.0, 63.9327);
+      expect(widget.hasAttribute("station-place")).toBe(false);
+      expect(widget.hasAttribute("station-place-km")).toBe(false);
+    });
+
+    it("drops the note when the widget is pointed somewhere unsnapped", async () => {
+      let snapped: typeof reykjavik | undefined = reykjavik;
+      const { controller, widget } = buildController({
+        getSnappedFrom: () => snapped,
+      });
+      await controller.openAt(-21.9079, 64.1288);
+      expect(widget.hasAttribute("station-place")).toBe(true);
+      snapped = undefined;
+      await controller.openAt(-20, 64);
+      expect(widget.hasAttribute("station-place")).toBe(false);
+      expect(widget.hasAttribute("station-place-km")).toBe(false);
+    });
+  });
 });
