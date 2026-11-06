@@ -15,6 +15,11 @@ export interface BelMeteogramLocationDetail {
   name: string;
   /** Rounded "now" temperature in °C, or null when unavailable. */
   tempC: number | null;
+  /**
+   * API variables corrected against the observations of the station at this
+   * point (e.g. "air_temperature_at_2m_agl"); empty when none were.
+   */
+  corrections: string[];
 }
 
 export class BelMeteogram extends HTMLElement {
