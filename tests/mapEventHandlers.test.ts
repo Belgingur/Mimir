@@ -146,3 +146,71 @@ describe("attachMapEventHandlers startup", () => {
     expect(OUTLINE_FALLBACK_STYLE.sprite).toBeUndefined();
   });
 });
+
+describe("attachMapEventHandlers hover while the meteogram is open", () => {
+  function setup(meteogramOpen: () => boolean) {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn(() => ({
+        matches: false,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    );
+    const { map, emit } = createMap(false);
+    (map as unknown as { getStyle: () => unknown }).getStyle = () => ({
+      layers: [],
+    });
+    const contourLayer = { manifest: { bounds: [-30, 60, -10, 70] } };
+    const catalog = {
+      hideInhouseTooltip: vi.fn(),
+      getActiveInhouseContourLayer: () => contourLayer,
+      scheduleInhouseContourHover: vi.fn(),
+      inhouseSelectedModel: "gfs-1",
+    };
+    const deps = {
+      getOverlay: () => ({}),
+      getLayerComposer: () => ({}),
+      getCatalogController: () => catalog,
+      getLayerGroupController: () => ({ viewMode: "forecast" }),
+      getTooltipController: () => ({
+        clearAllAddons: vi.fn(),
+        tooltipControl: null,
+      }),
+      getIconographyController: () => undefined,
+      getWavegramController: () => ({ isOpen: false }),
+      getMeteogramController: () => ({
+        get isOpen() {
+          return meteogramOpen();
+        },
+        cancelPendingClick: vi.fn(),
+      }),
+      getUiState: () => ({ layerMode: "temperature" }),
+      getPersistedState: () => null,
+      setMapReady: vi.fn(),
+      initWeather: vi.fn(() => Promise.resolve()),
+      scheduleUpdateLayers: vi.fn(),
+      schedulePersistState: vi.fn(),
+    } as unknown as MapEventDeps;
+    attachMapEventHandlers(map as never, deps);
+    const move = () =>
+      emit("mousemove", {
+        point: { x: 10, y: 20 },
+        lngLat: { lng: -20, lat: 64 },
+      });
+    return { catalog, move };
+  }
+
+  it("shows no contour value while the meteogram's pin is the only value", () => {
+    const { catalog, move } = setup(() => true);
+    move();
+    expect(catalog.scheduleInhouseContourHover).not.toHaveBeenCalled();
+    expect(catalog.hideInhouseTooltip).toHaveBeenCalled();
+  });
+
+  it("shows the contour value on hover as before once it is closed", () => {
+    const { catalog, move } = setup(() => false);
+    move();
+    expect(catalog.scheduleInhouseContourHover).toHaveBeenCalledTimes(1);
+  });
+});

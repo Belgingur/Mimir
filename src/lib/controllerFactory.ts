@@ -415,6 +415,7 @@ export function createControllers(config: ControllerFactoryConfig) {
   });
 
   const layerComposer: LayerComposer = new LayerComposer({
+    isMeteogramOpen: () => meteogramController?.isOpen ?? false,
     dom: {
       inhouseTooltip: dom.inhouseTooltip,
       gridLabelsContainer: dom.gridLabelsContainer,
@@ -1164,8 +1165,16 @@ export function createControllers(config: ControllerFactoryConfig) {
           },
           mountTriggerInCrosshair: (el, isAvailable) =>
             centerReadout?.mountAction(el, isAvailable) ?? false,
-          // Keep the crosshair from fading out behind an open meteogram.
-          onOpenStateChange: (open) => centerReadout?.setMeteogramOpen(open),
+          // While the meteogram is open its pin is the only value on the map:
+          // the phone's centre readout goes, and so does a desktop value
+          // tooltip already showing from the click or hover that opened it.
+          onOpenStateChange: (open) => {
+            centerReadout?.setMeteogramOpen(open);
+            if (open) {
+              tooltipController.clearAllAddons();
+              catalogController.hideInhouseTooltip();
+            }
+          },
           isMeteogramTarget: () =>
             resolveMapClickTarget({
               selectedModel: catalogController.inhouseSelectedModel,

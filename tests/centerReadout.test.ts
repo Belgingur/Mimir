@@ -506,6 +506,31 @@ describe("centerReadout — meteogram hold", () => {
       vi.useRealTimers();
     }
   });
+
+  it("shows no readout while the meteogram is open, and brings it back on close", () => {
+    vi.useFakeTimers();
+    try {
+      const handle = init();
+      panAndSettle();
+      const root = container.querySelector<HTMLElement>(".center-readout")!;
+      expect(root.classList.contains("is-visible")).toBe(true);
+
+      // The meteogram's pin is the only value on the map while it is open.
+      handle.setMeteogramOpen(true);
+      expect(root.classList.contains("is-visible")).toBe(false);
+      expect(root.classList.contains("is-actionable")).toBe(false);
+      // Panning under the open panel doesn't bring it back either.
+      panAndSettle();
+      expect(root.classList.contains("is-visible")).toBe(false);
+
+      handle.setMeteogramOpen(false);
+      expect(root.classList.contains("is-visible")).toBe(true);
+      vi.advanceTimersByTime(60_000);
+      expect(root.classList.contains("is-visible")).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe("centerReadout — teardown", () => {
