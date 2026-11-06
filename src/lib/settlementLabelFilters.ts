@@ -340,7 +340,12 @@ export function refreshSettlementLabelFilters(map: maplibregl.Map): void {
         ? own.raw // restore exactly what the style had
         : ["all", own.expression, ...extra];
     try {
-      map.setFilter(id, next as maplibregl.FilterSpecification);
+      // Not re-validated on every change: the filter is ~600 KB, validating it
+      // doubled the cost of each pin change, and the tests run every term
+      // through MapLibre's own filter engine instead.
+      map.setFilter(id, next as maplibregl.FilterSpecification, {
+        validate: false,
+      });
     } catch {
       // The style is still loading. Not recorded as applied, so the next
       // styledata (or settled-style retry) tries again.
