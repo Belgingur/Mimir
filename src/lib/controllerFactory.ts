@@ -26,6 +26,7 @@ import {
   resolveWeatherBeforeId,
 } from "./mapLayerOrder";
 import { applyPlaceLabelStyle } from "./placeLabelStyle";
+import { setCityDuplicates } from "./settlementLabelFilters";
 import { ensureLandmarkLabels } from "./landmarkLabels";
 import { createPlaceLabeller } from "./placeLabeller";
 import { addCityLabelLayer, CITY_LABEL_LAYER_ID } from "./cityLabelLayer";
@@ -204,7 +205,7 @@ export function createControllers(config: ControllerFactoryConfig) {
     // population-tiered city layer is definitely present. A failed or stale
     // places response must never leave the map with no major settlements.
     const cityLabelsReady = ensureCityLabels();
-    applyPlaceLabelStyle(map, { replaceCityLabels: cityLabelsReady });
+    styleBasemapPlaceLabels(cityLabelsReady);
     if (next === weatherBeforeId) return;
     weatherBeforeId = next;
     if (isDev) {
@@ -242,9 +243,23 @@ export function createControllers(config: ControllerFactoryConfig) {
 
   const retryCityLabelsOnceSettled = createStyleLoadedRunner(map, () => {
     if (ensureCityLabels()) {
-      applyPlaceLabelStyle(map, { replaceCityLabels: true });
+      styleBasemapPlaceLabels(true);
     }
   });
+
+  /**
+   * Restyle the basemap's place labels. Once Mímir's city layer is up, its
+   * cities stand in for the basemap's: the basemap city layers go, and so do
+   * town and village labels that repeat one of Mímir's cities nearby. Until
+   * then every basemap label stays, so no settlement goes unnamed.
+   */
+  function styleBasemapPlaceLabels(cityLabelsReady: boolean): void {
+    applyPlaceLabelStyle(map, { replaceCityLabels: cityLabelsReady });
+    setCityDuplicates(
+      map,
+      cityLabelsReady ? placeResolver.loadedPlaces() : null,
+    );
+  }
 
   const schedulePersistState = createPersistScheduler(() => {
     const center = map.getCenter();
@@ -1177,7 +1192,7 @@ export function createControllers(config: ControllerFactoryConfig) {
   void placeResolver.preload().then(() => {
     const cityLabelsReady = ensureCityLabels();
     if (cityLabelsReady) {
-      applyPlaceLabelStyle(map, { replaceCityLabels: true });
+      styleBasemapPlaceLabels(true);
     }
   });
 
