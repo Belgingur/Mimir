@@ -38,19 +38,30 @@
     "@maplibre/maplibre-gl-style-spec": "^26.2.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.8.0",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/coverage-v8": "^4.1.12",
     "@yr/weather-symbols": "^7.0.0",
     "jsdom": "^26.1.0",
     "patch-package": "^8.0.0",
     "typescript": "^5.5.4",
     "typescript-eslint": "^8.60.0",
     "vite": "^8.3.5",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.12"
   },
   "engines": {
     "node": ">=26"
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "^4.60.1"
+  },
+  "overrides": {
+    "@eslint/config-array": {
+      "minimatch": "^11.0.1"
+    },
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "^11.0.1"
+    },
+    "eslint": {
+      "minimatch": "^11.0.1"
+    }
   }
 }
