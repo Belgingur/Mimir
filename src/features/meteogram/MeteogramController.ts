@@ -3,6 +3,7 @@ import type { BelMeteogramLocationDetail } from "../../vendor/bel-meteogram/bel-
 import type { MeteogramTrigger } from "./meteogramTrigger";
 import { meteogramTargetKey, type MeteogramTarget } from "./meteogramConfig";
 import { readMapPanelPoint, writeMapPanelPoint, clearMapPanelPoint } from "./mapPanelState";
+import { SAME_POINT_EPSILON_DEG } from "../../lib/placeLabeller";
 
 /**
  * Pin/subtitle label for a resolved meteogram point. Prefers the place name
@@ -61,8 +62,15 @@ export interface MeteogramControllerDeps {
    *  See lib/resolveClickedPlace.ts. */
   readonly getPlaceLabel?: (lng: number, lat: number) => string | undefined;
   /** Drop a pin at the clicked map point (map-panel layout). Optional so the
-   *  controller still works headless / in tests without a live map. */
-  readonly showPin?: (lng: number, lat: number, label: string) => void;
+   *  controller still works headless / in tests without a live map.
+   *  `placeName` is the place the pin names, or undefined for a bare point;
+   *  the map hides that place's own label while the pin stands in for it. */
+  readonly showPin?: (
+    lng: number,
+    lat: number,
+    label: string,
+    placeName: string | undefined,
+  ) => void;
   readonly removePin?: () => void;
   /** Called whenever the panel opens or closes. The transient centre crosshair
    *  uses this to hold itself visible for as long as the meteogram it launched is
@@ -81,6 +89,9 @@ export class MeteogramController {
    *  domain bounds. Held across the widget's "loading" phase so the early hint
    *  survives until the fetch confirms (error) or refutes (ready) it. */
   private pendingOutOfBounds = false;
+  /** The point last opened, and the place name it was opened under (a city
+   *  label clicked on the map), if any. */
+  private opened: { lng: number; lat: number; name?: string } | null = null;
   private trigger: MeteogramTrigger | null = null;
   private readonly deps: MeteogramControllerDeps;
   private readonly boundOnEscape: (event: KeyboardEvent) => void;
@@ -147,6 +158,7 @@ export class MeteogramController {
     dom.modal.classList.remove("is-open");
     dom.modal.setAttribute("aria-hidden", "true");
     this.pendingOutOfBounds = false;
+    this.opened = null;
     this.deps.removePin?.();
     clearMapPanelPoint();
     if (wasOpen) this.deps.onOpenStateChange?.(false);
@@ -184,6 +196,27 @@ export class MeteogramController {
     const name = this.placeNameAt(lng, lat);
     if (name) widget.setAttribute("location-name", name);
     else widget.removeAttribute("location-name");
+  }
+
+  /**
+   * The place a pin at the widget's resolved point names: the name the point
+   * was opened under, or, once the widget has moved the point (a station
+   * picked in its list), the widget's name for it. A point opened on open
+   * ground keeps no place name, though the widget labels it with coordinates.
+   */
+  private pinPlaceName(
+    detail: BelMeteogramLocationDetail,
+  ): string | undefined {
+    const opened = this.opened;
+    if (
+      opened &&
+      Math.abs(opened.lng - detail.lon) < SAME_POINT_EPSILON_DEG &&
+      Math.abs(opened.lat - detail.lat) < SAME_POINT_EPSILON_DEG
+    ) {
+      return opened.name;
+    }
+    const name = detail.name?.trim();
+    return name ? name : undefined;
   }
 
   /**
@@ -339,7 +372,12 @@ export class MeteogramController {
       const detail = (event as CustomEvent<BelMeteogramLocationDetail>).detail;
       const label = formatPinLabel(detail);
       this.deps.dom.location.textContent = label;
-      this.deps.showPin?.(detail.lon, detail.lat, label);
+      this.deps.showPin?.(
+        detail.lon,
+        detail.lat,
+        label,
+        this.pinPlaceName(detail),
+      );
     });
   }
 
@@ -353,7 +391,9 @@ export class MeteogramController {
     dom.modal.classList.add("is-open");
     dom.modal.setAttribute("aria-hidden", "false");
     if (!wasOpen) this.deps.onOpenStateChange?.(true);
-    const label = this.pointLabel(lng, lat);
+    const placeName = this.placeNameAt(lng, lat);
+    this.opened = { lng, lat, name: placeName };
+    const label = placeName ?? this.pointLabel(lng, lat);
     dom.location.textContent = label;
     // Early out-of-domain hint: if the point is outside the selected model's
     // known bounds we say so immediately, before the widget's fetch resolves.
@@ -366,7 +406,7 @@ export class MeteogramController {
       : "";
     // Drop the selected-point pin on the map (desktop docked-panel layout;
     // harmless on mobile where the pin sits behind the full-screen sheet).
-    this.deps.showPin?.(lng, lat, label);
+    this.deps.showPin?.(lng, lat, label, placeName);
 
     if (this.deps.isDev) {
       console.debug(

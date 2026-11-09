@@ -1,0 +1,33 @@
+{
+  "about": "Corrections to Natural Earth points in places.json, applied when the dataset loads (src/lib/nearestPlace.ts). Natural Earth is a small-scale dataset, and at Mímir's zooms some of its points sit kilometres from the town they name. Each override moves one place, matched by name, country and its Natural Earth point (from, [lon, lat]), to the point the basemap (OpenMapTiles/OSM) gives the town (to). An upstream update that moves the from point leaves the override unused, and the app warns about it.",
+  "overrides": [
+    {
+      "name": "Akureyri",
+      "countryCode": "IS",
+      "from": [-18.1, 65.667],
+      "to": [-18.0913, 65.6826],
+      "why": "Natural Earth is 1.8 km south of the town; the basemap's point is 0.04 km from the Akureyri station the forecast snaps to."
+    },
+    {
+      "name": "Ísafjörður",
+      "countryCode": "IS",
+      "from": [-23.15, 66.083],
+      "to": [-23.1194, 66.0727],
+      "why": "Natural Earth is 1.8 km north-west of the town, 1.4 km from the Ísafjörður station; the basemap's point is 0.39 km from it."
+    },
+    {
+      "name": "Borgarnes",
+      "countryCode": "IS",
+      "from": [-21.862, 64.57],
+      "to": [-21.9202, 64.5383],
+      "why": "Natural Earth is 4.5 km north-east of the town, out in the fjord; the basemap's point is 0.33 km from the Borgarnes station."
+    },
+    {
+      "name": "Höfn",
+      "countryCode": "IS",
+      "from": [-15.214, 64.272],
+      "to": [-15.2081, 64.2532],
+      "why": "Natural Earth is 2.1 km north of the town; the basemap's point is 0.37 km from the Höfn í Hornafirði station, which Natural Earth misses by 2.5 km."
+    }
+  ]
+}

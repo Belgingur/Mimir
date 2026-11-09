@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  applyPlaceOverrides,
   DEFAULT_MAX_DISTANCE_KM,
   NearestPlaceIndex,
+  type PlaceOverride,
+  type PlaceTuple,
 } from "../src/lib/nearestPlace";
 
 const PLACES: [string, number, number, number, string][] = [
@@ -116,7 +119,9 @@ describe("NearestPlaceIndex", () => {
     const index = new NearestPlaceIndex();
     await Promise.all([index.load(), index.load()]);
     await index.load();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // Once for the dataset and once for its overrides, however many loads.
+    const urls = fetchMock.mock.calls.map(([url]) => url);
+    expect(urls).toEqual(["/data/places-overrides.json", "/data/places.json"]);
     expect(index.isLoaded).toBe(true);
   });
 
@@ -157,5 +162,85 @@ describe("NearestPlaceIndex", () => {
     const index = new NearestPlaceIndex();
     await index.load();
     expect(index.isLoaded).toBe(false);
+  });
+});
+
+describe("place overrides", () => {
+  const OVERRIDE = {
+    name: "Akureyri",
+    countryCode: "IS",
+    from: [-18.1, 65.667] as const,
+    to: [-18.0913, 65.6826] as const,
+  };
+
+  /** Answer the dataset and the overrides file each with its own payload. */
+  function stubFetchByUrl(payloads: Record<string, unknown>) {
+    const fetchMock = vi.fn(async (url: string) => {
+      const payload = payloads[url];
+      return payload === undefined
+        ? { ok: false, status: 404, statusText: "Not Found", json: async () => ({}) }
+        : { ok: true, status: 200, statusText: "OK", json: async () => payload };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+
+  it("moves a place to its corrected point", async () => {
+    stubFetchByUrl({
+      "/data/places.json": { places: PLACES },
+      "/data/places-overrides.json": { overrides: [OVERRIDE] },
+    });
+    const index = new NearestPlaceIndex();
+    await index.load();
+    const akureyri = index.loadedPlaces.find(([name]) => name === "Akureyri");
+    expect(akureyri?.slice(1, 3)).toEqual([-18.0913, 65.6826]);
+    // Everything else about the place, and every other place, is untouched.
+    expect(akureyri?.slice(3)).toEqual([16563, "IS"]);
+    expect(index.loadedPlaces.find(([name]) => name === "Reykjavík")).toEqual(PLACES[0]);
+    // The spatial index is built from the corrected point too.
+    expect(index.query(-18.0913, 65.6826)?.distanceKm).toBeCloseTo(0, 5);
+  });
+
+  it("leaves an override unused when the dataset's point has moved", () => {
+    const moved = PLACES.map((p) =>
+      p[0] === "Akureyri" ? (["Akureyri", -18.09, 65.68, 16563, "IS"] as const) : p,
+    );
+    const { places, unused } = applyPlaceOverrides(
+      moved as unknown as PlaceTuple[],
+      [OVERRIDE],
+    );
+    expect(places).toBe(moved);
+    expect(unused).toEqual([OVERRIDE]);
+  });
+
+  it("matches the country as well as the name", () => {
+    const { unused } = applyPlaceOverrides(PLACES as unknown as PlaceTuple[], [
+      { ...OVERRIDE, countryCode: "NO" },
+    ]);
+    expect(unused).toHaveLength(1);
+  });
+
+  it("loads the dataset without corrections when the overrides file is missing", async () => {
+    stubFetchByUrl({ "/data/places.json": { places: PLACES } });
+    const index = new NearestPlaceIndex();
+    await index.load();
+    expect(index.isLoaded).toBe(true);
+    expect(index.loadedPlaces).toEqual(PLACES);
+  });
+
+  it("ships overrides that all match the bundled dataset", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const read = async (file: string) =>
+      JSON.parse(await readFile(`${process.cwd()}/public/data/${file}`, "utf8"));
+    const { places } = await read("places.json");
+    const { overrides } = await read("places-overrides.json");
+    const result = applyPlaceOverrides(places, overrides);
+    expect(result.unused).toEqual([]);
+    expect(overrides.map((o: PlaceOverride) => o.name)).toEqual([
+      "Akureyri",
+      "Ísafjörður",
+      "Borgarnes",
+      "Höfn",
+    ]);
   });
 });

@@ -164,8 +164,9 @@ describe("MeteogramController", () => {
     const { controller, dom, widget } = buildController({ showPin });
     await controller.openAt(-20, 64);
 
-    // Opening drops a pin at the raw click point immediately.
-    expect(showPin).toHaveBeenLastCalledWith(-20, 64, "64.000, -20.000");
+    // Opening drops a pin at the raw click point immediately. It names no
+    // place, so it stands in for no map label.
+    expect(showPin).toHaveBeenLastCalledWith(-20, 64, "64.000, -20.000", undefined);
 
     // The widget resolves the nearest station and fires its location event
     // (also fires when a different station is picked in the overlay).
@@ -176,7 +177,13 @@ describe("MeteogramController", () => {
     );
 
     expect(dom.location.textContent).toBe("Reykjavík · 7°");
-    expect(showPin).toHaveBeenLastCalledWith(-21.9, 64.13, "Reykjavík · 7°");
+    // The widget moved the point and named it, so the pin names Reykjavík.
+    expect(showPin).toHaveBeenLastCalledWith(
+      -21.9,
+      64.13,
+      "Reykjavík · 7°",
+      "Reykjavík",
+    );
   });
 
   it("ignores a location event that lands after the panel was closed", async () => {
@@ -214,7 +221,12 @@ describe("MeteogramController", () => {
       }),
     );
 
-    expect(showPin).toHaveBeenCalledWith(-21.9, 64.13, "Reykjavík · 7°");
+    expect(showPin).toHaveBeenCalledWith(
+      -21.9,
+      64.13,
+      "Reykjavík · 7°",
+      "Reykjavík",
+    );
   });
 
   it("falls back to coordinates in the pin label when no place name is resolved", async () => {
@@ -228,7 +240,12 @@ describe("MeteogramController", () => {
       }),
     );
 
-    expect(showPin).toHaveBeenLastCalledWith(-19.25, 63.5, "63.500, -19.250");
+    expect(showPin).toHaveBeenLastCalledWith(
+      -19.25,
+      63.5,
+      "63.500, -19.250",
+      undefined,
+    );
   });
 
   it("applyLocale updates the widget's language attribute in place", async () => {
@@ -323,7 +340,12 @@ describe("MeteogramController", () => {
       await controller.openAt(-21.937, 64.143);
 
       expect(dom.location.textContent).toBe("Reykjavík");
-      expect(showPin).toHaveBeenLastCalledWith(-21.937, 64.143, "Reykjavík");
+      expect(showPin).toHaveBeenLastCalledWith(
+        -21.937,
+        64.143,
+        "Reykjavík",
+        "Reykjavík",
+      );
       // location-name outranks the widget's own resolution, so its header
       // agrees with the panel instead of showing the raw coordinate.
       expect(widget.getAttribute("location-name")).toBe("Reykjavík");
@@ -397,6 +419,49 @@ describe("MeteogramController", () => {
         -21.937,
         64.143,
         "Reykjavík · 7°",
+        "Reykjavík",
+      );
+    });
+
+    it("names no place for a bare point, though the widget labels it", async () => {
+      // With prefer-coordinates the widget names a bare point by its
+      // coordinates; that is not a place, so no map label is hidden for it.
+      const showPin = vi.fn();
+      const { controller, widget } = buildController({
+        showPin,
+        getPlaceLabel: () => undefined,
+      });
+      await controller.openAt(-20, 64);
+      widget.dispatchEvent(
+        new CustomEvent("bel-meteogram-location", {
+          detail: { lat: 64, lon: -20, name: "64.00°N 20.00°W", tempC: 3 },
+        }),
+      );
+      expect(showPin).toHaveBeenLastCalledWith(
+        -20,
+        64,
+        "64.00°N 20.00°W · 3°",
+        undefined,
+      );
+    });
+
+    it("names the station picked in the widget's list", async () => {
+      const showPin = vi.fn();
+      const { controller, widget } = buildController({
+        showPin,
+        getPlaceLabel: () => "Reykjavík",
+      });
+      await controller.openAt(-21.937, 64.143);
+      widget.dispatchEvent(
+        new CustomEvent("bel-meteogram-location", {
+          detail: { lat: 65.683, lon: -18.091, name: "Akureyri", tempC: 4 },
+        }),
+      );
+      expect(showPin).toHaveBeenLastCalledWith(
+        -18.091,
+        65.683,
+        "Akureyri · 4°",
+        "Akureyri",
       );
     });
   });
