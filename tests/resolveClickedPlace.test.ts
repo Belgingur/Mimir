@@ -112,6 +112,9 @@ describe("createPlaceResolver", () => {
       longitude: -18.0878,
       latitude: 65.6835,
       fromStation: true,
+      // The label's own point travels along, for "N km from the centre".
+      labelLongitude: -18.1,
+      labelLatitude: 65.667,
     });
   });
 

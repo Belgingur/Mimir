@@ -1,3 +1,4 @@
+import { distance } from "geokdbush";
 import { t } from "../../lib/i18n";
 import type { BelMeteogramLocationDetail } from "../../vendor/bel-meteogram/bel-meteogram";
 import type { MeteogramTrigger } from "./meteogramTrigger";
@@ -10,6 +11,13 @@ import { SAME_POINT_EPSILON_DEG } from "../../lib/placeLabeller";
  * with the "now" temperature ("{place} · {temp}°" per the map-panel handoff),
  * falling back to the raw coordinates when either is missing.
  */
+/**
+ * A forecast point this far or further from the centre of the place clicked
+ * (the label's point) gets the widget's "forecast for the weather station
+ * N km from …" line. Nearer, it is the place for any reader.
+ */
+export const STATION_NOTE_MIN_KM = 0.5;
+
 function formatPinLabel(detail: BelMeteogramLocationDetail): string {
   const name = detail.name?.trim();
   const place =
@@ -61,6 +69,12 @@ export interface MeteogramControllerDeps {
    *  enough to fairly label the point, in which case the raw coordinate is used.
    *  See lib/resolveClickedPlace.ts. */
   readonly getPlaceLabel?: (lng: number, lat: number) => string | undefined;
+  /** When a point is a place's station, not the place (a city label clicked and
+   *  snapped to its station): the place's name and its own point. */
+  readonly getSnappedFrom?: (
+    lng: number,
+    lat: number,
+  ) => { name: string; lng: number; lat: number } | undefined;
   /** Drop a pin at the clicked map point (map-panel layout). Optional so the
    *  controller still works headless / in tests without a live map.
    *  `placeName` is the place the pin names, or undefined for a bare point;
@@ -220,6 +234,29 @@ export class MeteogramController {
   }
 
   /**
+   * Tell the widget when its point is a station standing in for the place
+   * clicked, and how far it is from the place's centre, so the panel can say
+   * so (`station-place`, `station-place-km`; the widget words and translates
+   * the line). Only from {@link STATION_NOTE_MIN_KM}; otherwise both go, so a
+   * note can't outlive the point it was about.
+   */
+  private applyStationPlace(
+    widget: MeteogramWidget,
+    lng: number,
+    lat: number,
+  ): void {
+    const from = this.deps.getSnappedFrom?.(lng, lat);
+    const km = from ? distance(lng, lat, from.lng, from.lat) : 0;
+    if (from && km >= STATION_NOTE_MIN_KM) {
+      widget.setAttribute("station-place", from.name);
+      widget.setAttribute("station-place-km", km.toFixed(2));
+    } else {
+      widget.removeAttribute("station-place");
+      widget.removeAttribute("station-place-km");
+    }
+  }
+
+  /**
    * Whether a point falls outside the selected model's domain bounds. Returns
    * false when the bounds are unknown (no layer loaded yet) so the widget's own
    * fetch stays the source of truth. See {@link MeteogramControllerDeps.getModelBounds}.
@@ -301,6 +338,7 @@ export class MeteogramController {
       this.widget.setAttribute("language", this.widgetLanguage());
       this.widget.setAttribute("forecast-label", modelLabel);
       this.applyLocationName(this.widget, lng, lat);
+      this.applyStationPlace(this.widget, lng, lat);
       this.widget.loadChartLocation(lat, lng, label);
       return { target };
     }
@@ -313,6 +351,7 @@ export class MeteogramController {
     fresh.setAttribute("location-lat", String(lat));
     fresh.setAttribute("location-lon", String(lng));
     this.applyLocationName(fresh, lng, lat);
+    this.applyStationPlace(fresh, lng, lat);
     this.attachWidgetListeners(fresh);
     this.deps.dom.widgetHost.appendChild(fresh);
     this.widget = fresh;

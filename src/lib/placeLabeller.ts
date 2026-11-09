@@ -25,11 +25,34 @@ export interface PlaceLabeller {
   ): void;
   /** Name for a point, or undefined when it should show coordinates instead. */
   labelAt(lng: number, lat: number): string | undefined;
+  /**
+   * When a point is a place's station rather than the place itself (a city
+   * label clicked, then snapped to its station), the place's name and its own
+   * point; otherwise undefined.
+   */
+  snappedFromAt(
+    lng: number,
+    lat: number,
+  ): { name: string; lng: number; lat: number } | undefined;
 }
 
 export function createPlaceLabeller(): PlaceLabeller {
   let last: { place: ResolvedPlace | null; lng: number; lat: number } | null =
     null;
+
+  /** The remembered label selection at this point, if that is what it is. */
+  function selectionAt(lng: number, lat: number): ResolvedPlace | undefined {
+    if (!Number.isFinite(lng) || !Number.isFinite(lat)) return undefined;
+    const place = last?.place;
+    if (!place || place.source !== "label") return undefined;
+    // Match against the *resolved* point, because that is the coordinate the
+    // caller was handed and will be asking about — a label selection moves
+    // the point onto the city, away from the raw click.
+    const matches =
+      Math.abs(place.longitude - lng) < SAME_POINT_EPSILON_DEG &&
+      Math.abs(place.latitude - lat) < SAME_POINT_EPSILON_DEG;
+    return matches ? place : undefined;
+  }
 
   return {
     remember(place, lngLat) {
@@ -37,19 +60,23 @@ export function createPlaceLabeller(): PlaceLabeller {
     },
 
     labelAt(lng, lat) {
-      if (!Number.isFinite(lng) || !Number.isFinite(lat)) return undefined;
-      const remembered = last;
-      if (!remembered?.place) return undefined;
-      if (remembered.place.source !== "label") return undefined;
+      return selectionAt(lng, lat)?.name;
+    },
 
-      // Match against the *resolved* point, because that is the coordinate the
-      // caller was handed and will be asking about — a label selection moves
-      // the point onto the city, away from the raw click.
-      const { place } = remembered;
-      const matches =
-        Math.abs(place.longitude - lng) < SAME_POINT_EPSILON_DEG &&
-        Math.abs(place.latitude - lat) < SAME_POINT_EPSILON_DEG;
-      return matches ? place.name : undefined;
+    snappedFromAt(lng, lat) {
+      const place = selectionAt(lng, lat);
+      if (
+        !place?.fromStation ||
+        place.labelLongitude === undefined ||
+        place.labelLatitude === undefined
+      ) {
+        return undefined;
+      }
+      return {
+        name: place.name,
+        lng: place.labelLongitude,
+        lat: place.labelLatitude,
+      };
     },
   };
 }
