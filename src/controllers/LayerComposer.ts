@@ -144,6 +144,10 @@ export interface LayerComposerDeps {
     snowDepthLegendHost: HTMLDivElement;
   };
   getMapZoom: () => number;
+  /** True while the meteogram panel is open. Its pin is then the only value
+   *  on the map, so hovering the map shows no value tooltip. Optional; the
+   *  meteogram is an opt-in feature. */
+  isMeteogramOpen?: () => boolean;
   getMap: () => import("maplibre-gl").Map;
   getMapBounds: () => MapBoundsLike;
   getMapCenter: () => { lng: number; lat: number };
@@ -867,7 +871,8 @@ export class LayerComposer {
           onHover: (info) => {
             const infoAny = info as RasterPickingInfo;
             // Mobile: centre readout replaces cursor-following tap/hover popups.
-            if (isCenterReadoutViewport()) {
+            // With the meteogram open, its pin is the only value on the map.
+            if (isCenterReadoutViewport() || this.deps.isMeteogramOpen?.()) {
               tooltipController.clearAllAddons();
               tooltipController.updatePickingInfo(null);
               this.deps.getMapCanvas().style.cursor = "";

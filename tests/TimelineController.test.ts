@@ -191,6 +191,68 @@ describe("TimelineController", () => {
     });
   });
 
+  describe("selected datetime hook (meteogram follows the timeline)", () => {
+    it("reports each change of the selected datetime once", () => {
+      const { deps } = createDeps();
+      const onCurrentDatetimeChange = vi.fn();
+      const ctrl = new TimelineController({ ...deps, onCurrentDatetimeChange });
+      ctrl.currentDatetime = "2026-11-09T14:00:00Z";
+      ctrl.currentDatetime = "2026-11-09T14:00:00Z";
+      ctrl.currentDatetime = "2026-11-09T15:00:00Z";
+      expect(onCurrentDatetimeChange.mock.calls).toEqual([
+        ["2026-11-09T14:00:00Z"],
+        ["2026-11-09T15:00:00Z"],
+      ]);
+    });
+
+    it("reports a frame load's datetime", async () => {
+      const { deps } = createDeps();
+      const onCurrentDatetimeChange = vi.fn();
+      const ctrl = new TimelineController({ ...deps, onCurrentDatetimeChange });
+      await ctrl.loadFrameForDatetimeCore("2026-11-09T12:00:00Z");
+      expect(onCurrentDatetimeChange).toHaveBeenCalledWith(
+        "2026-11-09T12:00:00Z",
+      );
+    });
+
+    it("selectNearestDatetime moves to the frame at, else nearest, a time", () => {
+      const { deps } = createDeps();
+      const ctrl = new TimelineController(deps);
+      ctrl.activeTimelineDatetimes = [
+        "2026-11-09T12:00:00Z",
+        "2026-11-09T15:00:00Z",
+        "2026-11-09T18:00:00Z",
+      ];
+      ctrl.currentDatetime = "2026-11-09T12:00:00Z";
+      expect(ctrl.selectNearestDatetime("2026-11-09T16:00:00.000Z")).toBe(
+        "2026-11-09T15:00:00Z",
+      );
+      expect(ctrl.getActiveTimelineIndex()).toBe(1);
+      expect(ctrl.selectNearestDatetime("2026-11-09T18:00:00.000Z")).toBe(
+        "2026-11-09T18:00:00Z",
+      );
+      expect(ctrl.getActiveTimelineIndex()).toBe(2);
+    });
+
+    it("selectNearestDatetime leaves the timeline alone at its own frame", () => {
+      const { deps } = createDeps();
+      const ctrl = new TimelineController(deps);
+      ctrl.activeTimelineDatetimes = ["2026-11-09T12:00:00Z", "2026-11-09T15:00:00Z"];
+      ctrl.currentDatetime = "2026-11-09T15:00:00Z";
+      const select = vi.spyOn(ctrl, "setSelectedIndex");
+      expect(ctrl.selectNearestDatetime("2026-11-09T14:00:00.000Z")).toBe(
+        "2026-11-09T15:00:00Z",
+      );
+      expect(select).not.toHaveBeenCalled();
+    });
+
+    it("selectNearestDatetime returns null without frames", () => {
+      const { deps } = createDeps();
+      const ctrl = new TimelineController(deps);
+      expect(ctrl.selectNearestDatetime("2026-11-09T14:00:00Z")).toBeNull();
+    });
+  });
+
   describe("getActiveTimelineIndex", () => {
     it("returns requestedIndex when in range", () => {
       const { deps } = createDeps();

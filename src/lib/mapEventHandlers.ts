@@ -244,6 +244,11 @@ export function attachMapEventHandlers(
     if (deps.getLayerGroupController().viewMode !== "forecast") return;
     // Mobile uses the fixed centre readout instead of cursor-following tooltips.
     if (isCenterReadoutViewport()) return;
+    // With the meteogram open, its pin is the only value on the map.
+    if (deps.getMeteogramController?.()?.isOpen) {
+      deps.getCatalogController().hideInhouseTooltip();
+      return;
+    }
 
     const catalogController = deps.getCatalogController();
     const contourLayer = catalogController.getActiveInhouseContourLayer();

@@ -647,3 +647,330 @@ describe("MeteogramController", () => {
     });
   });
 });
+
+describe("MeteogramController — the timeline's hour (widget 0.8.0)", () => {
+  /** Make the registered <bel-meteogram> look like 0.8.0 (or, with no
+   *  attribute list, like 0.7.0) for the support check. */
+  function stubWidgetVersion(supportsSelectedTime: boolean): void {
+    vi.spyOn(customElements, "get").mockImplementation((name: string) =>
+      name === "bel-meteogram"
+        ? ({
+            observedAttributes: supportsSelectedTime
+              ? ["language", "selected-time"]
+              : ["language"],
+          } as unknown as CustomElementConstructor)
+        : undefined,
+    );
+  }
+
+  function emitLocation(
+    widget: HTMLElement,
+    detail: { lat: number; lon: number; name: string; tempC: number | null },
+  ): void {
+    widget.dispatchEvent(
+      new CustomEvent("bel-meteogram-location", {
+        detail: { corrections: [], ...detail },
+      }),
+    );
+  }
+
+  function emitTime(
+    widget: HTMLElement,
+    detail: {
+      time: string | null;
+      tempC: number | null;
+      source: "host" | "user";
+    },
+  ): void {
+    widget.dispatchEvent(new CustomEvent("bel-meteogram-time", { detail }));
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("gives a new widget the timeline's hour, as UTC, before it connects", async () => {
+    stubWidgetVersion(true);
+    let attrAtConnect: string | null = "unset";
+    const { controller, widget, dom } = buildController({
+      getSelectedTime: () => "2026-11-09T14:00:00Z",
+    });
+    const append = dom.widgetHost.appendChild.bind(dom.widgetHost);
+    vi.spyOn(dom.widgetHost, "appendChild").mockImplementation((node) => {
+      attrAtConnect = (node as HTMLElement).getAttribute("selected-time");
+      return append(node);
+    });
+    await controller.openAt(-20, 64);
+    expect(controller.getWidget()).toBe(widget);
+    expect(attrAtConnect).toBe("2026-11-09T14:00:00.000Z");
+  });
+
+  it("moves the open widget's hour on every timeline step, setting only the attribute", async () => {
+    stubWidgetVersion(true);
+    const { controller, widget } = buildController({
+      getSelectedTime: () => "2026-11-09T12:00:00Z",
+    });
+    await controller.openAt(-20, 64);
+    const setAttribute = vi.spyOn(widget, "setAttribute");
+    controller.setSelectedTime("2026-11-09T15:00:00Z");
+    expect(widget.getAttribute("selected-time")).toBe(
+      "2026-11-09T15:00:00.000Z",
+    );
+    // Same hour again: nothing is sent.
+    controller.setSelectedTime("2026-11-09T15:00:00.000Z");
+    expect(setAttribute.mock.calls).toEqual([
+      ["selected-time", "2026-11-09T15:00:00.000Z"],
+    ]);
+    // No reload: the widget is never repointed by a time change.
+    expect(widget.calls).toEqual([]);
+    // No hour: the widget goes back to "now".
+    controller.setSelectedTime(null);
+    expect(widget.hasAttribute("selected-time")).toBe(false);
+  });
+
+  it("lets a closed panel's widget catch up when it opens again", async () => {
+    stubWidgetVersion(true);
+    let now = "2026-11-09T12:00:00Z";
+    const { controller, widget } = buildController({
+      getSelectedTime: () => now,
+    });
+    await controller.openAt(-20, 64);
+    controller.close();
+    now = "2026-11-09T18:00:00Z";
+    controller.setSelectedTime(now);
+    expect(widget.getAttribute("selected-time")).toBe(
+      "2026-11-09T12:00:00.000Z",
+    );
+    await controller.openAt(-21, 64);
+    expect(widget.getAttribute("selected-time")).toBe(
+      "2026-11-09T18:00:00.000Z",
+    );
+  });
+
+  it("labels the pin with the panel's value at the timeline's hour, changing only its text", async () => {
+    stubWidgetVersion(true);
+    const showPin = vi.fn();
+    const updatePinLabel = vi.fn();
+    const { controller, widget, dom } = buildController({
+      getPlaceLabel: () => "Reykjavík",
+      getSelectedTime: () => "2026-11-09T14:00:00Z",
+      showPin,
+      updatePinLabel,
+    });
+    await controller.openAt(-21.9, 64.13);
+    // The location event names the point alone, never the "now" value.
+    emitLocation(widget, { lat: 64.13, lon: -21.9, name: "Reykjavík", tempC: 4 });
+    expect(showPin).toHaveBeenLastCalledWith(
+      -21.9,
+      64.13,
+      "Reykjavík",
+      "Reykjavík",
+    );
+    const showPinCalls = showPin.mock.calls.length;
+    emitTime(widget, {
+      time: "2026-11-09T14:00:00.000Z",
+      tempC: -2,
+      source: "host",
+    });
+    expect(updatePinLabel).toHaveBeenLastCalledWith("Reykjavík · -2°");
+    expect(dom.location.textContent).toBe("Reykjavík · -2°");
+    // A new value only rewrites the label: the pin (and the map's label
+    // filters behind showPin) are left alone.
+    emitTime(widget, {
+      time: "2026-11-09T15:00:00.000Z",
+      tempC: 0,
+      source: "host",
+    });
+    expect(updatePinLabel).toHaveBeenLastCalledWith("Reykjavík · 0°");
+    expect(showPin.mock.calls.length).toBe(showPinCalls);
+  });
+
+  it("names the point alone when the hour is outside the meteogram or has no value", async () => {
+    stubWidgetVersion(true);
+    const updatePinLabel = vi.fn();
+    const { controller, widget } = buildController({
+      getPlaceLabel: () => "Keflavík",
+      showPin: vi.fn(),
+      updatePinLabel,
+    });
+    await controller.openAt(-22.6, 63.98);
+    emitLocation(widget, { lat: 63.98, lon: -22.6, name: "Keflavík", tempC: 5 });
+    emitTime(widget, { time: "2026-11-09T14:00:00.000Z", tempC: 3, source: "host" });
+    emitTime(widget, { time: null, tempC: null, source: "host" });
+    expect(updatePinLabel).toHaveBeenLastCalledWith("Keflavík");
+    emitTime(widget, { time: "2026-11-09T15:00:00.000Z", tempC: null, source: "host" });
+    expect(updatePinLabel).toHaveBeenLastCalledWith("Keflavík");
+  });
+
+  it("keeps a previous point's value off a new point until its load reports", async () => {
+    stubWidgetVersion(true);
+    const updatePinLabel = vi.fn();
+    const showPin = vi.fn();
+    const { controller, widget } = buildController({
+      getPlaceLabel: (lng) => (lng < -22 ? "Keflavík" : "Reykjavík"),
+      showPin,
+      updatePinLabel,
+    });
+    await controller.openAt(-21.9, 64.13);
+    emitLocation(widget, { lat: 64.13, lon: -21.9, name: "Reykjavík", tempC: 4 });
+    emitTime(widget, { time: "2026-11-09T14:00:00.000Z", tempC: 2, source: "host" });
+    await controller.openAt(-22.6, 63.98);
+    expect(showPin).toHaveBeenLastCalledWith(-22.6, 63.98, "Keflavík", "Keflavík");
+    updatePinLabel.mockClear();
+    // A time event before the new load's location (old data) is not shown.
+    emitTime(widget, { time: "2026-11-09T15:00:00.000Z", tempC: 9, source: "host" });
+    expect(updatePinLabel).not.toHaveBeenCalled();
+    emitLocation(widget, { lat: 63.98, lon: -22.6, name: "Keflavík", tempC: 5 });
+    emitTime(widget, { time: "2026-11-09T15:00:00.000Z", tempC: 1, source: "host" });
+    expect(updatePinLabel).toHaveBeenLastCalledWith("Keflavík · 1°");
+  });
+
+  it("falls back to the pin through showPin without updatePinLabel", async () => {
+    stubWidgetVersion(true);
+    const showPin = vi.fn();
+    const { controller, widget } = buildController({
+      getPlaceLabel: () => "Reykjavík",
+      showPin,
+    });
+    await controller.openAt(-21.9, 64.13);
+    emitLocation(widget, { lat: 64.13, lon: -21.9, name: "Reykjavík", tempC: 4 });
+    emitTime(widget, { time: "2026-11-09T14:00:00.000Z", tempC: 2, source: "host" });
+    expect(showPin).toHaveBeenLastCalledWith(
+      -21.9,
+      64.13,
+      "Reykjavík · 2°",
+      "Reykjavík",
+    );
+  });
+
+  it("keeps today's pin with the vendored 0.7.0 (no selected-time)", async () => {
+    stubWidgetVersion(false);
+    const showPin = vi.fn();
+    const updatePinLabel = vi.fn();
+    const { controller, widget } = buildController({
+      getPlaceLabel: () => "Reykjavík",
+      getSelectedTime: () => "2026-11-09T14:00:00Z",
+      showPin,
+      updatePinLabel,
+    });
+    await controller.openAt(-21.9, 64.13);
+    expect(widget.hasAttribute("selected-time")).toBe(false);
+    controller.setSelectedTime("2026-11-09T15:00:00Z");
+    expect(widget.hasAttribute("selected-time")).toBe(false);
+    emitLocation(widget, { lat: 64.13, lon: -21.9, name: "Reykjavík", tempC: 4 });
+    expect(showPin).toHaveBeenLastCalledWith(
+      -21.9,
+      64.13,
+      "Reykjavík · 4°",
+      "Reykjavík",
+    );
+    expect(updatePinLabel).not.toHaveBeenCalled();
+  });
+
+  it("moves the map's timeline when the reader picks an hour in the panel", async () => {
+    stubWidgetVersion(true);
+    const onUserSelectTime = vi.fn((time: string) => time);
+    const updatePinLabel = vi.fn();
+    const { controller, widget } = buildController({
+      getPlaceLabel: () => "Reykjavík",
+      getSelectedTime: () => "2026-11-09T12:00:00Z",
+      onUserSelectTime,
+      showPin: vi.fn(),
+      updatePinLabel,
+    });
+    await controller.openAt(-21.9, 64.13);
+    emitLocation(widget, { lat: 64.13, lon: -21.9, name: "Reykjavík", tempC: 4 });
+    emitTime(widget, { time: "2026-11-09T15:00:00.000Z", tempC: 6, source: "user" });
+    expect(onUserSelectTime).toHaveBeenCalledWith("2026-11-09T15:00:00.000Z");
+    expect(updatePinLabel).toHaveBeenLastCalledWith("Reykjavík · 6°");
+    // Host events never move the timeline.
+    emitTime(widget, { time: "2026-11-09T18:00:00.000Z", tempC: 7, source: "host" });
+    expect(onUserSelectTime).toHaveBeenCalledTimes(1);
+  });
+
+  it("never moves the timeline on its own: a playback step or a removed hour only updates the pin", async () => {
+    stubWidgetVersion(true);
+    const onUserSelectTime = vi.fn((time: string) => time);
+    const updatePinLabel = vi.fn();
+    const { controller, widget } = buildController({
+      getPlaceLabel: () => "Reykjavík",
+      getSelectedTime: () => "2026-11-09T12:00:00Z",
+      onUserSelectTime,
+      showPin: vi.fn(),
+      updatePinLabel,
+    });
+    await controller.openAt(-21.9, 64.13);
+    emitLocation(widget, { lat: 64.13, lon: -21.9, name: "Reykjavík", tempC: 4 });
+    // A playback step: the attribute moves, the widget reports the hour.
+    controller.setSelectedTime("2026-11-09T13:00:00Z");
+    emitTime(widget, { time: "2026-11-09T13:00:00.000Z", tempC: 3, source: "host" });
+    expect(updatePinLabel).toHaveBeenLastCalledWith("Reykjavík · 3°");
+    // The attribute removed: the widget goes back to "now" and says so.
+    controller.setSelectedTime(null);
+    expect(widget.hasAttribute("selected-time")).toBe(false);
+    emitTime(widget, { time: "2026-11-06T15:00:00.000Z", tempC: 8, source: "host" });
+    expect(updatePinLabel).toHaveBeenLastCalledWith("Reykjavík · 8°");
+    // A load completing while the hour is set, and one out of range.
+    emitTime(widget, { time: null, tempC: null, source: "host" });
+    expect(updatePinLabel).toHaveBeenLastCalledWith("Reykjavík");
+    expect(onUserSelectTime).not.toHaveBeenCalled();
+    // Only a move the reader commits in the panel moves the timeline.
+    emitTime(widget, { time: "2026-11-09T18:00:00.000Z", tempC: 5, source: "user" });
+    expect(onUserSelectTime).toHaveBeenCalledTimes(1);
+    expect(onUserSelectTime).toHaveBeenCalledWith("2026-11-09T18:00:00.000Z");
+  });
+
+  it("puts the panel on whatever hour the timeline lands on, even another one", async () => {
+    stubWidgetVersion(true);
+    const { controller, widget } = buildController({
+      getSelectedTime: () => "2026-11-09T12:00:00Z",
+      // The map's frames end on the 10th: an hour the reader picks on the
+      // 12th is clamped to the last frame, which the panel then shows.
+      onUserSelectTime: () => "2026-11-10T18:00:00Z",
+    });
+    await controller.openAt(-21.9, 64.13);
+    emitTime(widget, { time: "2026-11-12T09:00:00.000Z", tempC: 1, source: "user" });
+    expect(widget.getAttribute("selected-time")).toBe(
+      "2026-11-10T18:00:00.000Z",
+    );
+  });
+
+  it("doesn't bounce the hour between the panel and the timeline", async () => {
+    stubWidgetVersion(true);
+    const { controller, widget } = buildController({
+      getSelectedTime: () => "2026-11-09T12:00:00Z",
+      // The timeline lands on the hour picked, then reports it back.
+      onUserSelectTime: (time) => {
+        controller.setSelectedTime(time);
+        return time;
+      },
+    });
+    await controller.openAt(-21.9, 64.13);
+    const setAttribute = vi.spyOn(widget, "setAttribute");
+    emitTime(widget, { time: "2026-11-09T15:00:00.000Z", tempC: 6, source: "user" });
+    // The attribute catches up once with the reader's hour; the timeline's
+    // echo of the same hour sends nothing more.
+    expect(setAttribute.mock.calls).toEqual([
+      ["selected-time", "2026-11-09T15:00:00.000Z"],
+    ]);
+    controller.setSelectedTime("2026-11-09T15:00:00Z");
+    expect(setAttribute).toHaveBeenCalledTimes(1);
+  });
+
+  it("puts the panel on the timeline's frame when the reader's hour isn't one", async () => {
+    stubWidgetVersion(true);
+    const { controller, widget } = buildController({
+      getSelectedTime: () => "2026-11-09T12:00:00Z",
+      // 3-hourly frames: 13:00 is nearest the current 12:00 frame, so the
+      // timeline doesn't move and won't report anything.
+      onUserSelectTime: () => "2026-11-09T12:00:00Z",
+    });
+    await controller.openAt(-21.9, 64.13);
+    const setAttribute = vi.spyOn(widget, "setAttribute");
+    emitTime(widget, { time: "2026-11-09T13:00:00.000Z", tempC: 6, source: "user" });
+    // Re-sent so the widget leaves 13:00 for the map's 12:00.
+    expect(setAttribute.mock.calls).toEqual([
+      ["selected-time", "2026-11-09T12:00:00.000Z"],
+    ]);
+  });
+});
