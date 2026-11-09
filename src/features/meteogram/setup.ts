@@ -58,6 +58,12 @@ export interface SetupMeteogramDeps {
   /** Name of the place at a point (clicked city label, else nearest place), or
    *  undefined when nothing is close enough to fairly label it. */
   readonly getPlaceLabel?: (lng: number, lat: number) => string | undefined;
+  /** The place a point stands in for when it was snapped to that place's
+   *  station: its name and its own point. */
+  readonly getSnappedFrom?: (
+    lng: number,
+    lat: number,
+  ) => { name: string; lng: number; lat: number } | undefined;
   /** Drop/remove the selected-point pin on the map (docked-panel layout).
    *  `placeName` is the place the pin names, if any, whose own map label the
    *  pin then stands in for. */
@@ -169,6 +175,7 @@ export function setupMeteogram(deps: SetupMeteogramDeps): MeteogramController {
     isMeteogramTarget: deps.isMeteogramTarget,
     getModelBounds: deps.getModelBounds,
     getPlaceLabel: deps.getPlaceLabel,
+    getSnappedFrom: deps.getSnappedFrom,
     showPin: deps.showPin,
     removePin: deps.removePin,
     onOpenStateChange: deps.onOpenStateChange,

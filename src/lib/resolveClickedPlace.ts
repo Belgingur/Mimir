@@ -38,6 +38,12 @@ export interface ResolvedPlace {
   readonly countryCode?: string;
   /** True when the coordinates came from the model's own station list. */
   readonly fromStation?: boolean;
+  /**
+   * For a "label" result, the label's own point, before any snap to a station:
+   * the place's centre, which the forecast point may lie some way from.
+   */
+  readonly labelLatitude?: number;
+  readonly labelLongitude?: number;
 }
 
 /**
@@ -167,6 +173,8 @@ export function createPlaceResolver(deps: PlaceResolverDeps): PlaceResolver {
           source: "label",
           distanceKm: 0,
           fromStation: snapped.fromStation,
+          labelLatitude: label.latitude,
+          labelLongitude: label.longitude,
         };
       }
 

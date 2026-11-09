@@ -82,4 +82,45 @@ describe("createPlaceLabeller", () => {
     labeller.remember(SELECTED, { lng: -21.94, lat: 64.14 });
     expect(labeller.labelAt(Number.NaN, 64.143)).toBeUndefined();
   });
+
+  describe("snappedFromAt", () => {
+    /** Reykjavík's label, clicked and snapped to the IMO station 2.1 km off. */
+    const SNAPPED: ResolvedPlace = {
+      name: "Reykjavík",
+      latitude: 64.1288,
+      longitude: -21.9079,
+      source: "label",
+      distanceKm: 0,
+      fromStation: true,
+      labelLatitude: 64.143,
+      labelLongitude: -21.937,
+    };
+
+    it("gives the place and its own point for a snapped selection", () => {
+      const labeller = createPlaceLabeller();
+      labeller.remember(SNAPPED, { lng: -21.94, lat: 64.14 });
+      expect(labeller.snappedFromAt(-21.9079, 64.1288)).toEqual({
+        name: "Reykjavík",
+        lng: -21.937,
+        lat: 64.143,
+      });
+    });
+
+    it("gives nothing when the selection wasn't snapped", () => {
+      const labeller = createPlaceLabeller();
+      labeller.remember(
+        { ...SELECTED, labelLatitude: 64.143, labelLongitude: -21.937 },
+        { lng: -21.94, lat: 64.14 },
+      );
+      expect(labeller.snappedFromAt(-21.937, 64.143)).toBeUndefined();
+    });
+
+    it("gives nothing for a nearest-place result or another point", () => {
+      const labeller = createPlaceLabeller();
+      labeller.remember(NEAREST, { lng: -21.2, lat: 63.98 });
+      expect(labeller.snappedFromAt(-20.997, 63.933)).toBeUndefined();
+      labeller.remember(SNAPPED, { lng: -21.94, lat: 64.14 });
+      expect(labeller.snappedFromAt(-18.09, 65.68)).toBeUndefined();
+    });
+  });
 });
