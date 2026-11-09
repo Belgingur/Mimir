@@ -25,6 +25,9 @@ export interface InitWeatherDeps {
   getIconographyController: () => IconographyController | undefined;
   getWavegramController: () => WavegramController;
   setTimelineCurrentDatetime: (dt: string) => void;
+  /** Told every change of the timeline's selected datetime (see
+   *  TimelineDeps.onCurrentDatetimeChange). */
+  onCurrentDatetimeChange?: (dt: string) => void;
 }
 
 export interface InitWeatherResult {
@@ -72,6 +75,7 @@ export async function initWeather(
       ),
     offsetDatetimeRange: (iso, back, fwd) =>
       WeatherLayers.offsetDatetimeRange(iso, back, fwd),
+    onCurrentDatetimeChange: deps.onCurrentDatetimeChange,
   });
   timelineController.timelineRange = WeatherLayers.offsetDatetimeRange(
     new Date().toISOString(),

@@ -1,16 +1,14 @@
 import { distance } from "geokdbush";
 import { t } from "../../lib/i18n";
-import type { BelMeteogramLocationDetail } from "../../vendor/bel-meteogram/bel-meteogram";
+import type {
+  BelMeteogramLocationDetail,
+  BelMeteogramTimeDetail,
+} from "../../vendor/bel-meteogram/bel-meteogram";
 import type { MeteogramTrigger } from "./meteogramTrigger";
 import { meteogramTargetKey, type MeteogramTarget } from "./meteogramConfig";
 import { readMapPanelPoint, writeMapPanelPoint, clearMapPanelPoint } from "./mapPanelState";
 import { SAME_POINT_EPSILON_DEG } from "../../lib/placeLabeller";
 
-/**
- * Pin/subtitle label for a resolved meteogram point. Prefers the place name
- * with the "now" temperature ("{place} · {temp}°" per the map-panel handoff),
- * falling back to the raw coordinates when either is missing.
- */
 /**
  * A forecast point this far or further from the centre of the place clicked
  * (the label's point) gets the widget's "forecast for the weather station
@@ -18,13 +16,44 @@ import { SAME_POINT_EPSILON_DEG } from "../../lib/placeLabeller";
  */
 export const STATION_NOTE_MIN_KM = 0.5;
 
-function formatPinLabel(detail: BelMeteogramLocationDetail): string {
+/** Pin/subtitle name for a resolved meteogram point: the place name, else
+ *  the raw coordinates. */
+function formatPinName(detail: BelMeteogramLocationDetail): string {
   const name = detail.name?.trim();
-  const place =
-    name && name.length > 0
-      ? name
-      : `${detail.lat.toFixed(3)}, ${detail.lon.toFixed(3)}`;
+  return name && name.length > 0
+    ? name
+    : `${detail.lat.toFixed(3)}, ${detail.lon.toFixed(3)}`;
+}
+
+/**
+ * Pin/subtitle label for a resolved meteogram point from a widget without
+ * `selected-time` (0.7.0): the name with the "now" temperature
+ * ("{place} · {temp}°" per the map-panel handoff), or the name alone when the
+ * temperature is missing.
+ */
+function formatPinLabel(detail: BelMeteogramLocationDetail): string {
+  const place = formatPinName(detail);
   return typeof detail.tempC === "number" ? `${place} · ${detail.tempC}°` : place;
+}
+
+/**
+ * Whether the registered `<bel-meteogram>` takes a host's hour through
+ * `selected-time` (widget 0.8.0 and later). An older widget does not, and the
+ * pin then keeps showing its "now" value.
+ */
+export function widgetSupportsSelectedTime(): boolean {
+  const ctor = customElements.get("bel-meteogram") as
+    | { observedAttributes?: readonly string[] }
+    | undefined;
+  return ctor?.observedAttributes?.includes("selected-time") ?? false;
+}
+
+/** An instant as the absolute UTC ISO string the widget's `selected-time`
+ *  takes, or null when there is none or it isn't a date. */
+function toUtcIso(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const ms = Date.parse(value);
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
 }
 
 export interface MeteogramDomRefs {
@@ -86,6 +115,18 @@ export interface MeteogramControllerDeps {
     placeName: string | undefined,
   ) => void;
   readonly removePin?: () => void;
+  /** Change only the text of the pin {@link showPin} dropped, without moving
+   *  it or touching the map's labels. Optional; without it the pin is dropped
+   *  again through {@link showPin}. */
+  readonly updatePinLabel?: (label: string) => void;
+  /** The hour selected on the map's timeline, as an ISO instant, or null
+   *  before there is one. A widget created later starts at this hour. */
+  readonly getSelectedTime?: () => string | null | undefined;
+  /** The reader moved the panel's hour (widget 0.8.0's `bel-meteogram-time`
+   *  with `source: "user"`). Moves the map's timeline to the frame at, else
+   *  nearest, that time, and returns that frame's time, or null when there is
+   *  no timeline. */
+  readonly onUserSelectTime?: (time: string) => string | null;
   /** Called whenever the panel opens or closes. The transient centre crosshair
    *  uses this to hold itself visible for as long as the meteogram it launched is
    *  on screen. Only fired on an actual change, so repeated opens at the same
@@ -107,6 +148,22 @@ export class MeteogramController {
    *  label clicked on the map), if any. */
   private opened: { lng: number; lat: number; name?: string } | null = null;
   private trigger: MeteogramTrigger | null = null;
+  /** The map timeline's hour as a UTC ISO instant (see {@link setSelectedTime}). */
+  private selectedTime: string | null = null;
+  /** The hour the mounted widget shows as far as the host knows: the last
+   *  `selected-time` given, or the hour the reader committed in the panel. */
+  private widgetTime: string | null = null;
+  /** Where the pin stands once the widget has resolved the current load, and
+   *  what it names; null until then (the pin shows the name alone). Only used
+   *  with a widget that supports `selected-time`. */
+  private pinTarget: {
+    lng: number;
+    lat: number;
+    name: string;
+    placeName: string | undefined;
+  } | null = null;
+  /** The label the pin was last given from a time event, to skip repeats. */
+  private pinLabel: string | null = null;
   private readonly deps: MeteogramControllerDeps;
   private readonly boundOnEscape: (event: KeyboardEvent) => void;
 
@@ -173,6 +230,8 @@ export class MeteogramController {
     dom.modal.setAttribute("aria-hidden", "true");
     this.pendingOutOfBounds = false;
     this.opened = null;
+    this.pinTarget = null;
+    this.pinLabel = null;
     this.deps.removePin?.();
     clearMapPanelPoint();
     if (wasOpen) this.deps.onOpenStateChange?.(false);
@@ -339,6 +398,8 @@ export class MeteogramController {
       this.widget.setAttribute("forecast-label", modelLabel);
       this.applyLocationName(this.widget, lng, lat);
       this.applyStationPlace(this.widget, lng, lat);
+      this.seedSelectedTime();
+      this.pushSelectedTime();
       this.widget.loadChartLocation(lat, lng, label);
       return { target };
     }
@@ -353,10 +414,100 @@ export class MeteogramController {
     this.applyLocationName(fresh, lng, lat);
     this.applyStationPlace(fresh, lng, lat);
     this.attachWidgetListeners(fresh);
-    this.deps.dom.widgetHost.appendChild(fresh);
     this.widget = fresh;
+    this.widgetTime = null;
     this.currentTargetKey = key;
+    // The timeline's hour goes on before the widget connects, so its first
+    // load already shows that hour.
+    this.seedSelectedTime();
+    this.pushSelectedTime();
+    this.deps.dom.widgetHost.appendChild(fresh);
     return { target };
+  }
+
+  /**
+   * The hour selected on the map's timeline, as an ISO instant (null for
+   * none). Called on every timeline step, playback included, so it only sets
+   * the open widget's `selected-time` — and only when that hour changed:
+   * the widget moves its cursor in place, without a refetch. A closed panel's
+   * widget catches up when it opens.
+   */
+  setSelectedTime(time: string | null | undefined): void {
+    this.selectedTime = toUtcIso(time);
+    if (this.isOpen) this.pushSelectedTime();
+  }
+
+  /** Take the timeline's current hour, for a widget being (re)pointed. */
+  private seedSelectedTime(): void {
+    if (this.deps.getSelectedTime) {
+      this.selectedTime = toUtcIso(this.deps.getSelectedTime());
+    }
+  }
+
+  /** Give the mounted widget the timeline's hour, when it shows another. */
+  private pushSelectedTime(): void {
+    const widget = this.widget;
+    if (!widget || !widgetSupportsSelectedTime()) return;
+    const time = this.selectedTime;
+    if (
+      time === this.widgetTime &&
+      time === widget.getAttribute("selected-time")
+    ) {
+      return;
+    }
+    if (time) widget.setAttribute("selected-time", time);
+    else widget.removeAttribute("selected-time");
+    this.widgetTime = time;
+  }
+
+  /**
+   * The widget's hour changed (widget 0.8.0's `bel-meteogram-time`). The pin
+   * shows the panel's value at that hour, and a move the reader committed in
+   * the panel moves the map's timeline with it.
+   */
+  private onWidgetTime(detail: BelMeteogramTimeDetail): void {
+    // Pin first: following the reader can set `selected-time` again (the
+    // nearest frame), whose own event must have the last word.
+    this.showPinValue(detail);
+    if (detail.source === "user") this.followReader(detail.time);
+  }
+
+  /**
+   * Label the pin "{name} · {temp}°" with the panel's value at its selected
+   * hour, or the name alone when the hour is outside the meteogram or has no
+   * value. Waits for the current load's location event, so a value never
+   * lands on a point it isn't for. Only the text changes: the pin and the
+   * map's labels stay as they are.
+   */
+  private showPinValue(detail: BelMeteogramTimeDetail): void {
+    const pin = this.pinTarget;
+    if (!pin) return;
+    const label =
+      detail.time !== null && typeof detail.tempC === "number"
+        ? `${pin.name} · ${detail.tempC}°`
+        : pin.name;
+    if (label === this.pinLabel) return;
+    this.pinLabel = label;
+    this.deps.dom.location.textContent = label;
+    if (this.deps.updatePinLabel) this.deps.updatePinLabel(label);
+    else this.deps.showPin?.(pin.lng, pin.lat, label, pin.placeName);
+  }
+
+  /**
+   * The reader committed another hour in the panel: move the map's timeline
+   * to the frame at (else nearest) it, and the widget to that frame when it
+   * isn't the hour picked. The timeline then reports the frame back through
+   * {@link setSelectedTime}, which finds the widget already there, so nothing
+   * bounces between the two.
+   */
+  private followReader(time: string | null): void {
+    const picked = toUtcIso(time);
+    if (!picked) return;
+    this.widgetTime = picked;
+    const frame = toUtcIso(this.deps.onUserSelectTime?.(picked));
+    if (!frame) return;
+    this.selectedTime = frame;
+    this.pushSelectedTime();
   }
 
   /**
@@ -409,6 +560,17 @@ export class MeteogramController {
       // dismissed quickly. close() has already removed the pin; leave it gone.
       if (!this.isOpen) return;
       const detail = (event as CustomEvent<BelMeteogramLocationDetail>).detail;
+      if (widgetSupportsSelectedTime()) {
+        // The value comes from the time event that follows this load; until
+        // then the pin names the point alone, never a stale value.
+        const name = formatPinName(detail);
+        const placeName = this.pinPlaceName(detail);
+        this.pinTarget = { lng: detail.lon, lat: detail.lat, name, placeName };
+        this.pinLabel = name;
+        this.deps.dom.location.textContent = name;
+        this.deps.showPin?.(detail.lon, detail.lat, name, placeName);
+        return;
+      }
       const label = formatPinLabel(detail);
       this.deps.dom.location.textContent = label;
       this.deps.showPin?.(
@@ -417,6 +579,10 @@ export class MeteogramController {
         label,
         this.pinPlaceName(detail),
       );
+    });
+    widget.addEventListener("bel-meteogram-time", (event) => {
+      if (this.widget !== widget || !this.isOpen) return;
+      this.onWidgetTime((event as CustomEvent<BelMeteogramTimeDetail>).detail);
     });
   }
 
@@ -432,6 +598,10 @@ export class MeteogramController {
     if (!wasOpen) this.deps.onOpenStateChange?.(true);
     const placeName = this.placeNameAt(lng, lat);
     this.opened = { lng, lat, name: placeName };
+    // A new point: its pin names it alone until the widget's load reports
+    // the point and its value.
+    this.pinTarget = null;
+    this.pinLabel = null;
     const label = placeName ?? this.pointLabel(lng, lat);
     dom.location.textContent = label;
     // Early out-of-domain hint: if the point is outside the selected model's

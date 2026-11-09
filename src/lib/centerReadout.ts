@@ -68,7 +68,8 @@ export interface CenterReadout {
    * that shortcut must be dead whenever the button itself is.
    */
   mountAction: (el: HTMLElement, isAvailable: () => boolean) => boolean;
-  /** Hold the crosshair open while the meteogram is on screen. */
+  /** Hide the readout while the meteogram is on screen (its pin is then the
+   *  only value on the map), and bring it back as it was when it closes. */
   setMeteogramOpen: (open: boolean) => void;
   /**
    * The map-centre coordinate the currently displayed value was sampled at.
@@ -337,7 +338,9 @@ function initLegacyCenterReadout(deps: CenterReadoutDeps): CenterReadout {
     refresh: schedule,
     notifyInteraction: () => {},
     mountAction: () => false,
-    setMeteogramOpen: () => {},
+    setMeteogramOpen: (open: boolean) => {
+      root.hidden = open;
+    },
     getActionPoint: () => {
       const center = map.getCenter();
       return { lng: center.lng, lat: center.lat };
@@ -426,6 +429,9 @@ function initTransientCenterReadout(deps: CenterReadoutDeps): CenterReadout {
 
   let rafHandle: number | null = null;
   let destroyed = false;
+  /** The meteogram is on screen: its pin is the only value on the map, so the
+   *  readout stays hidden whatever the state machine says. */
+  let meteogramOpen = false;
   /** Centre the displayed value was sampled at — the point the button opens. */
   let sampledCentre: { lng: number; lat: number } | null = null;
   /** The mounted meteogram button, if the feature is built and wired. */
@@ -501,8 +507,8 @@ function initTransientCenterReadout(deps: CenterReadoutDeps): CenterReadout {
 
   const applyState = (state: CrosshairState): void => {
     root.dataset.crosshairState = state;
-    const visible = isCrosshairVisible(state);
-    const actionable = isCrosshairActionable(state);
+    const visible = !meteogramOpen && isCrosshairVisible(state);
+    const actionable = !meteogramOpen && isCrosshairActionable(state);
     root.classList.toggle("is-visible", visible);
     root.classList.toggle("is-actionable", actionable);
     actionSlot.toggleAttribute("inert", !actionable);
@@ -691,8 +697,13 @@ function initTransientCenterReadout(deps: CenterReadoutDeps): CenterReadout {
       return true;
     },
     setMeteogramOpen: (open: boolean) => {
+      // The hold still keeps the machine where it was while the panel is
+      // open, so on close the readout comes back and fades as before; only
+      // its display is withheld meanwhile.
+      meteogramOpen = open;
       if (open) machine.acquireHold(HOLD_METEOGRAM_OPEN);
       else machine.releaseHold(HOLD_METEOGRAM_OPEN);
+      applyState(machine.state);
     },
     getActionPoint: () => sampledCentre,
     destroy: () => {

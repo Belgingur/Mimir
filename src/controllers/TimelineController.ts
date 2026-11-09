@@ -3,6 +3,7 @@ import {
   buildTimelineDayBlocks,
   formatTimelineBubbleLabel,
   formatTimelineBubbleLabelWithZone,
+  matchNearestTimeIndex,
   nowRailRatio,
 } from "../lib/timelineHelpers";
 import { TimelineControlAdapter } from "./TimelineControlAdapter";
@@ -44,6 +45,10 @@ export interface TimelineDeps {
     hoursBack: number,
     hoursForward: number,
   ) => [string, string];
+  /** Told the new datetime whenever the selected one changes — a scrub, a
+   *  playback step, a mode switch or a restore. Called on every step, so it
+   *  must stay cheap. */
+  onCurrentDatetimeChange?: (datetime: string) => void;
 }
 
 export class TimelineController {
@@ -100,7 +105,30 @@ export class TimelineController {
     return this._currentDatetime;
   }
   set currentDatetime(value: string) {
+    this.assignCurrentDatetime(value);
+  }
+
+  private assignCurrentDatetime(value: string): void {
+    if (value === this._currentDatetime) return;
     this._currentDatetime = value;
+    this.deps.onCurrentDatetimeChange?.(value);
+  }
+
+  /**
+   * Move the timeline to the frame at `datetime`, else the nearest one, as if
+   * the reader had picked it there — unless it is already the selected frame.
+   * Returns that frame's datetime, or null when the timeline has no frames.
+   */
+  selectNearestDatetime(datetime: string): string | null {
+    const datetimes = this._activeTimelineDatetimes;
+    if (!datetimes.length) return null;
+    const index = matchNearestTimeIndex(datetimes, datetime);
+    if (index !== this.getActiveTimelineIndex()) {
+      void this.setSelectedIndex(index, "user").catch(() => {
+        /* reported on the timeline by setSelectedIndex */
+      });
+    }
+    return datetimes[index] ?? null;
   }
 
   get timelineRange(): ReturnType<TimelineDeps["offsetDatetimeRange"]> | null {
@@ -533,7 +561,7 @@ export class TimelineController {
     datetime: string,
     signal?: AbortSignal,
   ): Promise<void> {
-    this._currentDatetime = datetime;
+    this.assignCurrentDatetime(datetime);
     this.deps.schedulePersistState();
     if (this.deps.getInhouseLayers().length) {
       this.deps.syncInhouseTimeToTimeline();
@@ -729,7 +757,7 @@ export class TimelineController {
       datetimes,
       datetimes,
     );
-    this._currentDatetime = nextDatetime;
+    this.assignCurrentDatetime(nextDatetime);
     const currentConfig = this._adapter.getConfig();
     if (currentConfig) {
       this._adapter.setConfig({
