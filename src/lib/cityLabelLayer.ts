@@ -130,8 +130,11 @@ export function buildCityGeoJSON(places: readonly PlaceTuple[]): {
   return {
     type: "FeatureCollection",
     features: places.map(
-      ([name, lon, lat, population, countryCode, capital, nationalRank]) => ({
+      ([name, lon, lat, population, countryCode, capital, nationalRank], i) => ({
         type: "Feature",
+        // The place's index in the dataset, so one city can be singled out
+        // where another shares its name (see setPinnedCity).
+        id: i,
         geometry: { type: "Point", coordinates: [lon, lat] },
         properties: { name, population, countryCode, capital, nationalRank },
       }),
@@ -149,40 +152,84 @@ export interface HiddenCities {
   dots: readonly string[];
 }
 const NONE: HiddenCities = { labels: [], dots: [] };
-const hiddenCities = new WeakMap<maplibregl.Map, HiddenCities>();
 
-function withoutNames(
+/**
+ * What is hidden on one map, from two sources kept apart so that neither can
+ * drop the other's entries: the iconography (by name, above) and the
+ * meteogram pin (one city, by feature id). The layers show their union.
+ */
+interface HiddenState {
+  readonly iconography: HiddenCities;
+  readonly pinnedId: number | null;
+}
+const NOTHING_HIDDEN: HiddenState = { iconography: NONE, pinnedId: null };
+const hiddenCities = new WeakMap<maplibregl.Map, HiddenState>();
+
+function withoutHidden(
   names: readonly string[],
+  pinnedId: number | null,
 ): maplibregl.FilterSpecification {
-  const filter = buildCityFilter();
+  const terms: unknown[] = [buildCityFilter()];
+  if (names.length > 0) {
+    terms.push(["!", ["in", ["get", "name"], ["literal", names]]]);
+  }
+  if (pinnedId !== null) terms.push(["!=", ["id"], pinnedId]);
   return (
-    names.length > 0
-      ? ["all", filter, ["!", ["in", ["get", "name"], ["literal", names]]]]
-      : filter
+    terms.length === 1 ? terms[0] : ["all", ...terms]
   ) as maplibregl.FilterSpecification;
 }
 
 const sameNames = (a: readonly string[], b: readonly string[]) =>
   a.length === b.length && a.every((name, i) => name === b[i]);
 
-/** Hide these cities' labels and dots; empty lists bring them all back. */
+function setHidden(map: maplibregl.Map, next: HiddenState): void {
+  const current = hiddenCities.get(map) ?? NOTHING_HIDDEN;
+  hiddenCities.set(map, next);
+  const pinChanged = next.pinnedId !== current.pinnedId;
+  // Called on every iconography redraw: re-filtering an unchanged list would
+  // restart label placement for nothing.
+  if (
+    (pinChanged || !sameNames(next.iconography.dots, current.iconography.dots)) &&
+    map.getLayer(CITY_DOT_LAYER_ID)
+  ) {
+    map.setFilter(
+      CITY_DOT_LAYER_ID,
+      withoutHidden(next.iconography.dots, next.pinnedId),
+    );
+  }
+  if (
+    (pinChanged ||
+      !sameNames(next.iconography.labels, current.iconography.labels)) &&
+    map.getLayer(CITY_LABEL_LAYER_ID)
+  ) {
+    map.setFilter(
+      CITY_LABEL_LAYER_ID,
+      withoutHidden(next.iconography.labels, next.pinnedId),
+    );
+  }
+}
+
+/**
+ * Hide these cities' labels and dots for the iconography; empty lists bring
+ * them all back. Leaves the pinned city (see {@link setPinnedCity}) hidden.
+ */
 export function setHiddenCities(
   map: maplibregl.Map,
   hidden: HiddenCities,
 ): void {
-  const current = hiddenCities.get(map) ?? NONE;
-  hiddenCities.set(map, hidden);
-  // Called on every iconography redraw: re-filtering an unchanged list would
-  // restart label placement for nothing.
-  if (!sameNames(hidden.dots, current.dots) && map.getLayer(CITY_DOT_LAYER_ID)) {
-    map.setFilter(CITY_DOT_LAYER_ID, withoutNames(hidden.dots));
-  }
-  if (
-    !sameNames(hidden.labels, current.labels) &&
-    map.getLayer(CITY_LABEL_LAYER_ID)
-  ) {
-    map.setFilter(CITY_LABEL_LAYER_ID, withoutNames(hidden.labels));
-  }
+  const current = hiddenCities.get(map) ?? NOTHING_HIDDEN;
+  setHidden(map, { ...current, iconography: hidden });
+}
+
+/**
+ * Hide one city's label and dot while the meteogram pin names it, by its
+ * feature id (its index in the dataset); null shows it again. By id rather
+ * than name, so pinning London, England leaves London, Ontario on the map.
+ */
+export function setPinnedCity(map: maplibregl.Map, id: number | null): void {
+  const current = hiddenCities.get(map) ?? NOTHING_HIDDEN;
+  if (current.pinnedId === id) return;
+  setHidden(map, { ...current, pinnedId: id });
 }
 
 /** The places array last sent to each city source, so an unchanged dataset
@@ -219,9 +266,12 @@ export function addCityLabelLayer(
   const source = map.getSource(CITY_LABEL_SOURCE_ID);
   if (source) appliedPlaces.set(source, places);
 
-  const hidden = hiddenCities.get(map) ?? NONE;
-  const dotFilter = withoutNames(hidden.dots);
-  const labelFilter = withoutNames(hidden.labels);
+  const hidden = hiddenCities.get(map) ?? NOTHING_HIDDEN;
+  const dotFilter = withoutHidden(hidden.iconography.dots, hidden.pinnedId);
+  const labelFilter = withoutHidden(
+    hidden.iconography.labels,
+    hidden.pinnedId,
+  );
 
   // A small dot anchors the name to the actual point — the same coordinate a
   // click on this label resolves to, so "where is this city" is unambiguous.

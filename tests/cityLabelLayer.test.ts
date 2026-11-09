@@ -11,6 +11,7 @@ import {
   NATIONAL_RANK_BY_ZOOM,
   POPULATION_BY_ZOOM,
   setHiddenCities,
+  setPinnedCity,
 } from "../src/lib/cityLabelLayer";
 import type { PlaceTuple } from "../src/lib/nearestPlace";
 
@@ -170,6 +171,7 @@ describe("buildCityGeoJSON", () => {
     expect(fc.features).toHaveLength(PLACES.length);
     expect(fc.features[0]).toEqual({
       type: "Feature",
+      id: 0,
       geometry: { type: "Point", coordinates: [139.749, 35.687] },
       properties: {
         name: "Tokyo",
@@ -317,5 +319,69 @@ describe("setHiddenCities", () => {
     setHiddenCities(map, both([]));
     expect(filterFor(raw, CITY_DOT_LAYER_ID)).toEqual(buildCityFilter());
     expect(filterFor(raw, CITY_LABEL_LAYER_ID)).toEqual(buildCityFilter());
+  });
+
+  describe("with a pinned city", () => {
+    // Madrid is PLACES[2]; the pin hides it by feature id, not by name.
+    const pinningMadrid = ["!=", ["id"], 2];
+
+    it("gives every feature its index as an id", () => {
+      const ids = buildCityGeoJSON(PLACES).features.map((f) => (f as { id: number }).id);
+      expect(ids).toEqual(PLACES.map((_, i) => i));
+    });
+
+    it("drops the pinned city's label and dot", () => {
+      const { raw, map } = makeMap();
+      addCityLabelLayer(map, PLACES);
+      setPinnedCity(map, 2);
+      const expected = ["all", buildCityFilter(), pinningMadrid];
+      expect(filterFor(raw, CITY_DOT_LAYER_ID)).toEqual(expected);
+      expect(filterFor(raw, CITY_LABEL_LAYER_ID)).toEqual(expected);
+    });
+
+    it("keeps the pin when the iconography redraws, and the reverse", () => {
+      const { raw, map } = makeMap();
+      addCityLabelLayer(map, PLACES);
+      setPinnedCity(map, 2);
+      setHiddenCities(map, both(["Tokyo"]));
+      const union = [
+        "all",
+        buildCityFilter(),
+        ["!", ["in", ["get", "name"], ["literal", ["Tokyo"]]]],
+        pinningMadrid,
+      ];
+      expect(filterFor(raw, CITY_LABEL_LAYER_ID)).toEqual(union);
+      expect(filterFor(raw, CITY_DOT_LAYER_ID)).toEqual(union);
+
+      setPinnedCity(map, null);
+      const iconographyOnly = [
+        "all",
+        buildCityFilter(),
+        ["!", ["in", ["get", "name"], ["literal", ["Tokyo"]]]],
+      ];
+      expect(filterFor(raw, CITY_LABEL_LAYER_ID)).toEqual(iconographyOnly);
+      expect(filterFor(raw, CITY_DOT_LAYER_ID)).toEqual(iconographyOnly);
+    });
+
+    it("does not re-filter for the same pin", () => {
+      const { raw, map } = makeMap();
+      addCityLabelLayer(map, PLACES);
+      setPinnedCity(map, 2);
+      raw.setFilter.mockClear();
+      setPinnedCity(map, 2);
+      expect(raw.setFilter).not.toHaveBeenCalled();
+    });
+
+    it("stays hidden when the layers are refreshed on styledata", () => {
+      const { raw, map } = makeMap();
+      addCityLabelLayer(map, PLACES);
+      setPinnedCity(map, 2);
+      addCityLabelLayer(map, PLACES);
+      expect(filterFor(raw, CITY_LABEL_LAYER_ID)).toEqual([
+        "all",
+        buildCityFilter(),
+        pinningMadrid,
+      ]);
+    });
   });
 });

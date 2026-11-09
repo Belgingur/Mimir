@@ -208,11 +208,12 @@ describe("createPlaceResolver", () => {
     const resolver = createPlaceResolver({ map: makeMap([]) });
     await resolver.preload();
     const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // The dataset and its coordinate overrides, each once.
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(resolver.resolve(POINT, { lng: -21.5, lat: 64.1 })?.name).toBe(
       "Reykjavík",
     );
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("exposes the loaded dataset for the city-label layer", async () => {

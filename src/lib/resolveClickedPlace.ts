@@ -75,7 +75,7 @@ export function foldName(name: string): string {
 }
 
 /** Stations further than this from the resolved city are a different place. */
-const STATION_MATCH_MAX_KM = 25;
+export const STATION_MATCH_MAX_KM = 25;
 
 export interface PlaceResolverDeps {
   readonly map: maplibregl.Map;
