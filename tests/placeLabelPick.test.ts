@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type * as maplibregl from "maplibre-gl";
 import {
+  ANCHOR_SNAP_RADIUS_PX,
   getPresentSettlementLayerIds,
   pickPlaceLabel,
   SETTLEMENT_LAYER_IDS,
@@ -211,5 +212,68 @@ describe("pickPlaceLabel", () => {
       throw new Error("style is not done loading");
     });
     expect(pickPlaceLabel(map, POINT)).toBeNull();
+  });
+});
+
+/**
+ * A stand-in that hit-tests like MapLibre: each label has a screen-space box,
+ * a box query returns the labels whose box overlaps it, and a point query the
+ * labels whose box contains the point. Screen x/y equal lon/lat here.
+ */
+function makeLabelMap(
+  labels: { name: string; anchor: [number, number]; box: [number, number, number, number] }[],
+) {
+  const features = labels.map((label) => ({
+    ...makeFeature(label.name, label.anchor[0], label.anchor[1], { class: "town", rank: 5 }),
+    box: label.box,
+  }));
+  type Geometry = [number, number] | [[number, number], [number, number]];
+  const queryRenderedFeatures = vi.fn((geometry: Geometry) => {
+    const [[x0, y0], [x1, y1]] = Array.isArray(geometry[0])
+      ? (geometry as [[number, number], [number, number]])
+      : [geometry as [number, number], geometry as [number, number]];
+    return features.filter(({ box: [bx0, by0, bx1, by1] }) => bx0 <= x1 && x0 <= bx1 && by0 <= y1 && y0 <= by1);
+  });
+  const map = {
+    getLayer: (id: string) => ({ id }),
+    queryRenderedFeatures,
+    project: ([lon, lat]: [number, number]) => ({ x: lon, y: lat }),
+  };
+  return map as unknown as maplibregl.Map;
+}
+
+describe("pickPlaceLabel — a click beside a long name", () => {
+  // Seltjarnarnes at full zoom: the name is drawn centred on the town's point
+  // and its last letters end right at Reykjavík's old harbour, 48 px east.
+  const seltjarnarnes = { name: "Seltjarnarnes", anchor: [500, 300] as [number, number], box: [452, 292, 548, 308] as [number, number, number, number] };
+
+  it("doesn't snap a click 1 px past the end of the name, 49 px from the town", () => {
+    const map = makeLabelMap([seltjarnarnes]);
+    expect(pickPlaceLabel(map, { x: 549, y: 300 }, { coarsePointer: false })).toBeNull();
+  });
+
+  it("doesn't snap a click 4 px below the end of the name", () => {
+    const map = makeLabelMap([seltjarnarnes]);
+    const click = { x: 546, y: 312 };
+    expect(Math.hypot(click.x - 500, click.y - 300)).toBeGreaterThan(ANCHOR_SNAP_RADIUS_PX);
+    expect(pickPlaceLabel(map, click, { coarsePointer: false })).toBeNull();
+  });
+
+  it("snaps a click on the name's last letters to the town", () => {
+    const map = makeLabelMap([seltjarnarnes]);
+    expect(pickPlaceLabel(map, { x: 540, y: 300 }, { coarsePointer: false })?.name).toBe("Seltjarnarnes");
+  });
+
+  it("snaps a click within 12 px of the town's point, even off the name", () => {
+    // A short name centred on its point; both clicks are below its box.
+    const map = makeLabelMap([{ name: "Vík", anchor: [200, 200], box: [188, 193, 212, 207] }]);
+    expect(pickPlaceLabel(map, { x: 200, y: 211 }, { coarsePointer: false })?.name).toBe("Vík");
+    expect(pickPlaceLabel(map, { x: 200, y: 213 }, { coarsePointer: false })).toBeNull();
+  });
+
+  it("applies the same rule to touch, whose wider box only finds candidates", () => {
+    const map = makeLabelMap([seltjarnarnes]);
+    expect(pickPlaceLabel(map, { x: 552, y: 300 }, { coarsePointer: true })).toBeNull();
+    expect(pickPlaceLabel(map, { x: 540, y: 300 }, { coarsePointer: true })?.name).toBe("Seltjarnarnes");
   });
 });

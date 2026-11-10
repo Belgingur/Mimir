@@ -78,6 +78,40 @@ describe("foldName", () => {
 });
 
 describe("createPlaceResolver", () => {
+  it("forecasts the clicked point beside a long name, and the town on it", async () => {
+    // Seltjarnarnes' label: anchored on the town, its box ending 48 px east.
+    // Screen x/y equal lon/lat in this stand-in, and a point query returns
+    // the label only when the point is inside its box, as MapLibre does.
+    const feature = {
+      ...cityFeature("Seltjarnarnes", 500, 300),
+      layer: undefined,
+      sourceLayer: "place",
+      properties: { name: "Seltjarnarnes", class: "town", rank: 5 },
+    };
+    const inBox = (x: number, y: number) => x >= 452 && x <= 548 && y >= 292 && y <= 308;
+    const map = {
+      getLayer: (id: string) => ({ id }),
+      queryRenderedFeatures: vi.fn((geometry: unknown) => {
+        if (Array.isArray(geometry) && typeof geometry[0] === "number") {
+          return inBox(geometry[0] as number, geometry[1] as number) ? [feature] : [];
+        }
+        return [feature];
+      }),
+      project: ([lon, lat]: [number, number]) => ({ x: lon, y: lat }),
+    } as unknown as maplibregl.Map;
+    const resolver = createPlaceResolver({ map });
+    await resolver.preload();
+    const lngLat = { lng: -21.94, lat: 64.15 };
+    // Two clicks beside the name: no label, so the clicked point is kept.
+    expect(resolver.resolve({ x: 549, y: 300 }, lngLat)?.source).toBe("dataset");
+    expect(resolver.resolve({ x: 546, y: 312 }, lngLat)?.source).toBe("dataset");
+    // A click on the name opens the town.
+    expect(resolver.resolve({ x: 540, y: 300 }, lngLat)).toMatchObject({
+      name: "Seltjarnarnes",
+      source: "label",
+    });
+  });
+
   it("returns the city's own point when its label is clicked", async () => {
     const resolver = createPlaceResolver({
       map: makeMap([cityFeature("Reykjavík", -21.937, 64.143)]),
