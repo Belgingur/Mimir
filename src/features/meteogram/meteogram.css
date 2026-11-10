@@ -83,7 +83,12 @@
   }
   #meteogram-modal .chart-modal__card {
     position: absolute;
-    inset: 0;
+    /* End above the bottom bar and the time label standing on it. The label's
+       top is about 18px above the bar, and it grows to 1.7x upward while
+       hovered or dragged, about 30px. The widget keeps its panel inside this
+       box, so no size or position of the panel covers the timeline or the
+       hour it shows. */
+    inset: 0 0 calc(var(--bottom-bar-height) + var(--safe-area-bottom) + 30px);
     width: 100%;
     max-width: none;
     max-height: none;
