@@ -38,7 +38,7 @@ assignees: ''
 |---|---|
 | OS & version | e.g. macOS 14.4 / iOS 17 |
 | Browser & version | e.g. Chrome 124 / Safari 17 |
-| App version | e.g. v3.2.1 or commit SHA |
+| App version | The commit, e.g. `1a2b3c4`: open `/version.json` on the site, or search the page source for `mimir-commit` |
 | Device (mobile only) | e.g. iPhone 15 Pro |
 
 ### Reproducibility

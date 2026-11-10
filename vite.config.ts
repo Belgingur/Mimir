@@ -1,4 +1,12 @@
+import { execFileSync } from "node:child_process";
 import { defineConfig, type Plugin } from "vite";
+import {
+  COMMIT_ENV_VAR,
+  COMMIT_META_NAME,
+  resolveBuildCommit,
+  versionJson,
+  type GitState,
+} from "./src/lib/buildInfo";
 import {
   WEATHER_LOOP_CSS_SLOT,
   WEATHER_LOOP_ICON_CSS,
@@ -23,8 +31,41 @@ const weatherLoopIcon = (): Plugin => ({
   },
 });
 
+/** Ask git which commit is checked out, or null when git can't tell us (a
+ *  build from a tarball, or with no git installed). */
+function readGitState(): GitState | null {
+  const git = (...args: string[]) =>
+    execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+  try {
+    const shortSha = git("rev-parse", "--short", "HEAD").trim();
+    const dirty = git("status", "--porcelain", "--untracked-files=no").trim() !== "";
+    return { shortSha, dirty };
+  } catch {
+    return null;
+  }
+}
+
+/** Record which commit a production build came from: a meta tag in
+ *  index.html and a version.json beside it. See src/lib/buildInfo.ts. */
+const buildCommitInfo = (): Plugin => {
+  let commit = "unknown";
+  return {
+    name: "mimir-build-commit",
+    apply: "build",
+    buildStart() {
+      commit = resolveBuildCommit(readGitState(), process.env[COMMIT_ENV_VAR]);
+    },
+    transformIndexHtml() {
+      return [{ tag: "meta", attrs: { name: COMMIT_META_NAME, content: commit }, injectTo: "head" }];
+    },
+    generateBundle() {
+      this.emitFile({ type: "asset", fileName: "version.json", source: versionJson(commit, new Date()) });
+    },
+  };
+};
+
 export default defineConfig({
-  plugins: [weatherLoopIcon()],
+  plugins: [weatherLoopIcon(), buildCommitInfo()],
   define: {
     global: "globalThis",
   },
