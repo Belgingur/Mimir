@@ -62,6 +62,8 @@ Environment variables are read by Vite and must use the `VITE_` prefix. Copy `.e
 | `VITE_WOD_API_PASSWORD`   |       No | Enables the optional [meteogram](#meteogram) feature (needs `VITE_WOD_API_USER` too). WOD deployment password.                    |
 | `VITE_METEOGRAM_API_BASE` |       No | Origin of the WOD API the bundled meteogram widget talks to. Defaults to `https://wod-odinn.belgingur.is` (a legacy `VITE_METEOGRAM_EMBED_URL` is honoured via its origin). |
 
+**The `VITE_WOD_*` values are public.** Vite writes every `VITE_*` value into the JavaScript it builds, so anyone who loads the site can read `VITE_WOD_API_USER` and `VITE_WOD_API_PASSWORD` from it. Use a dedicated, read-only account with a request quota for them, never a personal or privileged one.
+
 ## Scripts
 
 ```bash
@@ -202,7 +204,7 @@ An **optional, opt-in** feature: clicking the map on a non-wave forecast opens a
 
 It is a self-contained module under [`src/features/meteogram/`](src/features/meteogram/) and is **disabled by default**. It turns on only when a build supplies **both** `VITE_WOD_API_USER` and `VITE_WOD_API_PASSWORD` — these mark the build as an authorised Belgingur deployment. Because Vite inlines env vars at build time, a build without them ships with none of the meteogram code, CSS, or DOM (the module is behind a guarded dynamic import that is dead-code-eliminated).
 
-The credentials are passed to the widget (as its `api-user`/`api-password` attributes) so it can authenticate its forecast-data requests with HTTP Basic auth — without them the chart fails to load on any client that has no existing WOD session (e.g. a phone). The widget's config/data requests go to `VITE_METEOGRAM_API_BASE` (default `https://wod-odinn.belgingur.is`). GWES models keep routing map clicks to the wavegram, so the two features never collide.
+The credentials are passed to the widget (as its `api-user`/`api-password` attributes) so it can authenticate its forecast-data requests with HTTP Basic auth — without them the chart fails to load on any client that has no existing WOD session (e.g. a phone). Like every `VITE_*` value they are readable in the built JavaScript; see [Configuration](#configuration). The widget's config/data requests go to `VITE_METEOGRAM_API_BASE` (default `https://wod-odinn.belgingur.is`). GWES models keep routing map clicks to the wavegram, so the two features never collide.
 
 ## Embedding
 
