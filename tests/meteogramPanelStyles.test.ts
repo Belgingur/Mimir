@@ -36,3 +36,13 @@ describe("meteogram.css — docked panel and the timeline", () => {
     expect(clearance).toBeGreaterThanOrEqual(30);
   });
 });
+
+describe("meteogram.css — the map pin", () => {
+  it("hides the pin's label while it has no text", () => {
+    const index = css.indexOf(".meteogram-pin__label:empty {");
+    expect(index, "missing the :empty rule").toBeGreaterThan(-1);
+    const open = css.indexOf("{", index);
+    const rule = css.slice(open + 1, css.indexOf("}", open));
+    expect(rule).toMatch(/(?:^|;|\s)display:\s*none\s*;/);
+  });
+});
