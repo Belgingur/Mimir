@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   extractSnowPoints,
+  hideSnowOverlayWhileMoving,
   referenceZoomForModel,
   SNOW_OVERLAY_MIN,
+  SnowOverlaySVG,
+  type SnowPoint,
 } from "../src/lib/snowOverlay";
 import type { InhouseLayer } from "../src/lib/inhouseTypes";
 
@@ -203,5 +206,70 @@ describe("extractSnowPoints", () => {
 
   it("exports SNOW_OVERLAY_MIN = 0.25", () => {
     expect(SNOW_OVERLAY_MIN).toBe(0.25);
+  });
+});
+
+// ── SnowOverlaySVG while the map moves ───────────────────────────────────────
+
+describe("SnowOverlaySVG while the map moves", () => {
+  /** A stand-in for MapLibre's event surface: on() and a way to fire. */
+  function stubMap() {
+    const listeners = new Map<string, Array<() => void>>();
+    return {
+      on(type: string, listener: () => void) {
+        listeners.set(type, [...(listeners.get(type) ?? []), listener]);
+      },
+      fire(type: string) {
+        for (const listener of listeners.get(type) ?? []) listener();
+      },
+    };
+  }
+
+  const point: SnowPoint = { lng: 2, lat: 3, tier: 1, rot: 0, size: 4 };
+  const bounds = { west: -10, south: -10, east: 10, north: 10 };
+  // Two projections: the map before and after it has been panned 50 px.
+  const before = ([lng, lat]: [number, number]) => ({ x: lng * 10, y: lat * 10 });
+  const after = ([lng, lat]: [number, number]) => ({ x: lng * 10 + 50, y: lat * 10 });
+
+  function setup() {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const overlay = new SnowOverlaySVG(container);
+    const map = stubMap();
+    hideSnowOverlayWhileMoving(map, overlay);
+    const svg = container.querySelector("svg") as SVGSVGElement;
+    const cx = () => svg.querySelector("circle")?.getAttribute("cx");
+    return { container, overlay, map, svg, cx };
+  }
+
+  it("hides the symbols on movestart and shows them re-projected after moveend", () => {
+    const { container, overlay, map, svg, cx } = setup();
+    overlay.update([point], before, 1, 3, bounds, "GFS");
+    expect(svg.style.visibility).toBe("");
+    expect(cx()).toBe("20.0");
+
+    map.fire("movestart");
+    expect(svg.style.visibility).toBe("hidden");
+
+    // An update scheduled mid-move (zoomstart schedules one) keeps it hidden.
+    overlay.update([point], after, 1, 3, bounds, "GFS");
+    expect(svg.style.visibility).toBe("hidden");
+
+    map.fire("moveend");
+    overlay.update([point], after, 1, 3, bounds, "GFS");
+    expect(svg.style.visibility).toBe("");
+    expect(cx()).toBe("70.0");
+    container.remove();
+  });
+
+  it("hides the symbols on zoomstart too", () => {
+    const { container, overlay, map, svg } = setup();
+    overlay.update([point], before, 1, 3, bounds, "GFS");
+    map.fire("zoomstart");
+    expect(svg.style.visibility).toBe("hidden");
+    map.fire("moveend");
+    overlay.update([point], after, 1, 3, bounds, "GFS");
+    expect(svg.style.visibility).toBe("");
+    container.remove();
   });
 });
