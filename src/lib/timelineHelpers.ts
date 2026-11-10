@@ -54,6 +54,31 @@ export const formatTimelineZoneLabel = (datetime: string) => {
 export const formatTimelineBubbleLabelWithZone = (datetime: string) =>
   `${formatTimelineBubbleLabel(datetime)} ${formatTimelineZoneLabel(datetime)}`;
 
+/**
+ * Where step `index` of `count` sits on the timeline rail, as a 0–1 fraction
+ * of the rail's width: the first step at the left end, the last at the right
+ * end, every step the same distance apart.
+ */
+export const timelineRailRatio = (index: number, count: number): number =>
+  count > 1 ? index / (count - 1) : 0;
+
+/**
+ * Where each day box sits under the rail, as 0–1 fractions of the rail's
+ * width. A box starts at the rail position of its day's first step and runs to
+ * the next box's first step (the last box to the end of the rail), so a day
+ * that starts at 00:00 has its box edge right under that step.
+ */
+export const timelineDayBoxes = (
+  blocks: ReadonlyArray<{ start: number }>,
+  count: number,
+): Array<{ left: number; width: number }> =>
+  blocks.map((block, i) => {
+    const left = timelineRailRatio(block.start, count);
+    const next = blocks[i + 1];
+    const right = next ? timelineRailRatio(next.start, count) : 1;
+    return { left, width: right - left };
+  });
+
 export const buildTimelineDayBlocks = (datetimes: string[]) => {
   const blocks: Array<{ label: string; start: number; end: number }> = [];
   for (let i = 0; i < datetimes.length; i += 1) {

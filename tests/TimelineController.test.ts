@@ -436,6 +436,27 @@ describe("TimelineController", () => {
       ).toBe(true);
     });
 
+    it("places each day segment at its first step's rail position", () => {
+      const { deps, dom } = createDeps();
+      const ctrl = new TimelineController(deps);
+      // 49 hourly steps from a local midnight: days start at steps 0, 24 and 48.
+      const start = new Date(2026, 10, 10, 0, 0, 0).getTime();
+      const datetimes = Array.from({ length: 49 }, (_, i) =>
+        new Date(start + i * 3_600_000).toISOString(),
+      );
+      ctrl.activeTimelineDatetimes = datetimes;
+      ctrl.currentDatetime = datetimes[0];
+      ctrl.ensureCustomTimeline(dom.timelineHost);
+      const segments = Array.from(
+        dom.timelineHost.querySelectorAll<HTMLDivElement>(".timeline-day-segment"),
+      );
+      // The third day has only the run's last step, at the rail's right end:
+      // no width, so no box.
+      expect(segments.map((el) => el.style.left)).toEqual(["0%", "50%"]);
+      expect(segments.map((el) => el.style.width)).toEqual(["calc(50% - 1px)", "50%"]);
+      expect(segments[0].style.flex).toBe("");
+    });
+
     it("clicking day segment jumps to midpoint index", async () => {
       const { deps, dom, spies } = createDeps();
       const ctrl = new TimelineController(deps);
