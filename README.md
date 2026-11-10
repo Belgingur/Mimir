@@ -281,6 +281,17 @@ The test suite uses Vitest and jsdom. GitHub Actions runs type-checking, linting
 
 One `patch-package` patch is applied after install: `@luma.gl+webgl+9.3.3`, which fixes texture upload unpack parameters.
 
+## Deploying
+
+`npm run build` writes a static site to `dist/`; serve its contents from any static web server.
+
+Each build records the commit it was built from, so you can check which one is live:
+
+- `version.json` at the site root, e.g. `curl -s https://<your-host>/version.json`, returns `{ "commit": "…", "builtAt": "…" }`. Serve it with `Cache-Control: no-cache` so it shows the latest upload.
+- The page carries the same commit in a meta tag. In the browser console: `document.querySelector('meta[name="mimir-commit"]').content`.
+
+The commit is `git rev-parse --short HEAD`, with `-dirty` added when tracked files have uncommitted changes. A build without git (from a tarball, say) uses the `MIMIR_COMMIT` environment variable if it is set, and `unknown` if not.
+
 ## Contributing
 
 Contributions are welcome. Please open an issue before starting significant work so we can discuss the approach.
