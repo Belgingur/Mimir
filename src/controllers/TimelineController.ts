@@ -9,6 +9,7 @@ import {
 import { TimelineControlAdapter } from "./TimelineControlAdapter";
 import type { UiState } from "../lib/inhouseTypes";
 import { t } from "../lib/i18n";
+import type { KeyAction } from "../lib/keymap";
 
 export type PlaybackState =
   | "idle"
@@ -651,54 +652,6 @@ export class TimelineController {
     }
   }
 
-  shouldIgnoreTimelineHotkeys(target: EventTarget | null): boolean {
-    const el = target instanceof HTMLElement ? target : null;
-    if (!el) return false;
-    if (el.isContentEditable) return true;
-    if (el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement)
-      return true;
-    if (el instanceof HTMLInputElement) {
-      const type = (el.type || "text").toLowerCase();
-      if (
-        type === "text" ||
-        type === "search" ||
-        type === "email" ||
-        type === "url" ||
-        type === "tel" ||
-        type === "password" ||
-        type === "number" ||
-        type === "date" ||
-        type === "datetime-local" ||
-        type === "month" ||
-        type === "time" ||
-        type === "week"
-      ) {
-        return true;
-      }
-    }
-    const editableAncestor = el.closest(
-      '[contenteditable="true"], textarea, select',
-    );
-    if (editableAncestor) return true;
-    const inputAncestor = el.closest("input") as HTMLInputElement | null;
-    if (!inputAncestor) return false;
-    const type = (inputAncestor.type || "text").toLowerCase();
-    return (
-      type === "text" ||
-      type === "search" ||
-      type === "email" ||
-      type === "url" ||
-      type === "tel" ||
-      type === "password" ||
-      type === "number" ||
-      type === "date" ||
-      type === "datetime-local" ||
-      type === "month" ||
-      type === "time" ||
-      type === "week"
-    );
-  }
-
   isModalBlockingTimelineHotkeys(): boolean {
     return this.deps.isWavegramOpen();
   }
@@ -842,32 +795,32 @@ export class TimelineController {
     this._timelineAutoPlay = false;
   }
 
-  handleTimelineKeydown(event: KeyboardEvent): void {
-    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+  /**
+   * Run a keyboard action (see src/lib/keymap.ts). Returns true when the
+   * timeline took the key, so the listener consumes it and the map's own
+   * keyboard handler never sees it; false lets the key go on (a wavegram is
+   * open, or there is no timeline yet).
+   */
+  runKeyAction(action: KeyAction): boolean {
     if (this.deps.isDev) {
-      console.log("[timeline keydown]", {
-        key: event.key,
+      console.log("[timeline key]", {
+        action,
         activeTimelineCount: this._activeTimelineDatetimes.length,
         playbackState: this._playbackState,
         hasPendingTimelineUpdate: this._timelineUpdateHandle !== null,
         activeElement: document.activeElement?.tagName ?? null,
       });
     }
-    if (
-      this.shouldIgnoreTimelineHotkeys(event.target) ||
-      this.isModalBlockingTimelineHotkeys()
-    )
-      return;
-    if (!this._activeTimelineDatetimes.length) return;
-    const delta = event.key === "ArrowRight" ? 1 : -1;
-    event.preventDefault();
-    event.stopPropagation();
+    if (this.isModalBlockingTimelineHotkeys()) return false;
+    if (!this._activeTimelineDatetimes.length) return false;
+    const delta = action === "timeline.stepForward" ? 1 : -1;
     if (
       this._timelineUpdateHandle !== null ||
       this._playbackState === "waitingForFrame"
     )
-      return;
+      return true;
     void this.stepTimelineByKeyboard(delta);
+    return true;
   }
 
   getPlaybackDebugState(): {
