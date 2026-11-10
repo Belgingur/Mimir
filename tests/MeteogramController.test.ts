@@ -144,6 +144,32 @@ describe("MeteogramController", () => {
     });
   });
 
+  it("clears the status line on close, after a failed load", async () => {
+    const { controller, dom, widget } = buildController();
+    await controller.openAt(-21.94, 64.15);
+    widget.dispatchEvent(
+      new CustomEvent("bel-meteogram-status", {
+        detail: { status: "error", error: "meteogram: HTTP 403" },
+      }),
+    );
+    expect(dom.status.textContent).toContain("meteogram: HTTP 403");
+
+    controller.close();
+    expect(dom.status.textContent).toBe("");
+  });
+
+  it("ignores a status the widget reports after the panel closed", async () => {
+    const { controller, dom, widget } = buildController();
+    await controller.openAt(-21.94, 64.15);
+    controller.close();
+    widget.dispatchEvent(
+      new CustomEvent("bel-meteogram-status", {
+        detail: { status: "error", error: "meteogram: HTTP 403" },
+      }),
+    );
+    expect(dom.status.textContent).toBe("");
+  });
+
   it("mirrors widget status events into the modal status line", async () => {
     const { controller, dom, widget } = buildController();
     await controller.openAt(-20, 64);

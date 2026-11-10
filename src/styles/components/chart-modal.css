@@ -122,7 +122,10 @@
   color: var(--muted);
 }
 
-.chart-modal__status:not(:empty) {
+/* Scoped to the open modal, like the wavegram shimmer below: a closed modal is
+   only visibility-hidden, and an infinite animation there would still recalc
+   style every frame. */
+.chart-modal.is-open .chart-modal__status:not(:empty) {
   animation: status-pulse 1.5s ease infinite;
 }
 
