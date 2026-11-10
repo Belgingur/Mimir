@@ -7,6 +7,7 @@ import {
   type TimelineDom,
 } from "../src/controllers/TimelineController";
 import { buildTimelineDayBlocks } from "../src/lib/timelineHelpers";
+import { listenForKeyActions, type KeyAction } from "../src/lib/keymap";
 
 type ControlLike = {
   config: { datetimes: string[]; datetime: string };
@@ -741,61 +742,7 @@ describe("TimelineController", () => {
     });
   });
 
-  describe("hotkey filtering and keyboard handler", () => {
-    it("shouldIgnoreTimelineHotkeys false for null target", () => {
-      const { deps } = createDeps();
-      const ctrl = new TimelineController(deps);
-      expect(ctrl.shouldIgnoreTimelineHotkeys(null)).toBe(false);
-    });
-
-    it("ignores contentEditable targets", () => {
-      const { deps } = createDeps();
-      const ctrl = new TimelineController(deps);
-      const el = document.createElement("div");
-      el.setAttribute("contenteditable", "true");
-      expect(ctrl.shouldIgnoreTimelineHotkeys(el)).toBe(true);
-    });
-
-    it("ignores textarea targets", () => {
-      const { deps } = createDeps();
-      const ctrl = new TimelineController(deps);
-      const textarea = document.createElement("textarea");
-      expect(ctrl.shouldIgnoreTimelineHotkeys(textarea)).toBe(true);
-    });
-
-    it("ignores select targets", () => {
-      const { deps } = createDeps();
-      const ctrl = new TimelineController(deps);
-      const select = document.createElement("select");
-      expect(ctrl.shouldIgnoreTimelineHotkeys(select)).toBe(true);
-    });
-
-    it("ignores text-like input types", () => {
-      const { deps } = createDeps();
-      const ctrl = new TimelineController(deps);
-      const input = document.createElement("input");
-      input.type = "search";
-      expect(ctrl.shouldIgnoreTimelineHotkeys(input)).toBe(true);
-    });
-
-    it("does not ignore checkbox input", () => {
-      const { deps } = createDeps();
-      const ctrl = new TimelineController(deps);
-      const input = document.createElement("input");
-      input.type = "checkbox";
-      expect(ctrl.shouldIgnoreTimelineHotkeys(input)).toBe(false);
-    });
-
-    it("ignores targets inside editable ancestor", () => {
-      const { deps } = createDeps();
-      const ctrl = new TimelineController(deps);
-      const wrapper = document.createElement("div");
-      wrapper.setAttribute("contenteditable", "true");
-      const child = document.createElement("span");
-      wrapper.appendChild(child);
-      expect(ctrl.shouldIgnoreTimelineHotkeys(child)).toBe(true);
-    });
-
+  describe("keyboard actions", () => {
     it("isModalBlockingTimelineHotkeys from wavegram popup", () => {
       const { deps, state } = createDeps();
       const ctrl = new TimelineController(deps);
@@ -803,73 +750,83 @@ describe("TimelineController", () => {
       expect(ctrl.isModalBlockingTimelineHotkeys()).toBe(true);
     });
 
-    it("handleTimelineKeydown ignores non-arrow keys", () => {
-      const { deps, spies } = createDeps();
-      const ctrl = new TimelineController(deps);
-      ctrl.activeTimelineDatetimes = ["a", "b"];
-      ctrl.handleTimelineKeydown(
-        new KeyboardEvent("keydown", { key: "Enter" }),
-      );
-      expect(spies.scheduleUpdateLayers).not.toHaveBeenCalled();
-    });
-
-    it("handleTimelineKeydown ignores when modal blocks", () => {
+    it("leaves the key alone while a wavegram is open", () => {
       const { deps, state, spies } = createDeps();
       const ctrl = new TimelineController(deps);
       ctrl.activeTimelineDatetimes = ["a", "b"];
       state.wavegramOpen = true;
-      ctrl.handleTimelineKeydown(
-        new KeyboardEvent("keydown", { key: "ArrowRight", cancelable: true }),
-      );
+      expect(ctrl.runKeyAction("timeline.stepForward")).toBe(false);
       vi.advanceTimersByTime(160);
       expect(spies.scheduleUpdateLayers).not.toHaveBeenCalled();
     });
 
-    it("handleTimelineKeydown ignores when target is editable", () => {
-      const { deps, spies } = createDeps();
-      const ctrl = new TimelineController(deps);
-      ctrl.activeTimelineDatetimes = ["a", "b"];
-      const input = document.createElement("input");
-      input.type = "text";
-      ctrl.handleTimelineKeydown(
-        new KeyboardEvent("keydown", { key: "ArrowRight", cancelable: true }),
-      );
-      ctrl.handleTimelineKeydown(
-        new KeyboardEvent("keydown", { key: "ArrowRight", cancelable: true }),
-      );
-      expect(ctrl.shouldIgnoreTimelineHotkeys(input)).toBe(true);
-      expect(spies.scheduleUpdateLayers).not.toHaveBeenCalled();
-    });
-
-    it("handleTimelineKeydown steps right and prevents default", async () => {
+    it("leaves the key alone without a timeline", () => {
       const { deps } = createDeps();
       const ctrl = new TimelineController(deps);
-      ctrl.activeTimelineDatetimes = ["a", "b"];
+      expect(ctrl.runKeyAction("timeline.stepForward")).toBe(false);
+    });
+
+    it("steps forward one frame and takes the key", async () => {
+      const { deps } = createDeps();
+      const ctrl = new TimelineController(deps);
+      ctrl.activeTimelineDatetimes = ["a", "b", "c"];
       ctrl.currentDatetime = "a";
-      const event = new KeyboardEvent("keydown", {
-        key: "ArrowRight",
-        cancelable: true,
-      });
-      ctrl.handleTimelineKeydown(event);
+      expect(ctrl.runKeyAction("timeline.stepForward")).toBe(true);
       vi.advanceTimersByTime(160);
       await flush();
-      expect(event.defaultPrevented).toBe(true);
       expect(ctrl.currentDatetime).toBe("b");
     });
 
-    it("handleTimelineKeydown does nothing when update is pending", async () => {
+    it("steps back one frame", async () => {
+      const { deps } = createDeps();
+      const ctrl = new TimelineController(deps);
+      ctrl.activeTimelineDatetimes = ["a", "b", "c"];
+      ctrl.currentDatetime = "c";
+      expect(ctrl.runKeyAction("timeline.stepBack")).toBe(true);
+      vi.advanceTimersByTime(160);
+      await flush();
+      expect(ctrl.currentDatetime).toBe("b");
+    });
+
+    it("takes the key but doesn't step while an update is pending", async () => {
       const { deps } = createDeps();
       const ctrl = new TimelineController(deps);
       ctrl.activeTimelineDatetimes = ["a", "b", "c"];
       void ctrl.setSelectedIndex(2, "user");
-      const event = new KeyboardEvent("keydown", {
-        key: "ArrowLeft",
-        cancelable: true,
-      });
-      ctrl.handleTimelineKeydown(event);
+      expect(ctrl.runKeyAction("timeline.stepBack")).toBe(true);
       vi.advanceTimersByTime(160);
       await flush();
       expect(ctrl.currentDatetime).toBe("c");
+    });
+
+    it("a → on the map steps once and never reaches the map's handler", async () => {
+      const { deps } = createDeps();
+      const ctrl = new TimelineController(deps);
+      ctrl.activeTimelineDatetimes = ["a", "b", "c"];
+      ctrl.currentDatetime = "a";
+      // MapLibre's keyboard handler listens on the map's container.
+      const container = document.createElement("div");
+      const canvas = document.createElement("canvas");
+      canvas.tabIndex = 0;
+      container.appendChild(canvas);
+      document.body.appendChild(container);
+      const mapHandler = vi.fn();
+      container.addEventListener("keydown", mapHandler);
+      const run = vi.fn((action: KeyAction) => ctrl.runKeyAction(action));
+      const stop = listenForKeyActions(window, run);
+      try {
+        const event = new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true, cancelable: true });
+        canvas.dispatchEvent(event);
+        vi.advanceTimersByTime(160);
+        await flush();
+        expect(run).toHaveBeenCalledTimes(1);
+        expect(ctrl.currentDatetime).toBe("b");
+        expect(event.defaultPrevented).toBe(true);
+        expect(mapHandler).not.toHaveBeenCalled();
+      } finally {
+        stop();
+        container.remove();
+      }
     });
   });
 

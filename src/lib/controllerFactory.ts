@@ -58,6 +58,7 @@ import { createDatasetLoadingOverlay } from "./datasetLoadingOverlay";
 import { createNewRunNotice } from "./newRunNotice";
 import { createTransientNotice } from "./transientNotice";
 import { modelIntersectsViewport } from "./selectModel";
+import { listenForKeyActions } from "./keymap";
 import { LanguageSwitcherController } from "../controllers/LanguageSwitcherController";
 import { isMeteogramEnabled } from "../features/meteogram/enabled";
 import type { MeteogramController } from "../features/meteogram/MeteogramController";
@@ -1000,8 +1001,13 @@ export function createControllers(config: ControllerFactoryConfig) {
 
   document.addEventListener("keydown", (event) => {
     modelChooserController.handleEscapeKey(event);
-    timelineController?.handleTimelineKeydown(event);
   });
+  // ← and → step the timeline. Captured on window, ahead of MapLibre's own
+  // keyboard handler on the map's container, which would also pan the map.
+  listenForKeyActions(
+    window,
+    (action) => timelineController?.runKeyAction(action) ?? false,
+  );
 
   const renderRoute = () => {
     if (layerGroupController) layerGroupController.handleRouteChange();
