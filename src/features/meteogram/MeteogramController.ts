@@ -232,6 +232,9 @@ export class MeteogramController {
     dom.modal.classList.remove("is-open");
     dom.modal.setAttribute("aria-hidden", "true");
     this.pendingOutOfBounds = false;
+    // A failed load's message would otherwise stay in the hidden modal (and,
+    // before the pulse was scoped to an open modal, keep animating).
+    dom.status.textContent = "";
     this.opened = null;
     this.pinTarget = null;
     this.pinLabel = null;
@@ -537,7 +540,9 @@ export class MeteogramController {
    */
   private attachWidgetListeners(widget: MeteogramWidget): void {
     widget.addEventListener("bel-meteogram-status", (event) => {
-      if (this.widget !== widget) return;
+      // A load still running when the panel closed reports later; its status
+      // belongs to a panel that is gone, so the line close() cleared stays so.
+      if (this.widget !== widget || !this.isOpen) return;
       const detail = (
         event as CustomEvent<{ status: string; error?: string }>
       ).detail;
