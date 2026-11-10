@@ -66,6 +66,24 @@ const HIT_PADDING_COARSE = 10;
 /** Two labels with the same name closer than this are treated as duplicates. */
 const DUPLICATE_RADIUS_DEG = 0.5;
 
+/**
+ * A label stands for its place only when the click is on the label itself or
+ * this close to the point it marks, in CSS pixels. The query box above still
+ * finds labels a few pixels off, but merely being near a name doesn't choose
+ * that place: a long name can end right beside somewhere else (at full zoom,
+ * "Seltjarnarnes" runs up to Reykjavík's old harbour). Such a click forecasts
+ * the point clicked.
+ */
+export const ANCHOR_SNAP_RADIUS_PX = 12;
+
+/** Identity for a rendered feature across two queryRenderedFeatures calls. */
+function featureKey(feature: maplibregl.MapGeoJSONFeature): string {
+  const coords =
+    feature.geometry?.type === "Point" ? feature.geometry.coordinates.join(",") : "";
+  const props = (feature.properties ?? {}) as Record<string, unknown>;
+  return [feature.layer?.id, feature.sourceLayer, feature.id, coords, props.name].join("|");
+}
+
 export interface PickedPlaceLabel {
   readonly name: string;
   readonly longitude: number;
@@ -168,13 +186,18 @@ export function pickPlaceLabel(
   ];
 
   let features: maplibregl.MapGeoJSONFeature[];
+  let underClick: maplibregl.MapGeoJSONFeature[];
   try {
     features = map.queryRenderedFeatures(box, { layers });
+    if (features.length === 0) return null;
+    // The labels under the click point itself. MapLibre hit-tests a symbol by
+    // its label's box, so this is "the click is on the name".
+    underClick = map.queryRenderedFeatures([point.x, point.y], { layers });
   } catch {
     // Style swapped between the layer check and the query.
     return null;
   }
-  if (features.length === 0) return null;
+  const onLabel = new Set(underClick.map(featureKey));
 
   const candidates: (PickedPlaceLabel & {
     screenDistance: number;
@@ -204,6 +227,12 @@ export function pickPlaceLabel(
       projected.x - point.x,
       projected.y - point.y,
     );
+    if (
+      screenDistance > ANCHOR_SNAP_RADIUS_PX &&
+      !onLabel.has(featureKey(feature))
+    ) {
+      continue;
+    }
 
     const placeClass =
       typeof props.class === "string" ? props.class : undefined;
