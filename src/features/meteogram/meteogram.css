@@ -140,6 +140,10 @@
   color: #14202b;
   white-space: nowrap;
 }
+/* A bare point's pin waits for the widget to name it: no empty bubble meanwhile. */
+.meteogram-pin__label:empty {
+  display: none;
+}
 .meteogram-pin__stalk {
   width: 2px;
   height: 14px;

@@ -164,6 +164,9 @@ export class MeteogramController {
   } | null = null;
   /** The label the pin was last given from a time event, to skip repeats. */
   private pinLabel: string | null = null;
+  /** A bare point's pin was dropped without text and the widget hasn't named
+   *  the point yet (see openAt and nameBarePinAfterFailure). */
+  private pinWaitsForName = false;
   private readonly deps: MeteogramControllerDeps;
   private readonly boundOnEscape: (event: KeyboardEvent) => void;
 
@@ -232,6 +235,7 @@ export class MeteogramController {
     this.opened = null;
     this.pinTarget = null;
     this.pinLabel = null;
+    this.pinWaitsForName = false;
     this.deps.removePin?.();
     clearMapPanelPoint();
     if (wasOpen) this.deps.onOpenStateChange?.(false);
@@ -244,13 +248,26 @@ export class MeteogramController {
   }
 
   /**
-   * Label for a map point: the resolved place name where there is one, else the
-   * raw coordinate. The name is Mímir's own — the city label clicked on the map,
-   * or the nearest place from the bundled dataset — so the point being labelled
-   * is still exactly the point clicked, never snapped to a WOD station.
+   * Mímir's own text for a bare point, used only when a load fails before the
+   * widget names the point. The widget is never given it as a name: it labels
+   * a bare point itself, in its own format and language, and the pin follows.
    */
-  private pointLabel(lng: number, lat: number): string {
-    return this.placeNameAt(lng, lat) ?? `${lat.toFixed(3)}, ${lng.toFixed(3)}`;
+  private coordinateLabel(lng: number, lat: number): string {
+    return `${lat.toFixed(3)}, ${lng.toFixed(3)}`;
+  }
+
+  /**
+   * The load failed before the widget named a bare point: give its blank pin,
+   * and the subtitle, Mímir's coordinate text, so the point still says where
+   * it is. A later load that succeeds (Retry) names it as usual.
+   */
+  private nameBarePinAfterFailure(): void {
+    const opened = this.opened;
+    if (!this.pinWaitsForName || !opened) return;
+    this.pinWaitsForName = false;
+    const label = this.coordinateLabel(opened.lng, opened.lat);
+    this.deps.dom.location.textContent = label;
+    this.deps.showPin?.(opened.lng, opened.lat, label, undefined);
   }
 
   /**
@@ -387,7 +404,6 @@ export class MeteogramController {
     lat: number,
     lng: number,
   ): { target: MeteogramTarget } {
-    const label = this.pointLabel(lng, lat);
     // Show Mímir's own model name in the widget rather than the WOD config's
     // (e.g. "ISLAND-9" instead of "Ísafjörður - 2.5km"). See the widget's
     // `forecast-label` attribute.
@@ -400,7 +416,9 @@ export class MeteogramController {
       this.applyStationPlace(this.widget, lng, lat);
       this.seedSelectedTime();
       this.pushSelectedTime();
-      this.widget.loadChartLocation(lat, lng, label);
+      // Only a resolved place name. A bare point gets none, so the widget names
+      // it itself, in its own format, as it does for a newly created widget.
+      this.widget.loadChartLocation(lat, lng, this.placeNameAt(lng, lat));
       return { target };
     }
     if (this.widget) {
@@ -532,6 +550,7 @@ export class MeteogramController {
           model: this.deps.getSelectedModel(),
           message: detail.error ?? "unknown",
         });
+        this.nameBarePinAfterFailure();
       } else if (detail.status === "ready") {
         // A successful load refutes the early out-of-domain guess.
         this.pendingOutOfBounds = false;
@@ -559,6 +578,7 @@ export class MeteogramController {
       // map with nothing open — which is exactly what happens when the panel is
       // dismissed quickly. close() has already removed the pin; leave it gone.
       if (!this.isOpen) return;
+      this.pinWaitsForName = false;
       const detail = (event as CustomEvent<BelMeteogramLocationDetail>).detail;
       if (widgetSupportsSelectedTime()) {
         // The value comes from the time event that follows this load; until
@@ -602,7 +622,12 @@ export class MeteogramController {
     // the point and its value.
     this.pinTarget = null;
     this.pinLabel = null;
-    const label = placeName ?? this.pointLabel(lng, lat);
+    // A bare point's pin has no text until the widget names it, in its own
+    // format and language. Mímir's coordinate text would show for as long as
+    // the load takes, seconds for a point the server hasn't answered before;
+    // it only stands in if the load fails (nameBarePinAfterFailure).
+    const label = placeName ?? "";
+    this.pinWaitsForName = !placeName;
     dom.location.textContent = label;
     // Early out-of-domain hint: if the point is outside the selected model's
     // known bounds we say so immediately, before the widget's fetch resolves.
@@ -631,6 +656,7 @@ export class MeteogramController {
         model: modelId,
         message,
       });
+      this.nameBarePinAfterFailure();
     }
   }
 

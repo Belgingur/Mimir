@@ -76,7 +76,8 @@ describe("MeteogramController", () => {
 
     expect(dom.modal.classList.contains("is-open")).toBe(true);
     expect(dom.modal.getAttribute("aria-hidden")).toBe("false");
-    expect(dom.location.textContent).toBe("64.000, -20.000");
+    // A bare point has no text until the widget names it.
+    expect(dom.location.textContent).toBe("");
     expect(controller.getWidget()).toBe(widget);
     expect(dom.widgetHost.contains(widget)).toBe(true);
     // Location + language are set as attributes before insertion so the
@@ -96,7 +97,8 @@ describe("MeteogramController", () => {
     await controller.openAt(-21, 65);
 
     expect(createWidget).toHaveBeenCalledTimes(1);
-    expect(widget.calls).toEqual([[65, -21, "65.000, -21.000"]]);
+    // A bare point gets no name, so the widget names it in its own format.
+    expect(widget.calls).toEqual([[65, -21, undefined]]);
   });
 
   it("replaces the widget when the resolved client changes", async () => {
@@ -164,9 +166,10 @@ describe("MeteogramController", () => {
     const { controller, dom, widget } = buildController({ showPin });
     await controller.openAt(-20, 64);
 
-    // Opening drops a pin at the raw click point immediately. It names no
-    // place, so it stands in for no map label.
-    expect(showPin).toHaveBeenLastCalledWith(-20, 64, "64.000, -20.000", undefined);
+    // Opening drops a pin at the raw click point immediately, without text
+    // until the widget names the point. It names no place, so it stands in
+    // for no map label.
+    expect(showPin).toHaveBeenLastCalledWith(-20, 64, "", undefined);
 
     // The widget resolves the nearest station and fires its location event
     // (also fires when a different station is picked in the overlay).
@@ -326,7 +329,8 @@ describe("MeteogramController", () => {
     const { controller, dom } = buildController();
     await controller.restorePersistedPoint();
     expect(dom.modal.classList.contains("is-open")).toBe(true);
-    expect(dom.location.textContent).toBe("65.100, -23.400");
+    expect(controller.getWidget()?.getAttribute("location-lat")).toBe("65.1");
+    expect(controller.getWidget()?.getAttribute("location-lon")).toBe("-23.4");
     localStorage.removeItem("mimirMapPanelState");
   });
 
@@ -361,12 +365,12 @@ describe("MeteogramController", () => {
       expect(getPlaceLabel).toHaveBeenCalledWith(-18.1, 65.667);
     });
 
-    it("falls back to coordinates when no place resolves", async () => {
+    it("leaves a point without a place for the widget to name", async () => {
       const { controller, dom, widget } = buildController({
         getPlaceLabel: () => undefined,
       });
       await controller.openAt(-20, 64);
-      expect(dom.location.textContent).toBe("64.000, -20.000");
+      expect(dom.location.textContent).toBe("");
       // Left unset so the widget's own prefer-coordinates behaviour stands.
       expect(widget.hasAttribute("location-name")).toBe(false);
     });
@@ -376,7 +380,7 @@ describe("MeteogramController", () => {
         getPlaceLabel: () => "   ",
       });
       await controller.openAt(-20, 64);
-      expect(dom.location.textContent).toBe("64.000, -20.000");
+      expect(dom.location.textContent).toBe("");
       expect(widget.hasAttribute("location-name")).toBe(false);
     });
 
@@ -395,8 +399,135 @@ describe("MeteogramController", () => {
       expect(widget.calls[widget.calls.length - 1]).toEqual([
         62,
         -30,
-        "62.000, -30.000",
+        undefined,
       ]);
+    });
+
+    it("lets the widget name every bare point, the first and the ones after it", async () => {
+      const showPin = vi.fn();
+      const { controller, widget, createWidget } = buildController({
+        showPin,
+        getPlaceLabel: () => undefined,
+      });
+      await controller.openAt(-21.8, 64.2);
+      // The first widget is created without a name: it labels the point itself.
+      expect(widget.hasAttribute("location-name")).toBe(false);
+      controller.close();
+
+      await controller.openAt(-21.85, 64.18);
+      expect(createWidget).toHaveBeenCalledTimes(1);
+      expect(widget.calls).toEqual([[64.18, -21.85, undefined]]);
+
+      // The pin follows the name the widget gives the point.
+      widget.dispatchEvent(
+        new CustomEvent("bel-meteogram-location", {
+          detail: { lat: 64.18, lon: -21.85, name: "64.18°N 21.85°W", tempC: 4 },
+        }),
+      );
+      const [, , pinLabel, placeName] = showPin.mock.calls[showPin.mock.calls.length - 1];
+      expect(pinLabel).toContain("64.18°N 21.85°W");
+      expect(placeName).toBeUndefined();
+    });
+
+    it("shows a bare point's pin without text until the widget names it", async () => {
+      const showPin = vi.fn();
+      const { controller, dom, widget } = buildController({
+        showPin,
+        getPlaceLabel: () => undefined,
+      });
+      await controller.openAt(-21.85, 64.18);
+      expect(showPin).toHaveBeenLastCalledWith(-21.85, 64.18, "", undefined);
+      expect(dom.location.textContent).toBe("");
+
+      widget.dispatchEvent(
+        new CustomEvent("bel-meteogram-location", {
+          detail: { lat: 64.18, lon: -21.85, name: "64.18°N 21.85°W", tempC: 4 },
+        }),
+      );
+      expect(showPin.mock.calls[showPin.mock.calls.length - 1][2]).toContain(
+        "64.18°N 21.85°W",
+      );
+    });
+
+    it("gives a bare point Mímir's coordinates when its load fails first", async () => {
+      const showPin = vi.fn();
+      const { controller, dom, widget } = buildController({
+        showPin,
+        getPlaceLabel: () => undefined,
+      });
+      await controller.openAt(-21.94, 64.15);
+      widget.dispatchEvent(
+        new CustomEvent("bel-meteogram-status", {
+          detail: { status: "error", error: "meteogram: timed out after 20 s" },
+        }),
+      );
+      expect(showPin).toHaveBeenLastCalledWith(-21.94, 64.15, "64.150, -21.940", undefined);
+      expect(dom.location.textContent).toBe("64.150, -21.940");
+
+      // Retry succeeds: the widget's name replaces Mímir's text.
+      widget.dispatchEvent(
+        new CustomEvent("bel-meteogram-location", {
+          detail: { lat: 64.15, lon: -21.94, name: "64.15°N 21.94°W", tempC: 4 },
+        }),
+      );
+      expect(showPin.mock.calls[showPin.mock.calls.length - 1][2]).toContain(
+        "64.15°N 21.94°W",
+      );
+    });
+
+    it("gives a bare point Mímir's coordinates when the widget can't be set up", async () => {
+      const showPin = vi.fn();
+      const { controller, dom } = buildController({
+        showPin,
+        getPlaceLabel: () => undefined,
+        createWidget: vi.fn(() => {
+          throw new Error("no widget");
+        }),
+      });
+      await controller.openAt(-21.94, 64.15);
+      expect(dom.status.textContent).toContain("no widget");
+      expect(showPin).toHaveBeenLastCalledWith(-21.94, 64.15, "64.150, -21.940", undefined);
+    });
+
+    it("keeps the widget's name, or a place's, when a later load fails", async () => {
+      const showPin = vi.fn();
+      const names: Array<string | undefined> = [undefined, "Akureyri"];
+      const { controller, widget } = buildController({
+        showPin,
+        getPlaceLabel: () => names[0],
+      });
+      await controller.openAt(-21.85, 64.18);
+      widget.dispatchEvent(
+        new CustomEvent("bel-meteogram-location", {
+          detail: { lat: 64.18, lon: -21.85, name: "64.18°N 21.85°W", tempC: 4 },
+        }),
+      );
+      showPin.mockClear();
+      widget.dispatchEvent(
+        new CustomEvent("bel-meteogram-status", {
+          detail: { status: "error", error: "meteogram: HTTP 503" },
+        }),
+      );
+      expect(showPin).not.toHaveBeenCalled();
+
+      names.shift();
+      await controller.openAt(-18.1, 65.667);
+      showPin.mockClear();
+      widget.dispatchEvent(
+        new CustomEvent("bel-meteogram-status", {
+          detail: { status: "error", error: "meteogram: HTTP 503" },
+        }),
+      );
+      expect(showPin).not.toHaveBeenCalled();
+    });
+
+    it("still passes a resolved name to a reused widget", async () => {
+      const names: Array<string | undefined> = [undefined, "Akureyri"];
+      const { controller, widget } = buildController({ getPlaceLabel: () => names[0] });
+      await controller.openAt(-20, 64);
+      names.shift();
+      await controller.openAt(-18.1, 65.667);
+      expect(widget.calls).toEqual([[65.667, -18.1, "Akureyri"]]);
     });
 
     it("keeps the resolved name when the widget announces the same point", async () => {
