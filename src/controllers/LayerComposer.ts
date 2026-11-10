@@ -60,7 +60,11 @@ import {
   getInhouseLayerUnscale,
   getInhouseLayerImageScale,
 } from "../lib/inhouseLayerHelpers";
-import { extractSnowPoints, SnowOverlaySVG } from "../lib/snowOverlay";
+import {
+  extractSnowPoints,
+  hideSnowOverlayWhileMoving,
+  SnowOverlaySVG,
+} from "../lib/snowOverlay";
 import type { SnowPoint } from "../lib/snowOverlay";
 import {
   INHOUSE_GROUP_VARIABLES,
@@ -1773,6 +1777,7 @@ export class LayerComposer {
       // Lazy-create the SVG element once (mounted to the MapLibre container).
       if (!this.snowOverlaySVG) {
         this.snowOverlaySVG = new SnowOverlaySVG(this.deps.getMapContainer());
+        hideSnowOverlayWhileMoving(this.deps.getMap(), this.snowOverlaySVG);
       }
 
       // Extract points; cache by rasterScalar identity so we re-extract only on new frames.

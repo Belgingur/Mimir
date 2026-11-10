@@ -234,6 +234,8 @@ export function extractSnowPoints(layer: InhouseLayer): SnowPoint[] | null {
 export class SnowOverlaySVG {
   private readonly svgEl: SVGSVGElement;
   private readonly groupEl: SVGGElement;
+  /** True between the map's movestart and moveend (see beginMove). */
+  private moving = false;
 
   constructor(container: HTMLElement) {
     const NS = "http://www.w3.org/2000/svg";
@@ -283,6 +285,9 @@ export class SnowOverlaySVG {
     bounds: { west: number; south: number; east: number; north: number },
     model: string = "",
   ): void {
+    // Freshly projected: show it, unless the map is still moving (an update
+    // scheduled mid-move would be stale again by the time the move ends).
+    this.svgEl.style.visibility = this.moving ? "hidden" : "";
     if (!points || opacity <= 0) {
       this.groupEl.innerHTML = "";
       this.groupEl.style.opacity = "0";
@@ -333,8 +338,43 @@ export class SnowOverlaySVG {
     this.groupEl.innerHTML = parts.join("");
   }
 
+  /**
+   * The map has started to move or zoom. The symbols sit at fixed screen
+   * positions and wouldn't follow it, so hide them until the move has ended
+   * and update() has re-projected them.
+   */
+  beginMove(): void {
+    this.moving = true;
+    this.svgEl.style.visibility = "hidden";
+  }
+
+  /** The map has stopped: the next update() re-projects and shows the symbols. */
+  endMove(): void {
+    this.moving = false;
+  }
+
   /** Remove the SVG element from the DOM. */
   remove(): void {
     this.svgEl.remove();
   }
+}
+
+/** The part of a MapLibre map that hideSnowOverlayWhileMoving needs. */
+export interface MapMoveEvents {
+  on(type: "movestart" | "zoomstart" | "moveend", listener: () => void): unknown;
+}
+
+/**
+ * Keep the snow overlay hidden while the map moves or zooms: from movestart
+ * (or zoomstart) until moveend. The layer update that moveend schedules then
+ * re-projects the symbols and shows them again. Drawing the symbols as a
+ * MapLibre layer would let them move with the map instead.
+ */
+export function hideSnowOverlayWhileMoving(
+  map: MapMoveEvents,
+  overlay: Pick<SnowOverlaySVG, "beginMove" | "endMove">,
+): void {
+  map.on("movestart", () => overlay.beginMove());
+  map.on("zoomstart", () => overlay.beginMove());
+  map.on("moveend", () => overlay.endMove());
 }
