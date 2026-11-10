@@ -214,15 +214,21 @@
   border-radius: 2px;
 }
 
+/* The day boxes are placed by TimelineController from the rail's own step
+   positions (timelineDayBoxes), so each box starts right under its day's first
+   step. A box followed by another stops 1px short of it, which keeps the
+   hairline gap between them. */
 .timeline-days {
-  display: flex;
-  gap: 1px;
+  position: relative;
   min-height: 14px;
   height: 14px;
   overflow: hidden;
 }
 
 .timeline-day-segment {
+  position: absolute;
+  top: 0;
+  bottom: 0;
   display: flex;
   align-items: center;
   justify-content: center;

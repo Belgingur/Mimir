@@ -5,6 +5,8 @@ import {
   formatTimelineBubbleLabelWithZone,
   matchNearestTimeIndex,
   nowRailRatio,
+  timelineDayBoxes,
+  timelineRailRatio,
 } from "../lib/timelineHelpers";
 import { TimelineControlAdapter } from "./TimelineControlAdapter";
 import type { UiState } from "../lib/inhouseTypes";
@@ -317,8 +319,7 @@ export class TimelineController {
     }
     this.timelineCustomEl.style.display = "";
     const selectedIndex = this.getActiveTimelineIndex();
-    const ratio =
-      datetimes.length > 1 ? selectedIndex / (datetimes.length - 1) : 0;
+    const ratio = timelineRailRatio(selectedIndex, datetimes.length);
     const selectedDatetime = datetimes[selectedIndex];
     // The rail tab is 8–9px and absolutely positioned, so it keeps the bare
     // reading; the roomier on-map bubble carries the zone marker for both.
@@ -359,6 +360,9 @@ export class TimelineController {
         : "▶";
 
     const blocks = buildTimelineDayBlocks(datetimes);
+    // Each box spans its day's steps on the rail's own mapping, so its left
+    // edge sits under the day's first step rather than drifting left of it.
+    const boxes = timelineDayBoxes(blocks, datetimes.length);
     const isLandscapeCompact =
       window.innerHeight <= 500 && window.innerWidth > window.innerHeight;
     const maxLabels = isLandscapeCompact
@@ -368,9 +372,17 @@ export class TimelineController {
         : blocks.length;
     this.timelineDaysEl.innerHTML = "";
     blocks.forEach((block, idx) => {
+      // A day whose only step is the run's last one sits at the rail's right
+      // end and has no width to show a box in; the rail still reaches it.
+      if (boxes[idx].width <= 0) return;
       const segment = document.createElement("div");
       segment.className = "timeline-day-segment";
-      segment.style.flex = String(block.end - block.start + 1);
+      segment.style.left = `${boxes[idx].left * 100}%`;
+      // A hairline gap before the next box, when there is one to show.
+      segment.style.width =
+        (boxes[idx + 1]?.width ?? 0) > 0
+          ? `calc(${boxes[idx].width * 100}% - 1px)`
+          : `${boxes[idx].width * 100}%`;
       if (selectedIndex >= block.start && selectedIndex <= block.end) {
         segment.classList.add("is-active");
       }

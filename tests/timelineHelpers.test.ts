@@ -8,6 +8,8 @@ import {
   matchNearestTimeIndex,
   nowRailRatio,
   filterTimesByRange,
+  timelineDayBoxes,
+  timelineRailRatio,
 } from "../src/lib/timelineHelpers";
 
 // The label helpers render in whatever zone the runtime is in, so expectations
@@ -124,6 +126,69 @@ describe("buildTimelineDayBlocks", () => {
       expect(b.start).toBe(i);
       expect(b.end).toBe(i);
     });
+  });
+});
+
+describe("timelineRailRatio", () => {
+  it("puts the first step at 0, the last at 1, and the rest evenly between", () => {
+    expect(timelineRailRatio(0, 5)).toBe(0);
+    expect(timelineRailRatio(2, 5)).toBe(0.5);
+    expect(timelineRailRatio(4, 5)).toBe(1);
+  });
+
+  it("puts a lone step at 0", () => {
+    expect(timelineRailRatio(0, 1)).toBe(0);
+    expect(timelineRailRatio(0, 0)).toBe(0);
+  });
+});
+
+describe("timelineDayBoxes", () => {
+  // Steps from `startIso`, `stepHours` apart (the suite runs in a fixed non-UTC
+  // zone, so day boundaries are the viewer's local midnights).
+  const run = (startIso: string, steps: number, stepHours = 1) =>
+    Array.from({ length: steps }, (_, i) =>
+      new Date(Date.parse(startIso) + i * stepHours * 3_600_000).toISOString(),
+    );
+
+  it("starts every day's box under that day's 00:00 step, within 1 px", () => {
+    const cases = [
+      run("2026-11-10T03:00:00Z", 24 * 5 + 7), // 5 days and a bit
+      run("2026-11-09T17:00:00Z", 60), // starts mid-afternoon local time
+      run("2026-11-10T03:00:00Z", 24 * 10), // 10 days
+      [...run("2026-11-10T03:00:00Z", 72), ...run("2026-11-13T03:00:00Z", 40, 3)], // hourly, then 3-hourly
+    ];
+    for (const datetimes of cases) {
+      const blocks = buildTimelineDayBlocks(datetimes);
+      const boxes = timelineDayBoxes(blocks, datetimes.length);
+      expect(boxes).toHaveLength(blocks.length);
+      for (const railWidth of [600, 1209, 1600]) {
+        blocks.forEach((block, i) => {
+          if (i === 0) return; // the run's first day starts wherever the run does
+          expect(new Date(datetimes[block.start]).getHours()).toBe(0);
+          const railX = timelineRailRatio(block.start, datetimes.length) * railWidth;
+          expect(Math.abs(boxes[i].left * railWidth - railX)).toBeLessThanOrEqual(1);
+        });
+      }
+    }
+  });
+
+  it("tiles the rail: each box ends where the next begins, the last at the end", () => {
+    const datetimes = run("2026-11-10T03:00:00Z", 24 * 4 + 5);
+    const boxes = timelineDayBoxes(buildTimelineDayBlocks(datetimes), datetimes.length);
+    expect(boxes[0].left).toBe(0);
+    for (let i = 0; i < boxes.length - 1; i += 1) {
+      expect(boxes[i].left + boxes[i].width).toBeCloseTo(boxes[i + 1].left, 12);
+    }
+    const last = boxes[boxes.length - 1];
+    expect(last.left + last.width).toBeCloseTo(1, 12);
+  });
+
+  it("gives a single-step run one full-width box", () => {
+    expect(timelineDayBoxes([{ start: 0 }], 1)).toEqual([{ left: 0, width: 1 }]);
+  });
+
+  it("returns no boxes for no blocks", () => {
+    expect(timelineDayBoxes([], 0)).toEqual([]);
   });
 });
 
