@@ -189,6 +189,7 @@ import {
   type LayerComposerDeps,
 } from "../src/controllers/LayerComposer";
 import { clampScalarImage } from "../src/lib/imageProcessing";
+import { PRECIP_LEGEND_BACKDROP } from "../src/lib/precipitationScale";
 
 function makeDom() {
   return {
@@ -1776,6 +1777,17 @@ describe("LayerComposer", () => {
       expect(
         host.querySelectorAll(".precip-legend__label").length,
       ).toBeGreaterThan(2);
+    });
+
+    it("draws the bands over an opaque colour, so the map doesn't show through (#46)", () => {
+      const composer = new LayerComposer(makeDeps());
+      const host = document.createElement("div");
+      callPrivate(composer, "renderPrecipLegend", host);
+      const style = host.querySelector(".precip-legend__bar")?.getAttribute("style") ?? "";
+      // The gradient's translucent bands, then the backdrop as the last layer.
+      expect(style).toContain("rgba(230, 255, 0, 0.5");
+      expect(style).toMatch(/\), #f2f3f0;$/);
+      expect(PRECIP_LEGEND_BACKDROP).toMatch(/^#[0-9a-f]{6}$/);
     });
   });
 

@@ -72,3 +72,12 @@ export const COLORS: { standard: [number, string][]; tok: [number, string][] } =
   };
 
 export const BELGINGUR_SCALE: [number, string][] = COLORS.standard;
+
+/**
+ * The opaque colour under the precipitation legend's bands. The lightest bands
+ * are translucent, and with nothing opaque under them the legend showed the map
+ * behind its card, so their colours changed as the map moved (#46). This is the
+ * basemap's land colour, so a band looks in the legend as it does on the map
+ * over land.
+ */
+export const PRECIP_LEGEND_BACKDROP = "#f2f3f0";
