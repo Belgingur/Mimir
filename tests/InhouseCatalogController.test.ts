@@ -2458,6 +2458,82 @@ describe("InhouseCatalogController", () => {
       await waiting;
       expect(done).toBe(true);
     });
+
+    describe("a load that a newer one supersedes", () => {
+      // 2×2 RGBA. The older frame has one pixel outside the domain (alpha 0),
+      // so writing it would also leave a domain mask behind.
+      const frame = (alpha: number[]): WeatherLayers.TextureData => ({
+        data: new Uint8Array(alpha.flatMap((a) => [10, 20, 30, a])),
+        width: 2,
+        height: 2,
+      });
+      const olderFrame = frame([255, 255, 255, 0]);
+      const newerFrame = frame([255, 255, 255, 255]);
+
+      /** Frame 0's texture waits for the test; frame 1's arrives at once. */
+      function stubTextures() {
+        let finishOlder!: (v: WeatherLayers.TextureData | null) => void;
+        vi.spyOn(ctrl, "loadInhouseTexture").mockImplementation((url) => {
+          if (url.endsWith("frame_000.webp"))
+            return new Promise((resolve) => {
+              finishOlder = resolve;
+            });
+          if (url.endsWith("frame_001.webp")) return Promise.resolve(newerFrame);
+          return Promise.resolve(null);
+        });
+        return { finishOlder: (v: WeatherLayers.TextureData) => finishOlder(v) };
+      }
+
+      it("writes nothing to the layer when its texture arrives after the newer load's", async () => {
+        const layer = makeLayer();
+        ctrl.inhouseLayers.push(layer);
+        const { finishOlder } = stubTextures();
+
+        ctrl.inhouseTimeIndex = 0;
+        const older = ctrl.loadInhouseFrameSet();
+        ctrl.inhouseTimeIndex = 1;
+        await ctrl.loadInhouseFrameSet();
+        expect(layer.image).toBe(newerFrame);
+        expect(layer.domainMask).toBeUndefined();
+
+        finishOlder(olderFrame);
+        await older;
+        expect(layer.image).toBe(newerFrame);
+        expect(layer.domainMask).toBeUndefined();
+      });
+
+      it("schedules no redraw and sets no warning of its own", async () => {
+        ctrl.inhouseLayers.push(makeLayer());
+        const { finishOlder } = stubTextures();
+
+        ctrl.inhouseTimeIndex = 0;
+        const older = ctrl.loadInhouseFrameSet();
+        ctrl.inhouseTimeIndex = 1;
+        await ctrl.loadInhouseFrameSet();
+        const redraws = vi.mocked(deps.scheduleUpdateLayers).mock.calls.length;
+        expect(redraws).toBeGreaterThan(0);
+        dom.inhouseWarningEl.textContent = "from the newer load";
+
+        finishOlder(olderFrame);
+        await older;
+        expect(deps.scheduleUpdateLayers).toHaveBeenCalledTimes(redraws);
+        expect(dom.inhouseWarningEl.textContent).toBe("from the newer load");
+      });
+
+      it("still draws the frame when nothing superseded it", async () => {
+        const layer = makeLayer();
+        ctrl.inhouseLayers.push(layer);
+        const { finishOlder } = stubTextures();
+
+        ctrl.inhouseTimeIndex = 0;
+        const load = ctrl.loadInhouseFrameSet();
+        finishOlder(olderFrame);
+        await load;
+        expect(layer.image).toBe(olderFrame);
+        expect(layer.domainMask).toEqual(new Uint8Array([1, 1, 1, 0]));
+        expect(deps.scheduleUpdateLayers).toHaveBeenCalled();
+      });
+    });
   });
 
   // -----------------------------------------------------------------------
