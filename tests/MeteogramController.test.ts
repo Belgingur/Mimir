@@ -766,6 +766,86 @@ describe("MeteogramController", () => {
     });
   });
 
+  describe("the same pin again", () => {
+    it("only relabels the pin when the widget reports the point it was dropped at", async () => {
+      const showPin = vi.fn();
+      const updatePinLabel = vi.fn();
+      const { controller, widget } = buildController({
+        showPin,
+        updatePinLabel,
+        getPlaceLabel: () => "Reykjavík",
+      });
+      await controller.openAt(-21.937, 64.143);
+      expect(showPin).toHaveBeenCalledTimes(1);
+
+      widget.dispatchEvent(
+        new CustomEvent("bel-meteogram-location", {
+          detail: { lat: 64.143, lon: -21.937, name: "Reykjavík", tempC: 7 },
+        }),
+      );
+      // Same point, same place: no second drop, so the map's label filter
+      // isn't applied again; only the text changes.
+      expect(showPin).toHaveBeenCalledTimes(1);
+      expect(updatePinLabel).toHaveBeenCalledTimes(1);
+    });
+
+    it("drops the pin again when the widget moves it (a station picked)", async () => {
+      const showPin = vi.fn();
+      const updatePinLabel = vi.fn();
+      const { controller, widget } = buildController({
+        showPin,
+        updatePinLabel,
+        getPlaceLabel: () => "Reykjavík",
+      });
+      await controller.openAt(-21.937, 64.143);
+      widget.dispatchEvent(
+        new CustomEvent("bel-meteogram-location", {
+          detail: { lat: 64.127, lon: -21.902, name: "Reykjavíkurflugvöllur", tempC: 7 },
+        }),
+      );
+      expect(showPin).toHaveBeenCalledTimes(2);
+      expect(showPin).toHaveBeenLastCalledWith(
+        -21.902,
+        64.127,
+        expect.stringContaining("Reykjavíkurflugvöllur"),
+        "Reykjavíkurflugvöllur",
+      );
+    });
+
+    it("only relabels a bare point's pin with Mímir's text when its load fails", async () => {
+      const showPin = vi.fn();
+      const updatePinLabel = vi.fn();
+      const { controller, widget } = buildController({
+        showPin,
+        updatePinLabel,
+        getPlaceLabel: () => undefined,
+      });
+      await controller.openAt(-21.94, 64.15);
+      widget.dispatchEvent(
+        new CustomEvent("bel-meteogram-status", {
+          detail: { status: "error", error: "meteogram: HTTP 503" },
+        }),
+      );
+      expect(showPin).toHaveBeenCalledTimes(1);
+      expect(updatePinLabel).toHaveBeenLastCalledWith("64.150, -21.940");
+    });
+
+    it("drops the pin again after a close, even at the same point", async () => {
+      const showPin = vi.fn();
+      const updatePinLabel = vi.fn();
+      const { controller } = buildController({
+        showPin,
+        updatePinLabel,
+        removePin: vi.fn(),
+        getPlaceLabel: () => "Reykjavík",
+      });
+      await controller.openAt(-21.937, 64.143);
+      controller.close();
+      await controller.openAt(-21.937, 64.143);
+      expect(showPin).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe("station-place note", () => {
     /** Reykjavík's label at its centre; the point opened is its station. */
     const reykjavik = { name: "Reykjavík", lng: -21.937, lat: 64.143 };
@@ -1014,14 +1094,15 @@ describe("MeteogramController — the timeline's hour (widget 0.8.0)", () => {
     expect(widget.hasAttribute("selected-time")).toBe(false);
     controller.setSelectedTime("2026-11-09T15:00:00Z");
     expect(widget.hasAttribute("selected-time")).toBe(false);
-    emitLocation(widget, { lat: 64.13, lon: -21.9, name: "Reykjavík", tempC: 4 });
-    expect(showPin).toHaveBeenLastCalledWith(
-      -21.9,
-      64.13,
-      "Reykjavík · 4°",
-      "Reykjavík",
-    );
+    // The timeline's hour doesn't touch the pin with this widget...
     expect(updatePinLabel).not.toHaveBeenCalled();
+    emitLocation(widget, { lat: 64.13, lon: -21.9, name: "Reykjavík", tempC: 4 });
+    // ...and its location event gives the pin today's value. The pin already
+    // stands at this point for this place, so only its text changes.
+    expect(showPin).toHaveBeenCalledTimes(1);
+    expect(showPin).toHaveBeenLastCalledWith(-21.9, 64.13, "Reykjavík", "Reykjavík");
+    expect(updatePinLabel).toHaveBeenCalledTimes(1);
+    expect(updatePinLabel).toHaveBeenLastCalledWith("Reykjavík · 4°");
   });
 
   it("moves the map's timeline when the reader picks an hour in the panel", async () => {
