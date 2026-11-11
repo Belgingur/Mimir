@@ -107,6 +107,7 @@ import { WeatherWidgetRenderer } from "../lib/WeatherWidgetRenderer";
 import { CompactWidgetRenderer } from "../lib/CompactWidgetRenderer";
 import type { IconographyRenderer } from "../lib/iconographyTypes";
 import { t } from "../lib/i18n";
+import { rasterLayerParameters } from "../lib/rasterBlending";
 
 type MapBoundsLike = {
   getWest(): number;
@@ -856,7 +857,9 @@ export class LayerComposer {
           opacity: uiState.opacity,
           visible: uiState.visible,
           pickable: true,
-          parameters: { depthTest: false },
+          // Precipitation's lightest bands are translucent; blend them once, not
+          // twice (see rasterBlending).
+          parameters: rasterLayerParameters(isPrecip),
           onClick: (info) => {
             if (uiState.layerMode !== "waves" || !isWaveHeight) return;
             let coord = info.coordinate as [number, number] | undefined;
