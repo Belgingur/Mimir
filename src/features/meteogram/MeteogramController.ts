@@ -167,6 +167,12 @@ export class MeteogramController {
   /** A bare point's pin was dropped without text and the widget hasn't named
    *  the point yet (see openAt and nameBarePinAfterFailure). */
   private pinWaitsForName = false;
+  /** Where the pin was last dropped and the place it names (see placePin). */
+  private shownPin: {
+    lng: number;
+    lat: number;
+    placeName: string | undefined;
+  } | null = null;
   private readonly deps: MeteogramControllerDeps;
   private readonly boundOnEscape: (event: KeyboardEvent) => void;
 
@@ -239,6 +245,7 @@ export class MeteogramController {
     this.pinTarget = null;
     this.pinLabel = null;
     this.pinWaitsForName = false;
+    this.shownPin = null;
     this.deps.removePin?.();
     clearMapPanelPoint();
     if (wasOpen) this.deps.onOpenStateChange?.(false);
@@ -270,7 +277,7 @@ export class MeteogramController {
     this.pinWaitsForName = false;
     const label = this.coordinateLabel(opened.lng, opened.lat);
     this.deps.dom.location.textContent = label;
-    this.deps.showPin?.(opened.lng, opened.lat, label, undefined);
+    this.placePin(opened.lng, opened.lat, label, undefined);
   }
 
   /**
@@ -593,22 +600,45 @@ export class MeteogramController {
         this.pinTarget = { lng: detail.lon, lat: detail.lat, name, placeName };
         this.pinLabel = name;
         this.deps.dom.location.textContent = name;
-        this.deps.showPin?.(detail.lon, detail.lat, name, placeName);
+        this.placePin(detail.lon, detail.lat, name, placeName);
         return;
       }
       const label = formatPinLabel(detail);
       this.deps.dom.location.textContent = label;
-      this.deps.showPin?.(
-        detail.lon,
-        detail.lat,
-        label,
-        this.pinPlaceName(detail),
-      );
+      this.placePin(detail.lon, detail.lat, label, this.pinPlaceName(detail));
     });
     widget.addEventListener("bel-meteogram-time", (event) => {
       if (this.widget !== widget || !this.isOpen) return;
       this.onWidgetTime((event as CustomEvent<BelMeteogramTimeDetail>).detail);
     });
+  }
+
+  /**
+   * Drop the pin at a point, or, when it already stands there naming the same
+   * place, only change its text. Dropping it again re-applies the map's
+   * pinned-label filter, which walks the whole settlement filter even when
+   * nothing changes (#36); the widget's location event repeats the pin that
+   * openAt() dropped, so that second drop is skipped.
+   */
+  private placePin(
+    lng: number,
+    lat: number,
+    label: string,
+    placeName: string | undefined,
+  ): void {
+    const shown = this.shownPin;
+    if (
+      shown &&
+      this.deps.updatePinLabel &&
+      shown.placeName === placeName &&
+      Math.abs(shown.lng - lng) < SAME_POINT_EPSILON_DEG &&
+      Math.abs(shown.lat - lat) < SAME_POINT_EPSILON_DEG
+    ) {
+      this.deps.updatePinLabel(label);
+      return;
+    }
+    this.deps.showPin?.(lng, lat, label, placeName);
+    this.shownPin = { lng, lat, placeName };
   }
 
   async openAt(lng: number, lat: number): Promise<void> {
@@ -645,7 +675,7 @@ export class MeteogramController {
       : "";
     // Drop the selected-point pin on the map (desktop docked-panel layout;
     // harmless on mobile where the pin sits behind the full-screen sheet).
-    this.deps.showPin?.(lng, lat, label, placeName);
+    this.placePin(lng, lat, label, placeName);
 
     if (this.deps.isDev) {
       console.debug(
