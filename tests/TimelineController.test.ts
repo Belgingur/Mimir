@@ -809,15 +809,56 @@ describe("TimelineController", () => {
       expect(ctrl.currentDatetime).toBe("b");
     });
 
-    it("takes the key but doesn't step while an update is pending", async () => {
-      const { deps } = createDeps();
+    it("steps from the index last asked for while an update is pending", async () => {
+      const { deps, spies } = createDeps({ inhouseLayers: [{ times: ["a", "b", "c"] }] });
       const ctrl = new TimelineController(deps);
       ctrl.activeTimelineDatetimes = ["a", "b", "c"];
       void ctrl.setSelectedIndex(2, "user");
       expect(ctrl.runKeyAction("timeline.stepBack")).toBe(true);
-      vi.advanceTimersByTime(160);
-      await flush();
-      expect(ctrl.currentDatetime).toBe("c");
+      await vi.advanceTimersByTimeAsync(160);
+      expect(ctrl.currentDatetime).toBe("b");
+      expect(spies.loadInhouseFrameSet).toHaveBeenCalledTimes(1);
+    });
+
+    describe("quick presses (#49)", () => {
+      const hours = Array.from({ length: 24 }, (_, i) => `2026-11-11T${String(i).padStart(2, "0")}:00:00Z`);
+      function timeline() {
+        const made = createDeps({ inhouseLayers: [{ times: hours }] });
+        const ctrl = new TimelineController(made.deps);
+        ctrl.activeTimelineDatetimes = hours;
+        ctrl.currentDatetime = hours[0];
+        return { ctrl, ...made };
+      }
+
+      it("ten presses within 100 ms move ten steps and load one frame, the last", async () => {
+        const { ctrl, spies } = timeline();
+        for (let i = 0; i < 10; i += 1) {
+          expect(ctrl.runKeyAction("timeline.stepForward")).toBe(true);
+          await vi.advanceTimersByTimeAsync(10);
+        }
+        // The timeline shows each step at once; the map waits for the last.
+        expect(ctrl.getActiveTimelineIndex()).toBe(10);
+        expect(spies.loadInhouseFrameSet).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(160);
+        expect(ctrl.currentDatetime).toBe(hours[10]);
+        expect(spies.loadInhouseFrameSet).toHaveBeenCalledTimes(1);
+      });
+
+      it("presses that arrive while a frame loads still count", async () => {
+        const { ctrl, spies } = timeline();
+        // Each frame takes 300 ms, longer than the 200 ms between presses.
+        spies.loadInhouseFrameSet.mockImplementation(
+          () => new Promise<void>((resolve) => window.setTimeout(resolve, 300)),
+        );
+        for (let i = 0; i < 5; i += 1) {
+          ctrl.runKeyAction("timeline.stepForward");
+          await vi.advanceTimersByTimeAsync(200);
+        }
+        ctrl.runKeyAction("timeline.stepBack");
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(ctrl.currentDatetime).toBe(hours[4]);
+        expect(ctrl.playbackState).toBe("idle");
+      });
     });
 
     it("a → on the map steps once and never reaches the map's handler", async () => {
@@ -859,13 +900,42 @@ describe("TimelineController", () => {
       expect(spies.scheduleUpdateLayers).not.toHaveBeenCalled();
     });
 
-    it("returns when waitingForFrame", async () => {
-      const { deps, spies } = createDeps();
+    it("steps while a frame is loading", async () => {
+      const { deps } = createDeps();
       const ctrl = new TimelineController(deps);
       ctrl.activeTimelineDatetimes = ["a", "b"];
+      ctrl.currentDatetime = "a";
       ctrl.setPlaybackState("waitingForFrame");
       await ctrl.stepTimelineByKeyboard(1);
-      expect(spies.scheduleUpdateLayers).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(160);
+      expect(ctrl.currentDatetime).toBe("b");
+    });
+
+    it("stops playback that is waiting for its frame, and steps from there", async () => {
+      const times = ["a", "b", "c", "d"];
+      const { deps, spies } = createDeps({ inhouseLayers: [{ times }] });
+      let finishFrame!: () => void;
+      spies.loadInhouseFrameSet.mockImplementationOnce(
+        () => new Promise<void>((resolve) => { finishFrame = resolve; }),
+      );
+      const ctrl = new TimelineController(deps);
+      ctrl.setTimelineControl(
+        createControl({ datetimes: times, datetime: "b" }) as unknown as WeatherLayers.TimelineControl,
+      );
+      ctrl.activeTimelineDatetimes = times;
+      ctrl.currentDatetime = "b";
+      const playback = ctrl.startPlayback();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(ctrl.playbackState).toBe("waitingForFrame");
+
+      ctrl.runKeyAction("timeline.stepBack");
+      finishFrame();
+      await vi.advanceTimersByTimeAsync(2000);
+      await playback;
+      // Playback would have gone on to "c"; the key took it back to "a".
+      expect(ctrl.currentDatetime).toBe("a");
+      expect(ctrl.timelineAutoPlay).toBe(false);
+      expect(ctrl.playbackState).toBe("idle");
     });
 
     it("stops playback when currently playing", async () => {
