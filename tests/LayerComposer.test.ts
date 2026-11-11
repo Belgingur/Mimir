@@ -1321,10 +1321,57 @@ describe("LayerComposer", () => {
       expect(mockRasterLayer).toHaveBeenCalledWith(
         expect.objectContaining({ imageInterpolation: "CUBIC" }),
       );
+      // Temperature's palette is opaque: deck.gl's own blending, as before.
+      expect(mockRasterLayer.mock.calls[0][0]).toMatchObject({
+        parameters: { depthTest: false },
+      });
+      expect(mockRasterLayer.mock.calls[0][0].parameters).not.toHaveProperty("blendColorSrcFactor");
       expect(mockLineLayer).toHaveBeenCalledTimes(1);
       const layers = (deps.setOverlayProps as ReturnType<typeof vi.fn>).mock
         .calls[0][0].layers as Array<{ id: string }>;
       expect(layers.some((l) => l.id === "graticule-lines")).toBe(true);
+    });
+
+    it("blends the precipitation raster's translucent bands once (#46)", () => {
+      const catalog = makeMockCatalogController();
+      catalog.inhouseLayers = [
+        {
+          id: "p",
+          model: "BEL-IS_EC",
+          analysis: "2026",
+          variable: "lwe_precipitation_rate",
+          image: { data: new Float32Array([1]), width: 1, height: 1 },
+          rasterScalar: null,
+          manifest: {
+            bounds: [-10, -10, 10, 10],
+            shape: { width: 1, height: 1 },
+            unit: "mm/h",
+            imageScale: "log1p",
+          },
+          visible: true,
+          renderMode: "raster",
+        } as unknown as InhouseLayer,
+      ];
+      const deps = makeDeps({
+        getCatalogController: (() =>
+          catalog) as unknown as LayerComposerDeps["getCatalogController"],
+        getUiState: () => ({
+          visible: true,
+          opacity: 1,
+          layerMode: "precip",
+          showGrid: false,
+          iconographyStyle: "compact",
+        }),
+      });
+      new LayerComposer(deps).updateLayers();
+
+      expect(mockRasterLayer).toHaveBeenCalledTimes(1);
+      expect(mockRasterLayer.mock.calls[0][0].parameters).toMatchObject({
+        depthTest: false,
+        blend: true,
+        blendColorSrcFactor: "one",
+        blendColorDstFactor: "one-minus-src-alpha",
+      });
     });
 
     it("re-encodes a temperature frame once, not on every redraw", () => {
