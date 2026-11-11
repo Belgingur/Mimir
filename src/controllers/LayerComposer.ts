@@ -10,7 +10,10 @@ import {
 import type { FeatureCollection } from "geojson";
 import * as WeatherLayers from "weatherlayers-gl";
 import * as WeatherLayersClient from "weatherlayers-gl/client";
-import { BELGINGUR_SCALE } from "../lib/precipitationScale";
+import {
+  BELGINGUR_SCALE,
+  PRECIP_LEGEND_BACKDROP,
+} from "../lib/precipitationScale";
 import { WIND_SPEED_SCALE } from "../lib/windSpeedScale";
 import { WAVE_HEIGHT_SCALE } from "../lib/waveHeightScale";
 import { TEMPERATURE_SCALE } from "../lib/temperatureScale";
@@ -2132,7 +2135,7 @@ ${this.legendLabelsHtml(
       <div class="precip-legend">
         <div class="precip-legend__title"><span class="precip-legend__unit">${t("unit.mmhr")}</span></div>
         <div class="precip-legend__scale">
-          <div class="precip-legend__bar" style="background: linear-gradient(to top, ${gradient});"></div>
+          <div class="precip-legend__bar" style="background: linear-gradient(to top, ${gradient}), ${PRECIP_LEGEND_BACKDROP};"></div>
 ${this.legendLabelsHtml(
             this.precipTicks.map((value) => ({
               text: String(value),
