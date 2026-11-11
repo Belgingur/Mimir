@@ -1223,7 +1223,12 @@ export class InhouseCatalogController {
           );
           const url = `${baseUrl}/${fileName}`;
           const asScalar = layer.manifest.encoding?.kind === "scalar";
-          layer.image = await this.loadInhouseTexture(url, controller?.signal);
+          const image = await this.loadInhouseTexture(url, controller.signal);
+          // A newer frame set may have started while this texture loaded: the
+          // abort can't cancel a request this load joined, nor a decode already
+          // running. Its frame must not overwrite the newer one's.
+          if (controller.signal.aborted) throw new Error("aborted");
+          layer.image = image;
 
           let alphaOffCount = 0;
           let totalPixels = 0;
@@ -1428,6 +1433,9 @@ export class InhouseCatalogController {
         }
       }),
     );
+    // Superseded: the newer load reports its own errors and schedules the
+    // redraw, so this one leaves the warning, the fallbacks and the map alone.
+    if (controller.signal.aborted) return;
     results.forEach((result) => {
       if (result.status === "rejected") {
         const reasonObj = result.reason as
