@@ -670,11 +670,17 @@ export class TimelineController {
 
   async stepTimelineByKeyboard(delta: -1 | 1): Promise<void> {
     if (!this._activeTimelineDatetimes.length) return;
-    if (this._playbackState === "waitingForFrame") return;
-    if (this._playbackState === "playing") {
-      this._timelineAutoPlay = false;
+    // A key hands the timeline to the reader, as grabbing the rail does:
+    // playback stops, whether it is between frames or waiting for one.
+    if (
+      this._playbackState === "playing" ||
+      this._playbackState === "waitingForFrame"
+    ) {
       this.stopPlayback("paused");
     }
+    // Every press counts, even while a frame loads: step from the index last
+    // asked for (getActiveTimelineIndex prefers it). setSelectedIndex redraws
+    // the timeline at once, and its 140 ms debounce coalesces the map loads.
     const currentIndex = this.getActiveTimelineIndex();
     const nextIndex = Math.max(
       0,
@@ -826,11 +832,6 @@ export class TimelineController {
     if (this.isModalBlockingTimelineHotkeys()) return false;
     if (!this._activeTimelineDatetimes.length) return false;
     const delta = action === "timeline.stepForward" ? 1 : -1;
-    if (
-      this._timelineUpdateHandle !== null ||
-      this._playbackState === "waitingForFrame"
-    )
-      return true;
     void this.stepTimelineByKeyboard(delta);
     return true;
   }
