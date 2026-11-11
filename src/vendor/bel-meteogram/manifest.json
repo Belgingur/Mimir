@@ -1,8 +1,8 @@
 {
   "repository": "https://github.com/Belgingur/meteogram",
-  "version": "0.8.0",
-  "tag": "v0.8.0",
-  "commit": "54e328e65e22759a8cdfe8850bda7ce2a7770caf",
+  "version": "0.8.2",
+  "tag": "v0.8.2",
+  "commit": "b0bc3ae6c8a1029bedc25dcc72a3056f6292819a",
   "asset": "bel-meteogram.js",
-  "sha256": "f509720c92c5ace0a552193df68fac1f6935eb72529131d0835bb31d83a2b3fa"
+  "sha256": "45ec75fa207fda90b2fbfff46c0bb0843160068dba06671bbfaf26f3e6e885ea"
 }
