@@ -85,6 +85,8 @@ export interface ControllerFactoryConfig {
    * same point.
    */
   timeZoneGuess?: UserLocation | null;
+  /** Resolves when the map's style has loaded (see whenStyleLoads). */
+  styleLoaded: Promise<void>;
 }
 
 export function createControllers(config: ControllerFactoryConfig) {
@@ -1306,6 +1308,7 @@ export function createControllers(config: ControllerFactoryConfig) {
         );
     },
     onStyleReady,
+    styleLoaded: config.styleLoaded,
     getOverlay: () => overlay,
     getLayerComposer: () => layerComposer,
     getCatalogController: () => catalogController,
