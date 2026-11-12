@@ -23,6 +23,7 @@ import {
   filterTimesByRange,
 } from "../lib/timelineHelpers";
 import { decodeScalarGrid } from "../lib/imageProcessing";
+import { fetchJsonWithTimeout } from "../lib/fetchJson";
 import { landingBounds } from "../lib/initialCamera";
 import { selectModel } from "../lib/selectModel";
 import { processTexturePixels } from "../lib/textureProcessing";
@@ -457,12 +458,9 @@ export class InhouseCatalogController {
     return `${root}/${FORECAST_DATA_SEGMENT}/${model}/${analysis}/${variable}`;
   }
 
+  /** With a timeout, so a request that never answers ends as a failure. */
   async fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
-    const response = init ? await fetch(url, init) : await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Failed to load ${url} (${response.status})`);
-    }
-    return (await response.json()) as T;
+    return fetchJsonWithTimeout<T>(url, init);
   }
 
   /**

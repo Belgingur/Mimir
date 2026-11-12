@@ -42,6 +42,15 @@ export async function initWeather(
   const catalogController = deps.getCatalogController();
   const layerComposer = deps.getLayerComposer();
 
+  await catalogController.inhouseCatalogReady;
+  await catalogController.ensureInhouseGroupLayers(uiState.layerMode);
+  // Nothing to show: the catalog or the first layer's manifest didn't load.
+  // Thrown before any of the UI below is built, so that the caller can report
+  // it and run this function again from the top (see forecastStart).
+  if (catalogController.inhouseLayers.length === 0) {
+    throw new Error("The forecast could not be loaded: no layers.");
+  }
+
   const timelineController = new TimelineController({
     dom: { mapWrap: dom.mapWrap },
     isDev,
@@ -82,8 +91,6 @@ export async function initWeather(
     0,
     24,
   );
-  await catalogController.inhouseCatalogReady;
-  await catalogController.ensureInhouseGroupLayers(uiState.layerMode);
 
   const datetimes = timelineController.getTimelineDatetimesForMode(
     uiState.layerMode,
