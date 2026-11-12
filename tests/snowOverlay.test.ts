@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   extractSnowPoints,
   hideSnowOverlayWhileMoving,
+  MAX_FLAKE_PX,
   referenceZoomForModel,
   SNOW_OVERLAY_MIN,
   SnowOverlaySVG,
+  snowSymbolScale,
   type SnowPoint,
 } from "../src/lib/snowOverlay";
 import type { InhouseLayer } from "../src/lib/inhouseTypes";
@@ -27,6 +29,43 @@ describe("referenceZoomForModel", () => {
     expect(referenceZoomForModel("BEL-IS")).toBe(5.8);
     expect(referenceZoomForModel("BEL-FO")).toBe(5.8);
     expect(referenceZoomForModel("UNKNOWN")).toBe(5.8);
+  });
+});
+
+// ── snowSymbolScale ───────────────────────────────────────────────────────────
+
+/** Height of the snowflake path in its own units, as in snowOverlay.ts. */
+const FLAKE_PATH_HEIGHT = 326.84;
+/** On-screen height, in px, of the larger snowflake at a scale. */
+const largeFlakePx = (scale: number) => 0.027 * scale * FLAKE_PATH_HEIGHT;
+
+describe("snowSymbolScale", () => {
+  it("is 1 at the reference zoom, where the symbols have their base size", () => {
+    expect(snowSymbolScale(4, 4)).toBe(1);
+    expect(snowSymbolScale(5.8, 5.8)).toBe(1);
+  });
+
+  it("doubles with each zoom level, and halves below the reference zoom", () => {
+    expect(snowSymbolScale(5, 4)).toBe(2);
+    expect(snowSymbolScale(6, 4)).toBe(4);
+    expect(snowSymbolScale(3, 4)).toBe(0.5);
+    expect(snowSymbolScale(6.8, 5.8)).toBeCloseTo(2, 10);
+  });
+
+  it("stops where the larger snowflake is MAX_FLAKE_PX high", () => {
+    // Two zoom levels past the reference the flake is still under the cap…
+    expect(largeFlakePx(snowSymbolScale(6, 4))).toBeLessThan(MAX_FLAKE_PX);
+    // …and from three levels on it stays at the cap, however deep the zoom.
+    for (const zoom of [7, 8, 9.5, 11, 14]) {
+      expect(largeFlakePx(snowSymbolScale(zoom, 4))).toBeCloseTo(MAX_FLAKE_PX, 6);
+    }
+  });
+
+  it("gives every model's symbols the same largest size", () => {
+    for (const model of ["GFS", "UWC-DINI", "BEL-IS"]) {
+      const scale = snowSymbolScale(14, referenceZoomForModel(model));
+      expect(largeFlakePx(scale)).toBeCloseTo(MAX_FLAKE_PX, 6);
+    }
   });
 });
 
@@ -259,6 +298,31 @@ describe("SnowOverlaySVG while the map moves", () => {
     overlay.update([point], after, 1, 3, bounds, "GFS");
     expect(svg.style.visibility).toBe("");
     expect(cx()).toBe("70.0");
+    container.remove();
+  });
+
+  it("draws no symbol larger than MAX_FLAKE_PX, however deep the zoom", () => {
+    const { container, overlay, svg } = setup();
+    const flake: SnowPoint = { lng: 1, lat: 1, tier: 3, rot: 10, size: 0.027 };
+    const dot: SnowPoint = { lng: 2, lat: 3, tier: 2, rot: 0, size: 1.25 };
+    const sizes = () => {
+      const scale = Number(
+        svg.querySelector("use")?.getAttribute("transform")?.match(/scale\(([\d.]+)\)/)?.[1],
+      );
+      const radius = Number(svg.querySelector("circle")?.getAttribute("r"));
+      return { flakePx: scale * FLAKE_PATH_HEIGHT, dotPx: radius * 2 };
+    };
+
+    // One zoom level past UWC-DINI's reference zoom (4): twice the base size.
+    overlay.update([flake, dot], before, 1, 5, bounds, "UWC-DINI");
+    expect(sizes().flakePx).toBeCloseTo(2 * 0.027 * FLAKE_PATH_HEIGHT, 1);
+    expect(sizes().dotPx).toBeCloseTo(2 * 2.5, 2);
+
+    // As deep as the map goes: unlimited, the flake would be about 400 px high.
+    overlay.update([flake, dot], before, 1, 9.5, bounds, "UWC-DINI");
+    expect(sizes().flakePx).toBeGreaterThan(MAX_FLAKE_PX - 1);
+    expect(sizes().flakePx).toBeLessThanOrEqual(MAX_FLAKE_PX + 0.1);
+    expect(sizes().dotPx).toBeLessThan(MAX_FLAKE_PX);
     container.remove();
   });
 
