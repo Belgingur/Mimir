@@ -79,6 +79,19 @@ export function snowSymbolScale(zoom: number, referenceZoom: number): number {
   return Math.min(2 ** (zoom - referenceZoom), maxScale);
 }
 
+/**
+ * The symbols' outline, which keeps them readable on light colours: a dark
+ * stroke drawn behind the white fill, so half its width shows around the
+ * symbol. Its width is in screen pixels and doesn't scale with the symbol.
+ *
+ * It replaces a drop-shadow filter on the whole group. A filter is drawn into
+ * a bitmap the size of its region, and the group spans every symbol, also the
+ * ones outside the view. WebKit caps that bitmap's size and then draws the
+ * symbols at a lower resolution than the screen's: they came out blurred.
+ */
+export const SYMBOL_OUTLINE_PX = 1;
+export const SYMBOL_OUTLINE_COLOR = "rgba(0, 20, 80, 0.4)";
+
 // ─── Snowflake SVG path ───────────────────────────────────────────────────────
 // Copied verbatim from public/data/snowflakes.js (#snow-flake path data).
 // The original element carries transform="translate(-202 -202)"; that shift is
@@ -279,16 +292,16 @@ export class SnowOverlaySVG {
       overflow: "visible",
     });
 
-    // Defs: snowflake path + drop-shadow filter for legibility.
+    // The snowflake path, and the group that gives every symbol its fill and
+    // its outline. The outline is a stroke drawn behind the fill, with a width
+    // in screen pixels whatever the symbol's scale (see SYMBOL_OUTLINE_PX).
     this.svgEl.innerHTML = `
       <defs>
-        <path id="sf" d="${FLAKE_PATH_D}"/>
-        <filter id="sf-sh" x="-80%" y="-80%" width="260%" height="260%">
-          <feDropShadow dx="0" dy="0" stdDeviation="1"
-                        flood-color="rgba(0,20,80,0.55)" flood-opacity="1"/>
-        </filter>
+        <path id="sf" d="${FLAKE_PATH_D}" vector-effect="non-scaling-stroke"/>
       </defs>
-      <g id="sf-g" fill="white" filter="url(#sf-sh)"></g>
+      <g id="sf-g" fill="white" stroke="${SYMBOL_OUTLINE_COLOR}"
+         stroke-width="${SYMBOL_OUTLINE_PX}" stroke-linejoin="round"
+         paint-order="stroke"></g>
     `;
 
     this.groupEl = this.svgEl.querySelector("#sf-g") as SVGGElement;
