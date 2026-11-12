@@ -5,7 +5,6 @@
  */
 import type * as maplibregl from "maplibre-gl";
 import { t } from "./i18n";
-import { LAND_COUNTRY_BOUNDARY_FILTER } from "./mapLayerOrder";
 
 /**
  * How long nothing may finish loading before the first load is taken to have
@@ -15,16 +14,37 @@ import { LAND_COUNTRY_BOUNDARY_FILTER } from "./mapLayerOrder";
  */
 export const STALL_QUIET_MS = 45_000;
 
-/** Neutral outline-only fallback; deliberately has no symbols or glyphs. */
+/**
+ * The source layers of MapLibre's demo tiles: what their manifest lists
+ * (https://demotiles.maplibre.org/tiles/tiles.json, read 12 November 2026).
+ * The fallback style can draw from these and nothing else. They aren't the
+ * OpenMapTiles schema the basemap's own tiles use: there is no `water` or
+ * `boundary` here.
+ */
+export const FALLBACK_SOURCE_LAYERS = [
+  "countries",
+  "geolines",
+  "centroids",
+] as const;
+
+/** The fallback style's outline layer. The forecast is drawn under it. */
+export const FALLBACK_OUTLINE_LAYER_ID = "fallback-outline";
+
+/**
+ * Neutral outline-only fallback; deliberately has no symbols or glyphs.
+ *
+ * The outlines are the edges of the demo tiles' country polygons (Natural
+ * Earth): the coastlines and the land borders, in one layer. The tiles stop
+ * at zoom 6, so the outlines are coarse further in.
+ */
 export const OUTLINE_FALLBACK_STYLE: maplibregl.StyleSpecification = {
   version: 8,
   name: "Mímir outline fallback",
   sources: {
-    openmaptiles: {
+    demotiles: {
       type: "vector",
       url: "https://demotiles.maplibre.org/tiles/tiles.json",
-      attribution:
-        "© OpenStreetMap contributors",
+      attribution: "Natural Earth",
     },
   },
   layers: [
@@ -34,37 +54,17 @@ export const OUTLINE_FALLBACK_STYLE: maplibregl.StyleSpecification = {
       paint: { "background-color": "#e8edf0" },
     },
     {
-      id: "fallback-coast",
+      id: FALLBACK_OUTLINE_LAYER_ID,
       type: "line",
-      source: "openmaptiles",
-      "source-layer": "water",
-      filter: ["all"],
+      source: "demotiles",
+      "source-layer": "countries",
+      layout: { "line-join": "round" },
+      // The coastline's colour and strength in the reference lines Mímir
+      // draws over the forecast on the basemap's own style.
       paint: {
-        "line-color": "#526873",
-        "line-width": 0.9,
-      },
-    },
-    {
-      id: "fallback-waterway",
-      type: "line",
-      source: "openmaptiles",
-      "source-layer": "waterway",
-      minzoom: 4,
-      filter: ["all"],
-      paint: {
-        "line-color": "#668896",
-        "line-width": 0.75,
-      },
-    },
-    {
-      id: "fallback-boundary",
-      type: "line",
-      source: "openmaptiles",
-      "source-layer": "boundary",
-      filter: LAND_COUNTRY_BOUNDARY_FILTER,
-      paint: {
-        "line-color": "#344852",
-        "line-width": 1.1,
+        "line-color": "#203a44",
+        "line-width": 1,
+        "line-opacity": 0.88,
       },
     },
   ],

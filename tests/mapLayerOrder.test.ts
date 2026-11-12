@@ -10,6 +10,10 @@ import {
   GLACIER_PATTERN_ID,
   resolveWeatherBeforeId,
 } from "../src/lib/mapLayerOrder";
+import {
+  FALLBACK_OUTLINE_LAYER_ID,
+  OUTLINE_FALLBACK_STYLE,
+} from "../src/lib/mapStartup";
 
 /** Abridged positron layer stack, preserving the ordering that matters. */
 const POSITRON_LAYERS = [
@@ -147,6 +151,25 @@ describe("ensureForecastReferenceLayers", () => {
     expect(
       addLayer.mock.calls.every(([layer]) => Array.isArray(layer.filter)),
     ).toBe(true);
+  });
+
+  it("puts the forecast under the fallback style's own outline, which is all the reference there is", () => {
+    // The fallback's tiles have no water, boundary or other OpenMapTiles
+    // layer, so no reference layer can be added from them.
+    const { map, addLayer } = makeMap(
+      OUTLINE_FALLBACK_STYLE.layers as unknown as typeof POSITRON_LAYERS,
+    );
+
+    const anchor = ensureForecastReferenceLayers(map, undefined);
+
+    expect(addLayer).not.toHaveBeenCalled();
+    // Above the forecast, or an opaque layer (temperature) would hide it.
+    expect(anchor).toBe(FALLBACK_OUTLINE_LAYER_ID);
+  });
+
+  it("returns no anchor for a style with neither the reference's sources nor the fallback's outline", () => {
+    const { map } = makeMap([{ id: "background", type: "background" }] as never);
+    expect(ensureForecastReferenceLayers(map, undefined)).toBeUndefined();
   });
 
   it("keeps road context faint and limited to major routes", () => {

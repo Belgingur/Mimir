@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  FALLBACK_SOURCE_LAYERS,
   OUTLINE_FALLBACK_STYLE,
   STALL_QUIET_MS,
   watchForQuiet,
@@ -162,6 +163,28 @@ describe("watchMapStartup: the fallback style", () => {
     ).toBe(true);
     expect(OUTLINE_FALLBACK_STYLE.glyphs).toBeUndefined();
     expect(OUTLINE_FALLBACK_STYLE.sprite).toBeUndefined();
+  });
+
+  it("draws outlines from a layer the demo tiles have", () => {
+    const lines = OUTLINE_FALLBACK_STYLE.layers.filter(
+      (layer) => layer.type === "line",
+    );
+    // Without a line layer the forecast sits on a plain background.
+    expect(lines.length).toBeGreaterThan(0);
+    for (const layer of lines) {
+      // A name the tiles don't have draws nothing, and only says so at run
+      // time ("Source layer … does not exist on source …").
+      expect(FALLBACK_SOURCE_LAYERS).toContain(layer["source-layer"]);
+      expect(OUTLINE_FALLBACK_STYLE.sources).toHaveProperty(layer.source);
+    }
+    // The coastlines and the borders are the country polygons' edges.
+    expect(lines.map((layer) => layer["source-layer"])).toContain("countries");
+  });
+
+  it("filters on nothing: the demo tiles carry no OpenMapTiles fields", () => {
+    for (const layer of OUTLINE_FALLBACK_STYLE.layers) {
+      expect("filter" in layer ? layer.filter : undefined).toBeUndefined();
+    }
   });
 
   it("takes over when the style fails, even before any controller exists", () => {

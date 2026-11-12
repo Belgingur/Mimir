@@ -13,6 +13,7 @@
  */
 
 import type * as maplibregl from "maplibre-gl";
+import { FALLBACK_OUTLINE_LAYER_ID } from "./mapStartup";
 
 /** OpenMapTiles source-layer that carries settlement + region labels. */
 export const PLACE_SOURCE_LAYER = "place";
@@ -151,6 +152,7 @@ type ReferenceLayerId =
  *
  * Returns the first reference layer id, which is the correct `beforeId` for
  * weather rasters: forecast below reference ink, place labels above both.
+ * On the fallback style that is its outline layer.
  */
 export function ensureForecastReferenceLayers(
   map: maplibregl.Map,
@@ -483,5 +485,10 @@ export function ensureForecastReferenceLayers(
       },
     },
   );
-  return orderedIds[0];
+  if (orderedIds.length > 0) return orderedIds[0];
+  // The fallback style's tiles have none of these source layers, so nothing
+  // was added. Its own outline is the reference there, and the forecast goes
+  // under it as it goes under the stack above.
+  return style.layers?.find((layer) => layer.id === FALLBACK_OUTLINE_LAYER_ID)
+    ?.id;
 }
