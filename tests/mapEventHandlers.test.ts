@@ -147,6 +147,76 @@ describe("attachMapEventHandlers startup", () => {
   });
 });
 
+describe("attachMapEventHandlers on styledata", () => {
+  function setup() {
+    vi.useFakeTimers();
+    const { map, emit } = createMap(false);
+    // Stands for the layers Mímir adds to the style: what onStyleReady does.
+    const addedDuringEvent: boolean[] = [];
+    let inStyledataEvent = false;
+    const onStyleReady = vi.fn(() => addedDuringEvent.push(inStyledataEvent));
+    const onStyleData = vi.fn();
+    const deps = {
+      onStyleReady,
+      onStyleData,
+      getCatalogController: () => ({ hideInhouseTooltip: vi.fn() }),
+      getTooltipController: () => ({ clearAllAddons: vi.fn() }),
+      setMapReady: vi.fn(),
+      initWeather: vi.fn(() => Promise.resolve()),
+    } as unknown as MapEventDeps;
+    attachMapEventHandlers(map as never, deps);
+    // MapLibre fires styledata mid-frame; the frame goes on once it returns.
+    const fireStyledata = () => {
+      inStyledataEvent = true;
+      emit("styledata");
+      inStyledataEvent = false;
+    };
+    return { onStyleReady, onStyleData, addedDuringEvent, fireStyledata };
+  }
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("adds Mímir's layers after the event, never inside it", () => {
+    const { onStyleReady, addedDuringEvent, fireStyledata } = setup();
+    fireStyledata();
+    // Still inside the frame that fired the event: nothing added yet.
+    expect(onStyleReady).not.toHaveBeenCalled();
+
+    vi.runAllTimers();
+    expect(onStyleReady).toHaveBeenCalledTimes(1);
+    expect(addedDuringEvent).toEqual([false]);
+  });
+
+  it("tells onStyleData inside each event, before anything is re-applied", () => {
+    const { onStyleReady, onStyleData, fireStyledata } = setup();
+    fireStyledata();
+    fireStyledata();
+    // Every event, at once: it is where a lost anchor is let go of in time.
+    expect(onStyleData).toHaveBeenCalledTimes(2);
+    expect(onStyleReady).not.toHaveBeenCalled();
+
+    vi.runAllTimers();
+    expect(onStyleData.mock.invocationCallOrder[1]).toBeLessThan(
+      onStyleReady.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("re-applies once for the events of one frame, and again for a later one", () => {
+    const { onStyleReady, fireStyledata } = setup();
+    fireStyledata();
+    fireStyledata();
+    fireStyledata();
+    vi.runAllTimers();
+    expect(onStyleReady).toHaveBeenCalledTimes(1);
+
+    fireStyledata();
+    vi.runAllTimers();
+    expect(onStyleReady).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe("attachMapEventHandlers hover while the meteogram is open", () => {
   function setup(meteogramOpen: () => boolean) {
     vi.stubGlobal(
