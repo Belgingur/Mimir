@@ -136,17 +136,32 @@ export function watchForQuiet(options: QuietWatchOptions): () => void {
   };
 }
 
+/**
+ * How the start ended: with the forecast in, with the start's own error on
+ * screen (it offers a retry), or because something threw.
+ */
+export type StartOutcome = "forecast" | "error" | "failed";
+
 export interface MapStartupOptions {
   /** The style that takes over when the map's own can't be loaded. */
   fallbackStyle?: maplibregl.StyleSpecification;
   quietMs?: number;
   progress?: ProgressSource;
   isHidden?: () => boolean;
+  /** Ends the loading state and shows an error with a way to reload. */
+  showError?: () => void;
+  /** Takes that error away again: the start finished after all. */
+  hideError?: () => void;
 }
 
 export interface MapStartup {
   /** Resolves when a style has loaded: the map's own, or the fallback. */
   styleLoaded: Promise<void>;
+  /**
+   * The start has ended: the forecast is in, or the start has shown its own
+   * error. Pass `failed` when it ended because something threw.
+   */
+  finished(failed?: boolean): void;
 }
 
 type StartupMap = Pick<maplibregl.Map, "on" | "once" | "setStyle">;
@@ -168,6 +183,12 @@ type StartupMap = Pick<maplibregl.Map, "on" | "once" | "setStyle">;
  *
  * Every other map error is only logged once a style has loaded. A failed
  * tile or sprite is not a reason to replace the whole basemap.
+ *
+ * It is also the safety net for whatever else can keep the start from
+ * ending: a forecast frame that never answers, or controllers that never
+ * arrive. When the start hasn't finished and nothing has finished loading
+ * for `quietMs`, `showError` is called. The start may still finish after
+ * that; `hideError` is then called and the forecast shows.
  */
 export function watchMapStartup(
   map: StartupMap,
@@ -176,6 +197,8 @@ export function watchMapStartup(
   const fallbackStyle = options.fallbackStyle ?? OUTLINE_FALLBACK_STYLE;
   let styleIsIn = false;
   let fallbackApplied = false;
+  let ended = false;
+  let errorShown = false;
 
   const useFallbackStyle = (reason: string): void => {
     if (fallbackApplied) return;
@@ -184,19 +207,29 @@ export function watchMapStartup(
     map.setStyle(fallbackStyle);
   };
 
+  const showError = (): void => {
+    if (errorShown) return;
+    errorShown = true;
+    options.showError?.();
+  };
+
   const stopWatching = watchForQuiet({
     quietMs: options.quietMs ?? STALL_QUIET_MS,
     progress: options.progress ?? resourceLoads,
     isHidden: options.isHidden ?? (() => document.hidden),
     onQuiet: () => {
-      if (!styleIsIn) useFallbackStyle("the style did not load");
+      // First the style: with the fallback in, the start can still go on.
+      if (!styleIsIn && !fallbackApplied) {
+        useFallbackStyle("the style did not load");
+        return;
+      }
+      showError();
     },
   });
 
   const styleLoaded = new Promise<void>((resolve) => {
     map.once("style.load", () => {
       styleIsIn = true;
-      stopWatching();
       resolve();
     });
   });
@@ -224,5 +257,19 @@ export function watchMapStartup(
     console.warn("MapLibre error after the style loaded:", message);
   });
 
-  return { styleLoaded };
+  return {
+    styleLoaded,
+    finished(failed = false): void {
+      if (ended) return;
+      ended = true;
+      stopWatching();
+      if (failed) {
+        showError();
+      } else if (errorShown) {
+        // The start finished after the safety net had given up on it.
+        errorShown = false;
+        options.hideError?.();
+      }
+    },
+  };
 }

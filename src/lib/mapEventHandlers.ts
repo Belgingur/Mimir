@@ -15,6 +15,7 @@ import type { TooltipController } from "../controllers/TooltipController";
 import type { IconographyController } from "../controllers/IconographyController";
 import type { WavegramController } from "../controllers/WavegramController";
 import type { MeteogramController } from "../features/meteogram/MeteogramController";
+import type { StartOutcome } from "./mapStartup";
 
 export interface MapEventDeps {
   getOverlay: () => MapboxOverlay;
@@ -48,12 +49,16 @@ export interface MapEventDeps {
    *  makes it when it creates the map, so it holds whenever these handlers
    *  attach. */
   styleLoaded: Promise<void>;
+  /** Told when the start has ended, and how (see MapStartup.finished). */
+  onStartFinished?: (outcome: StartOutcome) => void;
   /** Brief, self-clearing message for an action that was declined — used when a
    *  click lands where the forecast has no data, so the click never just goes
    *  nowhere. Optional: headless callers simply get silence. */
   showTransientNotice?: (message: string) => void;
   setMapReady: (ready: boolean) => void;
-  initWeather: () => Promise<void>;
+  /** Resolves false when it ended with its own error on screen instead of
+   *  the forecast (see ForecastStart.start). */
+  initWeather: () => Promise<boolean | void>;
   scheduleUpdateLayers: () => void;
   schedulePersistState: () => void;
 }
@@ -67,24 +72,33 @@ export function attachMapEventHandlers(
   const startForecast = async () => {
     if (startHandled) return;
     startHandled = true;
-    deps.setMapReady(true);
-    // Only now: reading or restyling the style before it has loaded either
-    // throws or silently no-ops.
-    deps.onStyleReady?.();
-    // No camera move here: main.ts builds the map where it should open (the
-    // saved camera, or the first-visit view), so there is nothing to correct.
-    map.addControl(deps.getOverlay());
-    await deps.initWeather();
+    let outcome: StartOutcome = "forecast";
+    try {
+      deps.setMapReady(true);
+      // Only now: reading or restyling the style before it has loaded either
+      // throws or silently no-ops.
+      deps.onStyleReady?.();
+      // No camera move here: main.ts builds the map where it should open (the
+      // saved camera, or the first-visit view), so there is nothing to correct.
+      map.addControl(deps.getOverlay());
+      if ((await deps.initWeather()) === false) outcome = "error";
 
-    // Let the layer update queued by the first frame run before declaring the
-    // initial view ready. The loading bar now tracks usable forecast data, not
-    // merely the basemap style.
-    await new Promise<void>((resolve) => {
-      const raf = globalThis.requestAnimationFrame;
-      if (typeof raf === "function") raf(() => resolve());
-      else setTimeout(resolve, 0);
-    });
-    document.body.classList.remove("is-loading");
+      // Let the layer update queued by the first frame run before declaring
+      // the initial view ready. The loading bar now tracks usable forecast
+      // data, not merely the basemap style.
+      await new Promise<void>((resolve) => {
+        const raf = globalThis.requestAnimationFrame;
+        if (typeof raf === "function") raf(() => resolve());
+        else setTimeout(resolve, 0);
+      });
+    } catch (error) {
+      outcome = "failed";
+      console.error("The first load failed", error);
+    } finally {
+      // However the start ended, the page must not stay loading.
+      document.body.classList.remove("is-loading");
+      deps.onStartFinished?.(outcome);
+    }
   };
 
   // Start when the style is in, not on MapLibre's `load`.

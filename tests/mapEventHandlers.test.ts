@@ -148,6 +148,74 @@ describe("attachMapEventHandlers startup", () => {
   });
 });
 
+describe("attachMapEventHandlers when the start ends", () => {
+  function setup(
+    initWeather: () => Promise<boolean | void>,
+    overlay: () => unknown,
+  ) {
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    });
+    const { map } = createMap(false);
+    const onStartFinished = vi.fn();
+    const deps = {
+      getOverlay: overlay,
+      getCatalogController: () => ({ hideInhouseTooltip: vi.fn() }),
+      getTooltipController: () => ({ clearAllAddons: vi.fn() }),
+      styleLoaded: Promise.resolve(),
+      onStartFinished,
+      setMapReady: vi.fn(),
+      initWeather,
+    } as unknown as MapEventDeps;
+    document.body.classList.add("is-loading");
+    attachMapEventHandlers(map as never, deps);
+    return { onStartFinished };
+  }
+
+  it("reports a start that ended with the forecast in", async () => {
+    const { onStartFinished } = setup(async () => {}, () => ({}));
+    await vi.waitFor(() =>
+      expect(onStartFinished).toHaveBeenCalledWith("forecast"),
+    );
+    expect(document.body.classList.contains("is-loading")).toBe(false);
+  });
+
+  it("reports a start that ended with its own error on screen", async () => {
+    // What ForecastStart.start resolves with when it has shown its Retry.
+    const { onStartFinished } = setup(async () => false, () => ({}));
+    await vi.waitFor(() => expect(onStartFinished).toHaveBeenCalledWith("error"));
+    expect(document.body.classList.contains("is-loading")).toBe(false);
+  });
+
+  it("ends the loading state and reports a failure when the forecast load throws", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const { onStartFinished } = setup(
+      async () => {
+        throw new Error("boom");
+      },
+      () => ({}),
+    );
+    await vi.waitFor(() =>
+      expect(onStartFinished).toHaveBeenCalledWith("failed"),
+    );
+    expect(document.body.classList.contains("is-loading")).toBe(false);
+  });
+
+  it("does the same when a step before the forecast load throws", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const initWeather = vi.fn(async () => {});
+    const { onStartFinished } = setup(initWeather, () => {
+      throw new Error("no WebGL for the overlay");
+    });
+    await vi.waitFor(() =>
+      expect(onStartFinished).toHaveBeenCalledWith("failed"),
+    );
+    expect(initWeather).not.toHaveBeenCalled();
+    expect(document.body.classList.contains("is-loading")).toBe(false);
+  });
+});
+
 describe("attachMapEventHandlers on styledata", () => {
   function setup() {
     vi.useFakeTimers();

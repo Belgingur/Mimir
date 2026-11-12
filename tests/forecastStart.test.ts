@@ -37,7 +37,7 @@ afterEach(() => {
 describe("createForecastStart", () => {
   it("shows nothing when the start succeeds", async () => {
     const { forecastStart, initWeather, showError, reloadCatalog } = setup(["ok"]);
-    await forecastStart.start();
+    await expect(forecastStart.start()).resolves.toBe(true);
     expect(initWeather).toHaveBeenCalledTimes(1);
     expect(showError).not.toHaveBeenCalled();
     expect(reloadCatalog).not.toHaveBeenCalled();
@@ -46,7 +46,7 @@ describe("createForecastStart", () => {
   it("ends a failed start with the error and a Retry, not a rejection", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const { forecastStart, showError } = setup(["fail"]);
-    await expect(forecastStart.start()).resolves.toBeUndefined();
+    await expect(forecastStart.start()).resolves.toBe(false);
     expect(showError).toHaveBeenCalledTimes(1);
   });
 

@@ -134,6 +134,8 @@ export const pl: Record<string, string> = {
   "status.loadingForecast": "Wczytywanie prognozy…",
   "error.forecastLoad": "Nie udało się wczytać prognozy.",
   "action.retry": "Spróbuj ponownie",
+  "error.startFailed": "Mímir nie wczytał się do końca.",
+  "action.reload": "Wczytaj ponownie",
   "status.newRun": "Dostępna jest nowsza prognoza.",
   "status.modelOutsideView": "Ten model prognozy nie obejmuje oglądanego obszaru.",
   "action.useCoveringModel": "Użyj modelu, który go obejmuje",

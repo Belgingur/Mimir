@@ -198,7 +198,6 @@ describe("watchMapStartup: the fallback style", () => {
     map.fire("error", { error: { message: "missing optional sprite" } });
     vi.advanceTimersByTime(STALL_QUIET_MS * 3);
     expect(map.setStyle).not.toHaveBeenCalled();
-    expect(vi.getTimerCount()).toBe(0);
   });
 
   it("takes over when the style's tile source can't load, while the basemap is first drawn", () => {
@@ -249,5 +248,94 @@ describe("watchMapStartup: the fallback style", () => {
     map.fire("style.load");
     await settle();
     expect(resolved).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("watchMapStartup: the safety net", () => {
+  function setup() {
+    const map = stubMap();
+    const progress = stubProgress();
+    const showError = vi.fn();
+    const hideError = vi.fn();
+    const startup = watchMapStartup(map as never, {
+      progress: progress.source,
+      isHidden: () => false,
+      showError,
+      hideError,
+    });
+    return { map, progress, startup, showError, hideError };
+  }
+
+  it("shows the error when the start never ends and nothing is loading any more", () => {
+    const { map, progress, showError } = setup();
+    map.fire("style.load");
+    // The catalog and the tiles arrive; a forecast frame never does.
+    vi.advanceTimersByTime(10_000);
+    progress.tick();
+    vi.advanceTimersByTime(STALL_QUIET_MS - 1);
+    expect(showError).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(showError).toHaveBeenCalledTimes(1);
+
+    // Shown once, however long the page stays that way.
+    vi.advanceTimersByTime(STALL_QUIET_MS * 3);
+    expect(showError).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows it when the controllers never arrive, too", () => {
+    // No style.load handler of theirs, no finished(): only main.ts is running.
+    const { map, showError } = setup();
+    map.fire("style.load");
+    vi.advanceTimersByTime(STALL_QUIET_MS);
+    expect(showError).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows no error for a slow load that keeps delivering and then finishes", () => {
+    const { map, progress, startup, showError, hideError } = setup();
+    map.fire("style.load");
+    // Twice the quiet period in all, with a request finishing every 20 s.
+    for (let elapsed = 0; elapsed < STALL_QUIET_MS * 2; elapsed += 20_000) {
+      vi.advanceTimersByTime(20_000);
+      progress.tick();
+    }
+    startup.finished();
+    vi.advanceTimersByTime(STALL_QUIET_MS * 3);
+    expect(showError).not.toHaveBeenCalled();
+    expect(hideError).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+    expect(progress.stopped).toHaveBeenCalledTimes(1);
+  });
+
+  it("tries the fallback style first, and gives up only after a second quiet period", () => {
+    const { map, showError } = setup();
+    vi.advanceTimersByTime(STALL_QUIET_MS);
+    expect(map.setStyle).toHaveBeenCalledTimes(1);
+    expect(showError).not.toHaveBeenCalled();
+
+    // The fallback doesn't load either.
+    vi.advanceTimersByTime(STALL_QUIET_MS);
+    expect(showError).toHaveBeenCalledTimes(1);
+  });
+
+  it("takes the error away when the start finishes after all", () => {
+    const { map, startup, showError, hideError } = setup();
+    map.fire("style.load");
+    vi.advanceTimersByTime(STALL_QUIET_MS);
+    expect(showError).toHaveBeenCalledTimes(1);
+
+    startup.finished();
+    expect(hideError).toHaveBeenCalledTimes(1);
+    // And a second call changes nothing.
+    startup.finished();
+    expect(hideError).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the error at once for a start that threw", () => {
+    const { map, startup, showError, hideError } = setup();
+    map.fire("style.load");
+    startup.finished(true);
+    expect(showError).toHaveBeenCalledTimes(1);
+    expect(hideError).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
   });
 });
