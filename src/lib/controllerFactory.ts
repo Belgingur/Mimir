@@ -228,6 +228,23 @@ export function createControllers(config: ControllerFactoryConfig) {
   }
 
   /**
+   * Inside a `styledata` event: has the style lost the layer the weather
+   * overlay is anchored before? A replaced style takes Mímir's layers with it,
+   * and onStyleReady only puts them back one task later.
+   *
+   * deck.gl re-inserts its layers from its own `styledata` handler, inside the
+   * same event. With the anchor gone it would move them before a layer that
+   * doesn't exist, which leaves MapLibre's layer order short of one layer for
+   * good. So the overlay's layers are taken out here, while the anchor is
+   * missing; onStyleReady then finds a new anchor and re-emits them.
+   */
+  function detachWeatherFromLostAnchor() {
+    if (!weatherBeforeId || map.getLayer(weatherBeforeId)) return;
+    weatherBeforeId = undefined;
+    overlay.setProps({ layers: [] });
+  }
+
+  /**
    * Add the city-label layer once both halves are ready: the style (layers
    * cannot be added before it loads) and the place dataset (fetched async).
    * Whichever finishes last triggers the add; the call itself is idempotent.
@@ -1299,6 +1316,7 @@ export function createControllers(config: ControllerFactoryConfig) {
     getMeteogramController: () => meteogramController,
     meteogramEnabled: isMeteogramEnabled(),
     getUiState: () => uiState,
+    onStyleData: detachWeatherFromLostAnchor,
     setMapReady: (ready) => {
       mapReady = ready;
     },

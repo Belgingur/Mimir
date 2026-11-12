@@ -41,6 +41,10 @@ export interface MapEventDeps {
   /** Applied once the style has loaded (and again after any style swap): the
    *  weather overlay's draw-order anchor and the place-label presentation. */
   onStyleReady?: () => void;
+  /** Called inside every `styledata` event, before the re-apply that follows
+   *  it one task later. It must not add layers: the map is mid-frame. It is
+   *  the place to let go of whatever the changed style can no longer hold. */
+  onStyleData?: () => void;
   /** Brief, self-clearing message for an action that was declined — used when a
    *  click lands where the forecast has no data, so the click never just goes
    *  nowhere. Optional: headless callers simply get silence. */
@@ -161,8 +165,22 @@ export function attachMapEventHandlers(
   // The style can be replaced at runtime (see the demotiles error fallback
   // above), which discards both the resolved anchor and the label restyling.
   // Layer ids are never hardcoded, so re-applying is all that's needed.
+  //
+  // Not from inside the event, though. MapLibre fires `styledata` in the
+  // middle of a frame, after it has evaluated the style's layers and before
+  // it draws them. A layer added there is drawn in that frame unevaluated,
+  // and its draw throws. So the re-apply runs one task later, outside the
+  // frame, and the next frame evaluates the new layers before drawing them.
+  // Events that arrive before it has run share that one call.
+  let styleReadyQueued = false;
   map.on("styledata", () => {
-    deps.onStyleReady?.();
+    deps.onStyleData?.();
+    if (styleReadyQueued) return;
+    styleReadyQueued = true;
+    setTimeout(() => {
+      styleReadyQueued = false;
+      deps.onStyleReady?.();
+    }, 0);
   });
 
   map.on("click", (event: maplibregl.MapMouseEvent) => {
