@@ -106,8 +106,19 @@
     bottom: calc(var(--bottom-bar-height) + var(--safe-area-bottom) + 56px);
     width: fit-content;
     max-width: calc(100vw - 16px);
-    max-height: 35vh;
-    overflow-y: auto;
+  }
+
+  /* The legend fits the window's height: its rows get shorter. The card used
+     to be cut at 35% of the height and left to scroll, and on a touch device
+     nothing can scroll it (pointer-events: none, see legend.css), so the
+     lowest values couldn't be read.
+     The scale takes that 35%, less the 40px of the unit line and the card's
+     padding around it, and never more than its full 220px. Not under 180px:
+     the precipitation legend has 19 labels, and 10px a row is the least that
+     keeps its 11px numbers apart. */
+  .legend-stack-card .precip-legend__scale {
+    min-height: clamp(180px, calc(35vh - 40px), 220px);
+    min-height: clamp(180px, calc(35dvh - 40px), 220px);
   }
 
   /* ── 6. Zoom buttons: top-left, out of the way ──────────── */
