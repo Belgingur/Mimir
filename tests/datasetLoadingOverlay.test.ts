@@ -45,6 +45,24 @@ describe("dataset loading overlay", () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
+  it("takes an error away by its ticket, unless something was shown since", () => {
+    const overlay = createDatasetLoadingOverlay(host);
+    const error = overlay.fail({ message: "No data" });
+    expect(overlay.isLatest(error)).toBe(true);
+    overlay.end(error);
+    expect(root().hidden).toBe(true);
+
+    const earlier = overlay.fail({ message: "No data" });
+    const load = overlay.begin("Loading");
+    expect(overlay.isLatest(earlier)).toBe(false);
+    expect(overlay.isLatest(load)).toBe(true);
+    overlay.end(earlier);
+    expect(root().hidden).toBe(false);
+    expect(root().querySelector(".dataset-loader__text")?.textContent).toBe(
+      "Loading",
+    );
+  });
+
   it("hides and clears on end", () => {
     const overlay = createDatasetLoadingOverlay(host);
     overlay.begin("Loading");
