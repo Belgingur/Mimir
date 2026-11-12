@@ -52,6 +52,33 @@ export function referenceZoomForModel(model: string): number {
  */
 const TILE_STEP = 12;
 
+/** Scale factors of a tile's two snowflakes (pt-snow-3: 0.02 and 0.027). */
+const SMALL_FLAKE_SIZE = 0.02;
+const LARGE_FLAKE_SIZE = 0.027;
+
+/** Height of the snowflake path in its own units (y runs from 43.1 to 369.9). */
+const FLAKE_PATH_HEIGHT = 326.84;
+
+/**
+ * The tallest a snowflake is drawn on screen, in pixels, at any zoom. At the
+ * reference zoom the larger flake is about 9 px high, so the symbols grow for
+ * a little over two zoom levels past it and keep that size from there on.
+ */
+export const MAX_FLAKE_PX = 40;
+
+/**
+ * The factor the symbols' base sizes are multiplied by at `zoom`.
+ *
+ * It is 1 at the model's reference zoom and doubles with each zoom level, as
+ * the map's scale does, until the larger snowflake is MAX_FLAKE_PX high. From
+ * there it stays the same: a symbol stands for an area of the forecast grid,
+ * and one that kept growing would cover the map and its labels.
+ */
+export function snowSymbolScale(zoom: number, referenceZoom: number): number {
+  const maxScale = MAX_FLAKE_PX / (FLAKE_PATH_HEIGHT * LARGE_FLAKE_SIZE);
+  return Math.min(2 ** (zoom - referenceZoom), maxScale);
+}
+
 // ─── Snowflake SVG path ───────────────────────────────────────────────────────
 // Copied verbatim from public/data/snowflakes.js (#snow-flake path data).
 // The original element carries transform="translate(-202 -202)"; that shift is
@@ -174,14 +201,14 @@ export function extractSnowPoints(layer: InhouseLayer): SnowPoint[] | null {
           lat: latOf(ry1),
           tier,
           rot: rot1,
-          size: 0.02,
+          size: SMALL_FLAKE_SIZE,
         });
         points.push({
           lng: lngOf(rx2),
           lat: latOf(ry2),
           tier,
           rot: rot2,
-          size: 0.027,
+          size: LARGE_FLAKE_SIZE,
         });
       } else if (tier === 2) {
         // Medium dots — matches pt-snow-2: r=1 and r=1.25.
@@ -294,12 +321,10 @@ export class SnowOverlaySVG {
       return;
     }
 
-    // Each MapLibre zoom level doubles the map scale, so symbols should grow
-    // by the same factor to maintain a consistent geographic footprint.
-    // REFERENCE_ZOOM is the zoom at which the base symbol sizes look right;
-    // it depends on domain size (large domains are viewed at lower zoom levels).
-    const REFERENCE_ZOOM = referenceZoomForModel(model);
-    const zoomScale = 2 ** (zoom - REFERENCE_ZOOM);
+    // The symbols grow with the map from the zoom at which their base sizes
+    // look right, which depends on domain size (large domains are viewed at
+    // lower zoom levels), up to a largest on-screen size.
+    const zoomScale = snowSymbolScale(zoom, referenceZoomForModel(model));
 
     // Geographic padding in degrees: cull points just outside the viewport.
     const PAD = 3;
