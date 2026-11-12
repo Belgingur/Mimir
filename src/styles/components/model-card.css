@@ -61,13 +61,13 @@
 }
 
 .model-slot--active {
-  background: #d97433 !important;
-  color: #fffaf4 !important;
+  background: var(--accent-orange-strong) !important;
+  color: var(--text-on-orange) !important;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
 }
 
 .model-slot--active .model-slot__meta {
-  color: rgba(255, 250, 244, 0.82) !important;
+  color: var(--text-on-orange) !important;
 }
 
 .model-slot__name {

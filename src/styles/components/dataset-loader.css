@@ -76,8 +76,8 @@
   cursor: pointer;
 }
 .dataset-loader__back:hover {
-  background: var(--accent-orange, #d97433);
-  color: #fff;
+  background: var(--accent-orange-strong);
+  color: var(--text-on-orange);
   border-color: transparent;
 }
 
