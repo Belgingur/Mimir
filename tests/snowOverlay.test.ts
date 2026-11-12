@@ -7,6 +7,8 @@ import {
   SNOW_OVERLAY_MIN,
   SnowOverlaySVG,
   snowSymbolScale,
+  SYMBOL_OUTLINE_COLOR,
+  SYMBOL_OUTLINE_PX,
   type SnowPoint,
 } from "../src/lib/snowOverlay";
 import type { InhouseLayer } from "../src/lib/inhouseTypes";
@@ -334,6 +336,60 @@ describe("SnowOverlaySVG while the map moves", () => {
     map.fire("moveend");
     overlay.update([point], after, 1, 3, bounds, "GFS");
     expect(svg.style.visibility).toBe("");
+    container.remove();
+  });
+});
+
+// ── SnowOverlaySVG: the symbols' outline ─────────────────────────────────────
+
+describe("SnowOverlaySVG outline", () => {
+  const bounds = { west: -10, south: -10, east: 10, north: 10 };
+  const project = ([lng, lat]: [number, number]) => ({ x: lng * 10, y: lat * 10 });
+  const flake: SnowPoint = { lng: 1, lat: 1, tier: 3, rot: 10, size: 0.027 };
+  const dot: SnowPoint = { lng: 2, lat: 3, tier: 2, rot: 0, size: 1.25 };
+
+  function setup() {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const overlay = new SnowOverlaySVG(container);
+    const svg = container.querySelector("svg") as SVGSVGElement;
+    const group = svg.querySelector("#sf-g") as SVGGElement;
+    return { container, overlay, svg, group };
+  }
+
+  it("uses no SVG filter: WebKit draws a filtered group this large at a reduced resolution", () => {
+    const { container, overlay, svg, group } = setup();
+    overlay.update([flake, dot], project, 1, 9.5, bounds, "UWC-DINI");
+    expect(svg.querySelector("filter")).toBeNull();
+    expect(group.hasAttribute("filter")).toBe(false);
+    expect(svg.innerHTML).not.toContain("filter");
+    container.remove();
+  });
+
+  it("gives every symbol a dark outline, drawn behind its white fill", () => {
+    const { container, group } = setup();
+    expect(group.getAttribute("fill")).toBe("white");
+    expect(group.getAttribute("stroke")).toBe(SYMBOL_OUTLINE_COLOR);
+    expect(group.getAttribute("paint-order")).toBe("stroke");
+    container.remove();
+  });
+
+  it("keeps the outline's width in screen pixels, whatever the symbols' scale", () => {
+    const { container, overlay, svg, group } = setup();
+    // The snowflake path is drawn through <use> with a scale: only
+    // non-scaling-stroke on the path itself keeps the stroke from scaling.
+    expect(svg.querySelector("#sf")?.getAttribute("vector-effect")).toBe(
+      "non-scaling-stroke",
+    );
+    for (const zoom of [3, 5, 9.5]) {
+      overlay.update([flake, dot], project, 1, zoom, bounds, "UWC-DINI");
+      expect(group.getAttribute("stroke-width")).toBe(String(SYMBOL_OUTLINE_PX));
+      // No symbol overrides the group's outline.
+      for (const symbol of group.children) {
+        expect(symbol.hasAttribute("stroke-width")).toBe(false);
+        expect(symbol.hasAttribute("stroke")).toBe(false);
+      }
+    }
     container.remove();
   });
 });
