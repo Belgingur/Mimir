@@ -45,6 +45,10 @@ export interface MapEventDeps {
    *  it one task later. It must not add layers: the map is mid-frame. It is
    *  the place to let go of whatever the changed style can no longer hold. */
   onStyleData?: () => void;
+  /** Resolves when the map's style has loaded (see whenStyleLoads). main.ts
+   *  makes it when it creates the map, so it holds whenever these handlers
+   *  attach. */
+  styleLoaded: Promise<void>;
   /** Brief, self-clearing message for an action that was declined — used when a
    *  click lands where the forecast has no data, so the click never just goes
    *  nowhere. Optional: headless callers simply get silence. */
@@ -114,17 +118,17 @@ export function attachMapEventHandlers(
   map: maplibregl.Map,
   deps: MapEventDeps,
 ): void {
-  let mapLoadHandled = false;
+  let startHandled = false;
   let styleFallbackApplied = false;
   map.on("error", (event: maplibregl.ErrorEvent) => {
     const message =
       (event as { error?: { message?: string } })?.error?.message ??
       "Unknown map error";
-    // Tile, sprite, and custom-layer errors after a successful load are not
+    // Tile, sprite, and custom-layer errors once the style has loaded are not
     // style failures. Replacing the whole basemap here caused one harmless
     // error to cascade into a colorful demo map and dozens of glyph failures.
-    if (mapLoadHandled) {
-      console.warn("MapLibre error after initial load:", message);
+    if (startHandled) {
+      console.warn("MapLibre error after the style loaded:", message);
       return;
     }
     if (!styleFallbackApplied) {
@@ -134,12 +138,12 @@ export function attachMapEventHandlers(
     }
   });
 
-  const handleMapLoad = async () => {
-    if (mapLoadHandled) return;
-    mapLoadHandled = true;
+  const startForecast = async () => {
+    if (startHandled) return;
+    startHandled = true;
     deps.setMapReady(true);
-    // Inside the load handler: reading or restyling the style before it has
-    // loaded either throws or silently no-ops.
+    // Only now: reading or restyling the style before it has loaded either
+    // throws or silently no-ops.
     deps.onStyleReady?.();
     // No camera move here: main.ts builds the map where it should open (the
     // saved camera, or the first-visit view), so there is nothing to correct.
@@ -157,10 +161,18 @@ export function attachMapEventHandlers(
     document.body.classList.remove("is-loading");
   };
 
-  map.once("load", () => void handleMapLoad());
-  // Deferred controller loading can attach after MapLibre has already emitted
-  // `load`. The guard keeps this and the event path exactly-once.
-  if (map.loaded()) void handleMapLoad();
+  // Start when the style is in, not on MapLibre's `load`.
+  //
+  // `load` waits for every basemap request: the tiles in view, the sprite and
+  // the glyphs. One that never answered kept the forecast from ever starting.
+  // And `load` fires once: controllers that attached after it had to rely on
+  // map.loaded(), which is false whenever tiles are loading, so a map being
+  // moved at that moment never started either.
+  //
+  // The style is all the start needs: it anchors the weather layers below the
+  // place labels. A basemap request that never answers now leaves a gap in
+  // the basemap, not a page that loads for good.
+  void deps.styleLoaded.then(() => startForecast());
 
   // The style can be replaced at runtime (see the demotiles error fallback
   // above), which discards both the resolved anchor and the label restyling.

@@ -4,6 +4,10 @@ import {
   OUTLINE_FALLBACK_STYLE,
   type MapEventDeps,
 } from "../src/lib/mapEventHandlers";
+import { whenStyleLoads } from "../src/lib/mapStartup";
+
+/** Lets promise callbacks that are already due run. */
+const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
 function createMap(loaded: boolean) {
   const listeners = new Map<string, Array<(...args: unknown[]) => void>>();
@@ -59,69 +63,50 @@ afterEach(() => {
 });
 
 describe("attachMapEventHandlers startup", () => {
-  it("initialises exactly once after deferred attachment and waits for forecast data", async () => {
-    vi.spyOn(console, "warn").mockImplementation(() => {});
-    const { map, emit } = createMap(true);
+  /** The deps the start touches, with a forecast load the test finishes. */
+  function startupDeps(styleLoaded: Promise<void>) {
     let finishWeather!: () => void;
     const weatherReady = new Promise<void>((resolve) => {
       finishWeather = resolve;
     });
     const initWeather = vi.fn(() => weatherReady);
     const setMapReady = vi.fn();
-
+    const onStyleReady = vi.fn();
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
       callback(0);
       return 1;
     });
-
-    const layerComposer = {
-      setLastStableView: vi.fn(),
-      setGridLabelsDirty: vi.fn(),
-      scheduleLabelRender: vi.fn(),
-      setZooming: vi.fn(),
-      updateGridOnly: vi.fn(),
-    };
     const deps = {
       getOverlay: () => ({}),
-      getLayerComposer: () => layerComposer,
-      getCatalogController: () => ({
-        hideInhouseTooltip: vi.fn(),
-        getActiveInhouseContourLayer: () => null,
-        inhouseSelectedModel: "gfs-1",
-      }),
-      getLayerGroupController: () => ({ viewMode: "forecast" }),
-      getTooltipController: () => ({
-        clearAllAddons: vi.fn(),
-        tooltipControl: null,
-      }),
-      getIconographyController: () => undefined,
-      getWavegramController: () => ({ isOpen: false }),
-      getUiState: () => ({
-        layerMode: "temperature",
-        visible: true,
-        opacity: 1,
-        showGrid: false,
-      }),
-      getPersistedState: () => ({
-        version: 1,
-        mapCamera: {
-          center: [-19, 65] as [number, number],
-          zoom: 5,
-          bearing: 0,
-          pitch: 0,
-        },
-      }),
+      getCatalogController: () => ({ hideInhouseTooltip: vi.fn() }),
+      getTooltipController: () => ({ clearAllAddons: vi.fn() }),
+      onStyleReady,
+      styleLoaded,
       setMapReady,
       initWeather,
       scheduleUpdateLayers: vi.fn(),
       schedulePersistState: vi.fn(),
     } as unknown as MapEventDeps;
+    return { deps, initWeather, setMapReady, onStyleReady, finishWeather };
+  }
+
+  it("starts once when the style loads, and waits for forecast data", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { map, emit } = createMap(false);
+    const { deps, initWeather, setMapReady, finishWeather } = startupDeps(
+      whenStyleLoads(map as never),
+    );
 
     document.body.classList.add("is-loading");
     attachMapEventHandlers(map as never, deps);
-    emit("load");
+    await settle();
+    // Nothing starts before the style is in.
+    expect(initWeather).not.toHaveBeenCalled();
 
+    emit("style.load");
+    await settle();
     expect(initWeather).toHaveBeenCalledTimes(1);
+    expect(map.addControl).toHaveBeenCalledTimes(1);
     expect(document.body.classList.contains("is-loading")).toBe(true);
     emit("error", { error: { message: "missing optional sprite" } });
     expect(map.setStyle).not.toHaveBeenCalled();
@@ -131,6 +116,39 @@ describe("attachMapEventHandlers startup", () => {
       expect(document.body.classList.contains("is-loading")).toBe(false),
     );
     expect(setMapReady).toHaveBeenCalledTimes(1);
+  });
+
+  it("starts when the style loaded before the controllers attached", async () => {
+    // The controllers' scripts can arrive after the basemap: the style has
+    // loaded, MapLibre has fired `load`, and the map is loading tiles again
+    // (the reader is moving it), so map.loaded() is false.
+    const { map, emit } = createMap(false);
+    const styleLoaded = whenStyleLoads(map as never);
+    emit("style.load");
+    emit("load");
+
+    const { deps, initWeather, onStyleReady } = startupDeps(styleLoaded);
+    attachMapEventHandlers(map as never, deps);
+    await settle();
+
+    expect(initWeather).toHaveBeenCalledTimes(1);
+    expect(onStyleReady).toHaveBeenCalledTimes(1);
+  });
+
+  it("doesn't wait for MapLibre's load, which a stalled basemap request holds back", async () => {
+    const { map, emit } = createMap(false);
+    const { deps, initWeather } = startupDeps(whenStyleLoads(map as never));
+    attachMapEventHandlers(map as never, deps);
+
+    // The style is in; a tile never answers, so `load` never comes.
+    emit("style.load");
+    await settle();
+    expect(initWeather).toHaveBeenCalledTimes(1);
+
+    // And a `load` that does come later starts nothing a second time.
+    emit("load");
+    await settle();
+    expect(initWeather).toHaveBeenCalledTimes(1);
   });
 
   it("uses a neutral outline-only style for initial style failures", () => {
@@ -159,6 +177,7 @@ describe("attachMapEventHandlers on styledata", () => {
     const deps = {
       onStyleReady,
       onStyleData,
+      styleLoaded: new Promise<void>(() => {}),
       getCatalogController: () => ({ hideInhouseTooltip: vi.fn() }),
       getTooltipController: () => ({ clearAllAddons: vi.fn() }),
       setMapReady: vi.fn(),
@@ -257,6 +276,7 @@ describe("attachMapEventHandlers hover while the meteogram is open", () => {
       }),
       getUiState: () => ({ layerMode: "temperature" }),
       getPersistedState: () => null,
+      styleLoaded: new Promise<void>(() => {}),
       setMapReady: vi.fn(),
       initWeather: vi.fn(() => Promise.resolve()),
       scheduleUpdateLayers: vi.fn(),

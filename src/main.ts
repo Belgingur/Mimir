@@ -27,6 +27,7 @@ import { fo } from "./locales/fo";
 import "./styles/index.css";
 import { BOOT_SPLASH_MAX_MS, dismissBootSplash } from "./lib/bootSplash";
 import { connectHostPage, keepsLanguageMenu } from "./lib/hostPage";
+import { whenStyleLoads } from "./lib/mapStartup";
 
 // maplibre-gl 6 locates its worker relative to its own module URL, which
 // breaks once Vite pre-bundles or chunks it. Hand it a self-contained
@@ -114,6 +115,10 @@ restoreMapTransformForDeck(map);
 // leaving a bare basemap behind. See contextLossReload.
 reloadAfterContextLoss(map);
 
+// The forecast starts when the style has loaded. Listened for here, as soon
+// as the map exists: the controllers attach later and could miss the event.
+const styleLoaded = whenStyleLoads(map);
+
 // The splash in index.html covers the page until the basemap has drawn; the
 // top loading bar then carries on until the forecast itself is in.
 map.once("load", endBootSplash);
@@ -194,6 +199,7 @@ void import("./lib/controllerFactory")
       persistedState,
       localeIsUrlDriven,
       timeZoneGuess,
+      styleLoaded,
     });
   })
   .catch((error) => {
