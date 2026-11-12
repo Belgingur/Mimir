@@ -6,6 +6,7 @@ import type { AppDom } from "./domRegistry";
 import type { PersistedStateV1, LayerMode } from "./viewerTypes";
 import { createPersistScheduler } from "./persistence";
 import { initWeather } from "./initWeather";
+import { createForecastStart } from "./forecastStart";
 import { LAYER_GROUPS } from "./inhouseTypes";
 import type { UiState, InhouseGroupId } from "./inhouseTypes";
 import { WavegramController } from "../controllers/WavegramController";
@@ -1039,47 +1040,58 @@ export function createControllers(config: ControllerFactoryConfig) {
 
   // --- initWeather wrapper ---
   async function doInitWeather() {
-    try {
-      const result = await initWeather({
-        dom: {
-          mapWrap: dom.mapWrap,
-          timelineHost: dom.timelineHost,
-          gridLabelsContainer: dom.gridLabelsContainer,
-        },
-        isDev,
-        getUiState: () => uiState,
-        getMapZoom: () => map.getZoom(),
-        schedulePersistState,
-        scheduleUpdateLayers,
-        getCatalogController: () => catalogController,
-        getLayerComposer: () => layerComposer,
-        getLayerGroupController: () => layerGroupController,
-        getTooltipController: () => tooltipController,
-        getIconographyController: () => iconographyController,
-        getWavegramController: () => wavegramController,
-        setTimelineCurrentDatetime: (dt) => {
-          timelineCurrentDatetime = dt;
-        },
-        // The meteogram panel and its pin follow the timeline's hour. Every
-        // step, playback included: it only sets the widget's selected-time.
-        onCurrentDatetimeChange: (dt) => meteogramController?.setSelectedTime(dt),
-      });
-      timelineController = result.timelineController;
-      // Wire the on-map forecast-time bubble to the freshly-created controller.
-      // doInitWeather builds a NEW TimelineController on every (re)load, so this
-      // must happen here — not at factory-construction time, when the controller
-      // doesn't exist yet — or the controller never gets the bubble reference and
-      // it stays hidden forever.
-      if (dom.mapTimeBubbleEl) {
-        timelineController.setMapTimeBubble(
-          dom.mapTimeBubbleEl,
-          dom.mapTimeBubbleTextEl,
-        );
-      }
-    } catch (error) {
-      console.error(error);
+    const result = await initWeather({
+      dom: {
+        mapWrap: dom.mapWrap,
+        timelineHost: dom.timelineHost,
+        gridLabelsContainer: dom.gridLabelsContainer,
+      },
+      isDev,
+      getUiState: () => uiState,
+      getMapZoom: () => map.getZoom(),
+      schedulePersistState,
+      scheduleUpdateLayers,
+      getCatalogController: () => catalogController,
+      getLayerComposer: () => layerComposer,
+      getLayerGroupController: () => layerGroupController,
+      getTooltipController: () => tooltipController,
+      getIconographyController: () => iconographyController,
+      getWavegramController: () => wavegramController,
+      setTimelineCurrentDatetime: (dt) => {
+        timelineCurrentDatetime = dt;
+      },
+      // The meteogram panel and its pin follow the timeline's hour. Every
+      // step, playback included: it only sets the widget's selected-time.
+      onCurrentDatetimeChange: (dt) => meteogramController?.setSelectedTime(dt),
+    });
+    timelineController = result.timelineController;
+    // Wire the on-map forecast-time bubble to the freshly-created controller.
+    // doInitWeather builds a NEW TimelineController on every (re)load, so this
+    // must happen here — not at factory-construction time, when the controller
+    // doesn't exist yet — or the controller never gets the bubble reference and
+    // it stays hidden forever.
+    if (dom.mapTimeBubbleEl) {
+      timelineController.setMapTimeBubble(
+        dom.mapTimeBubbleEl,
+        dom.mapTimeBubbleTextEl,
+      );
     }
   }
+
+  // The start can fail (a catalog file or a manifest that doesn't load, or
+  // times out). The reader then gets an error with Retry; see forecastStart.
+  const forecastStart = createForecastStart({
+    initWeather: doInitWeather,
+    reloadCatalog: () => catalogController.start(),
+    showError: (retry) =>
+      datasetLoader.fail({
+        message: t("error.forecastLoad"),
+        backLabel: t("action.retry"),
+        onBack: retry,
+      }),
+    showRetrying: () => datasetLoader.begin(t("status.loadingForecast")),
+    clear: () => datasetLoader.end(),
+  });
 
   // --- Post-construction setup ---
   layerGroupController.renderLayerGroupList();
@@ -1323,7 +1335,7 @@ export function createControllers(config: ControllerFactoryConfig) {
     setMapReady: (ready) => {
       mapReady = ready;
     },
-    initWeather: doInitWeather,
+    initWeather: forecastStart.start,
     scheduleUpdateLayers,
     schedulePersistState,
   });
