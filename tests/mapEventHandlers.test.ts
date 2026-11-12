@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   attachMapEventHandlers,
-  OUTLINE_FALLBACK_STYLE,
   type MapEventDeps,
 } from "../src/lib/mapEventHandlers";
 import { whenStyleLoads } from "../src/lib/mapStartup";
@@ -91,7 +90,6 @@ describe("attachMapEventHandlers startup", () => {
   }
 
   it("starts once when the style loads, and waits for forecast data", async () => {
-    vi.spyOn(console, "warn").mockImplementation(() => {});
     const { map, emit } = createMap(false);
     const { deps, initWeather, setMapReady, finishWeather } = startupDeps(
       whenStyleLoads(map as never),
@@ -108,8 +106,6 @@ describe("attachMapEventHandlers startup", () => {
     expect(initWeather).toHaveBeenCalledTimes(1);
     expect(map.addControl).toHaveBeenCalledTimes(1);
     expect(document.body.classList.contains("is-loading")).toBe(true);
-    emit("error", { error: { message: "missing optional sprite" } });
-    expect(map.setStyle).not.toHaveBeenCalled();
 
     finishWeather();
     await vi.waitFor(() =>
@@ -149,19 +145,6 @@ describe("attachMapEventHandlers startup", () => {
     emit("load");
     await settle();
     expect(initWeather).toHaveBeenCalledTimes(1);
-  });
-
-  it("uses a neutral outline-only style for initial style failures", () => {
-    expect(
-      OUTLINE_FALLBACK_STYLE.layers.every(
-        (layer) => layer.type === "background" || layer.type === "line",
-      ),
-    ).toBe(true);
-    expect(
-      OUTLINE_FALLBACK_STYLE.layers.some((layer) => layer.type === "symbol"),
-    ).toBe(false);
-    expect(OUTLINE_FALLBACK_STYLE.glyphs).toBeUndefined();
-    expect(OUTLINE_FALLBACK_STYLE.sprite).toBeUndefined();
   });
 });
 

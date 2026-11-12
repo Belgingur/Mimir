@@ -15,7 +15,6 @@ import type { TooltipController } from "../controllers/TooltipController";
 import type { IconographyController } from "../controllers/IconographyController";
 import type { WavegramController } from "../controllers/WavegramController";
 import type { MeteogramController } from "../features/meteogram/MeteogramController";
-import { LAND_COUNTRY_BOUNDARY_FILTER } from "./mapLayerOrder";
 
 export interface MapEventDeps {
   getOverlay: () => MapboxOverlay;
@@ -59,84 +58,11 @@ export interface MapEventDeps {
   schedulePersistState: () => void;
 }
 
-/** Neutral outline-only fallback; deliberately has no symbols or glyphs. */
-export const OUTLINE_FALLBACK_STYLE: maplibregl.StyleSpecification = {
-  version: 8,
-  name: "Mímir outline fallback",
-  sources: {
-    openmaptiles: {
-      type: "vector",
-      url: "https://demotiles.maplibre.org/tiles/tiles.json",
-      attribution:
-        "© OpenStreetMap contributors",
-    },
-  },
-  layers: [
-    {
-      id: "background",
-      type: "background",
-      paint: { "background-color": "#e8edf0" },
-    },
-    {
-      id: "fallback-coast",
-      type: "line",
-      source: "openmaptiles",
-      "source-layer": "water",
-      filter: ["all"],
-      paint: {
-        "line-color": "#526873",
-        "line-width": 0.9,
-      },
-    },
-    {
-      id: "fallback-waterway",
-      type: "line",
-      source: "openmaptiles",
-      "source-layer": "waterway",
-      minzoom: 4,
-      filter: ["all"],
-      paint: {
-        "line-color": "#668896",
-        "line-width": 0.75,
-      },
-    },
-    {
-      id: "fallback-boundary",
-      type: "line",
-      source: "openmaptiles",
-      "source-layer": "boundary",
-      filter: LAND_COUNTRY_BOUNDARY_FILTER,
-      paint: {
-        "line-color": "#344852",
-        "line-width": 1.1,
-      },
-    },
-  ],
-};
-
 export function attachMapEventHandlers(
   map: maplibregl.Map,
   deps: MapEventDeps,
 ): void {
   let startHandled = false;
-  let styleFallbackApplied = false;
-  map.on("error", (event: maplibregl.ErrorEvent) => {
-    const message =
-      (event as { error?: { message?: string } })?.error?.message ??
-      "Unknown map error";
-    // Tile, sprite, and custom-layer errors once the style has loaded are not
-    // style failures. Replacing the whole basemap here caused one harmless
-    // error to cascade into a colorful demo map and dozens of glyph failures.
-    if (startHandled) {
-      console.warn("MapLibre error after the style loaded:", message);
-      return;
-    }
-    if (!styleFallbackApplied) {
-      styleFallbackApplied = true;
-      console.warn(t("error.styleFallback", { message }));
-      map.setStyle(OUTLINE_FALLBACK_STYLE);
-    }
-  });
 
   const startForecast = async () => {
     if (startHandled) return;
@@ -174,8 +100,9 @@ export function attachMapEventHandlers(
   // the basemap, not a page that loads for good.
   void deps.styleLoaded.then(() => startForecast());
 
-  // The style can be replaced at runtime (see the demotiles error fallback
-  // above), which discards both the resolved anchor and the label restyling.
+  // The style can be replaced at runtime (see the fallback style in
+  // mapStartup), which discards both the resolved anchor and the label
+  // restyling.
   // Layer ids are never hardcoded, so re-applying is all that's needed.
   //
   // Not from inside the event, though. MapLibre fires `styledata` in the
