@@ -124,6 +124,8 @@ export const fo: Record<string, string> = {
   "status.loadingForecast": "Heinti veðurforsøgnina…",
   "error.forecastLoad": "Kundi ikki heinta veðurforsøgnina.",
   "action.retry": "Royn aftur",
+  "error.startFailed": "Mímir varð ikki liðugur at lesa inn.",
+  "action.reload": "Les inn aftur",
   "status.newRun": "Nýggjari forsøgn er tøk.",
   "status.modelOutsideView": "Hetta spálíkanið fevnir ikki um økið tú hyggur at.",
   "action.useCoveringModel": "Brúka eitt líkan sum fevnir um",

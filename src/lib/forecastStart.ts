@@ -21,17 +21,17 @@ export interface ForecastStartDeps {
 }
 
 export interface ForecastStart {
-  /** Runs the start. Resolves either way: with the forecast in, or with the
-   *  error on screen. */
-  start(): Promise<void>;
+  /** Runs the start. Resolves either way: true with the forecast in, false
+   *  with the error on screen. */
+  start(): Promise<boolean>;
 }
 
 export function createForecastStart(deps: ForecastStartDeps): ForecastStart {
   let running = false;
 
-  const attempt = async (isRetry: boolean): Promise<void> => {
+  const attempt = async (isRetry: boolean): Promise<boolean> => {
     // One attempt at a time: a second press of Retry joins nothing new.
-    if (running) return;
+    if (running) return false;
     running = true;
     try {
       if (isRetry) {
@@ -40,9 +40,11 @@ export function createForecastStart(deps: ForecastStartDeps): ForecastStart {
       }
       await deps.initWeather();
       if (isRetry) deps.clear();
+      return true;
     } catch (error) {
       console.error(error);
       deps.showError(() => void attempt(true));
+      return false;
     } finally {
       running = false;
     }

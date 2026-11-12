@@ -127,6 +127,8 @@ export const es: Record<string, string> = {
   "status.loadingForecast": "Cargando la previsión…",
   "error.forecastLoad": "No se pudo cargar la previsión.",
   "action.retry": "Reintentar",
+  "error.startFailed": "Mímir no pudo terminar de cargarse.",
+  "action.reload": "Recargar",
   "status.newRun": "Hay una previsión más reciente disponible.",
   "status.modelOutsideView": "Este modelo no cubre la zona que estás viendo.",
   "action.useCoveringModel": "Usar un modelo que sí la cubra",

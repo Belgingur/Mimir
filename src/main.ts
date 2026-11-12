@@ -18,6 +18,7 @@ import {
   hasLocale,
   getLocale,
   onLocaleChange,
+  t,
 } from "./lib/i18n";
 import { is } from "./locales/is";
 import { pl } from "./locales/pl";
@@ -28,6 +29,10 @@ import "./styles/index.css";
 import { BOOT_SPLASH_MAX_MS, dismissBootSplash } from "./lib/bootSplash";
 import { connectHostPage, keepsLanguageMenu } from "./lib/hostPage";
 import { watchMapStartup } from "./lib/mapStartup";
+import {
+  createDatasetLoadingOverlay,
+  type DatasetLoadingOverlay,
+} from "./lib/datasetLoadingOverlay";
 
 // maplibre-gl 6 locates its worker relative to its own module URL, which
 // breaks once Vite pre-bundles or chunks it. Hand it a self-contained
@@ -118,7 +123,25 @@ reloadAfterContextLoss(map);
 // The forecast starts when the style has loaded, and a fallback style takes
 // over if the map's own fails or never answers. Both are set up here, as soon
 // as the map exists: the controllers attach later and could miss the events.
-const { styleLoaded } = watchMapStartup(map);
+//
+// It is the first load's safety net too. If the start hasn't ended and
+// nothing has finished loading for a while, the loading state ends with an
+// error and a way to reload. The notice is built here, so it works even if
+// the controllers never arrive. A start that finishes later takes it away.
+let startupNotice: DatasetLoadingOverlay | null = null;
+const startup = watchMapStartup(map, {
+  showError: () => {
+    document.body.classList.remove("is-loading");
+    endBootSplash();
+    startupNotice ??= createDatasetLoadingOverlay(dom.mapWrap);
+    startupNotice.fail({
+      message: t("error.startFailed"),
+      backLabel: t("action.reload"),
+      onBack: () => location.reload(),
+    });
+  },
+  hideError: () => startupNotice?.end(),
+});
 
 // The splash in index.html covers the page until the basemap has drawn; the
 // top loading bar then carries on until the forecast itself is in.
@@ -200,10 +223,17 @@ void import("./lib/controllerFactory")
       persistedState,
       localeIsUrlDriven,
       timeZoneGuess,
-      styleLoaded,
+      styleLoaded: startup.styleLoaded,
+      onStartFinished: (outcome) => {
+        // An error is there to be seen: the start screen doesn't stay over
+        // it until the basemap has drawn.
+        if (outcome !== "forecast") endBootSplash();
+        startup.finished(outcome === "failed");
+      },
     });
   })
   .catch((error) => {
     document.body.classList.remove("is-loading");
     console.error("Failed to initialise application controllers", error);
+    startup.finished(true);
   });

@@ -123,6 +123,8 @@ export const en: Record<string, string> = {
   "status.loadingForecast": "Loading the forecast…",
   "error.forecastLoad": "Couldn't load the forecast.",
   "action.retry": "Try again",
+  "error.startFailed": "Mímir couldn't finish loading.",
+  "action.reload": "Reload",
   "status.newRun": "A newer forecast run is available.",
   "status.modelOutsideView": "This forecast model doesn't cover the area you're viewing.",
   "action.useCoveringModel": "Use a model that does",

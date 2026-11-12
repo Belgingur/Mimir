@@ -128,6 +128,8 @@ export const is: Record<string, string> = {
   "status.loadingForecast": "Sæki spána…",
   "error.forecastLoad": "Tókst ekki að sækja spána.",
   "action.retry": "Reyna aftur",
+  "error.startFailed": "Mímir náði ekki að hlaðast.",
+  "action.reload": "Endurhlaða",
   "status.newRun": "Nýrri spá er tilbúin.",
   "status.modelOutsideView": "Þetta spálíkan nær ekki yfir svæðið sem þú skoðar.",
   "action.useCoveringModel": "Nota líkan sem nær yfir",

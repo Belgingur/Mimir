@@ -7,6 +7,7 @@ import type { PersistedStateV1, LayerMode } from "./viewerTypes";
 import { createPersistScheduler } from "./persistence";
 import { initWeather } from "./initWeather";
 import { createForecastStart } from "./forecastStart";
+import type { StartOutcome } from "./mapStartup";
 import { LAYER_GROUPS } from "./inhouseTypes";
 import type { UiState, InhouseGroupId } from "./inhouseTypes";
 import { WavegramController } from "../controllers/WavegramController";
@@ -88,6 +89,8 @@ export interface ControllerFactoryConfig {
   timeZoneGuess?: UserLocation | null;
   /** Resolves when the map's style has loaded (see whenStyleLoads). */
   styleLoaded: Promise<void>;
+  /** Tells main.ts that the start has ended, and how. */
+  onStartFinished?: (outcome: StartOutcome) => void;
 }
 
 export function createControllers(config: ControllerFactoryConfig) {
@@ -1321,6 +1324,7 @@ export function createControllers(config: ControllerFactoryConfig) {
     },
     onStyleReady,
     styleLoaded: config.styleLoaded,
+    onStartFinished: config.onStartFinished,
     getOverlay: () => overlay,
     getLayerComposer: () => layerComposer,
     getCatalogController: () => catalogController,
