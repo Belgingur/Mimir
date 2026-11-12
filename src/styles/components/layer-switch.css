@@ -82,10 +82,10 @@
 .layer-toggle-trigger.is-open {
   background: linear-gradient(
     180deg,
-    var(--accent-orange) 0%,
-    var(--accent-orange-dark) 100%
+    var(--accent-orange-strong) 0%,
+    var(--accent-orange-strong-hover) 100%
   );
-  color: #fff8ef;
+  color: var(--text-on-orange);
   border-color: var(--accent-orange-border);
   box-shadow: 0 8px 18px var(--accent-orange-glow);
 }
@@ -294,10 +294,10 @@ body.view-iconography.chrome-open .layer-switch-card {
 .wind-style-flyout__option.is-active {
   background: linear-gradient(
     180deg,
-    var(--accent-orange) 0%,
-    var(--accent-orange-dark) 100%
+    var(--accent-orange-strong) 0%,
+    var(--accent-orange-strong-hover) 100%
   );
-  color: #fff8ef;
+  color: var(--text-on-orange);
   box-shadow: 0 8px 18px var(--accent-orange-glow);
 }
 
@@ -355,10 +355,10 @@ body.view-iconography.chrome-open .layer-switch-card {
 .layer-slot .layer-slot__button.is-active {
   background: linear-gradient(
     180deg,
-    var(--accent-orange) 0%,
-    var(--accent-orange-dark) 100%
+    var(--accent-orange-strong) 0%,
+    var(--accent-orange-strong-hover) 100%
   );
-  color: #fff8ef;
+  color: var(--text-on-orange);
   border-color: var(--accent-orange-border);
   box-shadow: 0 8px 18px var(--accent-orange-glow);
 }

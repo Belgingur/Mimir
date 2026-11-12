@@ -21,9 +21,9 @@ body.is-loading .loading-bar {
   background: linear-gradient(
     90deg,
     transparent,
-    #d97433 30%,
-    var(--accent-orange) 50%,
-    #d97433 70%,
+    var(--accent-orange-decor) 30%,
+    var(--accent-orange-decor-light) 50%,
+    var(--accent-orange-decor) 70%,
     transparent
   );
   background-size: 200% 100%;
@@ -240,8 +240,8 @@ input[type="range"] {
   padding: 5px 10px 5px 8px;
   border-radius: 8px;
   border: none;
-  background: #d97433;
-  color: #fffaf4;
+  background: var(--accent-orange-strong);
+  color: var(--text-on-orange);
   font: inherit;
   font-size: 11px;
   font-weight: 700;
@@ -252,12 +252,11 @@ input[type="range"] {
 }
 
 .model-pill:hover {
-  background: #e8863a;
+  background: var(--accent-orange-strong-hover);
 }
 
 .model-pill__meta {
   font-weight: 500;
-  opacity: 0.8;
   font-size: 10px;
 }
 
@@ -331,8 +330,8 @@ input[type="range"] {
 }
 
 .model-popover__item.is-active {
-  background: #d97433;
-  color: #fffaf4;
+  background: var(--accent-orange-strong);
+  color: var(--text-on-orange);
 }
 
 .model-popover__meta {
@@ -342,7 +341,7 @@ input[type="range"] {
 }
 
 .model-popover__item.is-active .model-popover__meta {
-  color: rgba(255, 250, 244, 0.7);
+  color: var(--text-on-orange);
 }
 
 .inhouse-controls button {

@@ -14,8 +14,14 @@
   --text-on-dark-muted: rgba(232, 239, 243, 0.72);
 
   /* ── Accent ───────────────────────────── */
-  --accent-orange: #f59b3a;
-  --accent-orange-dark: #ef7f1a;
+  /* Fills that carry text or icons: 4.5 : 1 or more against --text-on-orange
+     (tests/orangeContrast.test.ts). The hover is darker, never lighter. */
+  --accent-orange-strong: #ad5418;
+  --accent-orange-strong-hover: #9a4a12;
+  --text-on-orange: #fffaf4;
+  /* Decoration only, never behind text: the now-tick and the loading bar. */
+  --accent-orange-decor: #d97433;
+  --accent-orange-decor-light: #f59b3a;
   --accent-orange-border: rgba(255, 181, 91, 0.9);
   --accent-orange-glow: rgba(239, 127, 26, 0.32);
   --accent-green: #2a7f62;

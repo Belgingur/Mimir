@@ -38,8 +38,8 @@
   padding: 5px 12px;
   border-radius: var(--radius-pill);
   border: 0;
-  background: var(--accent-orange-dark, #ef7f1a);
-  color: #fff;
+  background: var(--accent-orange-strong);
+  color: var(--text-on-orange);
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
@@ -47,7 +47,7 @@
 }
 
 .new-run-notice__action:hover {
-  background: var(--accent-orange, #f59b3a);
+  background: var(--accent-orange-strong-hover);
 }
 
 .new-run-notice__dismiss {
