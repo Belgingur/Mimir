@@ -57,6 +57,7 @@ import {
 } from "./initialCamera";
 import { createUserLocationWatch, PERMISSION_DENIED } from "./userLocationWatch";
 import { createDatasetLoadingOverlay } from "./datasetLoadingOverlay";
+import { createFrameLoadNotice } from "./frameLoadNotice";
 import { createNewRunNotice } from "./newRunNotice";
 import { createTransientNotice } from "./transientNotice";
 import { modelIntersectsViewport } from "./selectModel";
@@ -561,6 +562,7 @@ export function createControllers(config: ControllerFactoryConfig) {
     },
     isMapReady: () => mapReady,
     getLastFrameLoadHadErrors: () => timelineLastFrameLoadHadErrors,
+    onFrameSetLoadEnded: (failed) => frameLoadNotice.frameLoadEnded(failed),
     setLastFrameLoadHadErrors: (v) => {
       timelineLastFrameLoadHadErrors = v;
       if (timelineController) {
@@ -632,6 +634,28 @@ export function createControllers(config: ControllerFactoryConfig) {
   // Loading/error overlay shown while switching model, analysis or layer
   // (task B2). Made before the layer controller, whose switches use it too.
   const datasetLoader = createDatasetLoadingOverlay(dom.mapWrap);
+  // Every frame load reports here how it ended, and every load that shows
+  // the loader ends through this: with the forecast, or with an error and
+  // Retry when the frame didn't load (see fetchFrame).
+  const frameLoadNotice = createFrameLoadNotice({
+    overlay: datasetLoader,
+    reloadFrames: async () => {
+      if (timelineController) await timelineController.reloadSelectedFrame();
+      else await catalogController.loadInhouseFrameSet();
+      await catalogController.whenFramesLoaded();
+    },
+    errorText: () => t("error.forecastLoad"),
+    retryLabel: () => t("action.retry"),
+    retryingText: () => t("status.loadingForecast"),
+  });
+  // Waits for the frames last asked for. Not when a switch's own frame load
+  // has just failed: the error is up already, and the switch is over. The
+  // time sync that follows a switch asks for the frame once more, and that
+  // load reports for itself.
+  const whenSwitchFramesLoaded = async (): Promise<void> => {
+    if (frameLoadNotice.framesFailed()) return;
+    await catalogController.whenFramesLoaded();
+  };
 
   const layerGroupController = new LayerGroupController({
     dom: {
@@ -700,7 +724,7 @@ export function createControllers(config: ControllerFactoryConfig) {
         t("status.loadingLayer", { layer: group ? t(group.title) : mode }),
         { delayMs: LAYER_LOADER_DELAY_MS },
       );
-      return () => datasetLoader.end(ticket);
+      return () => frameLoadNotice.loadEnded(ticket);
     },
     saveNonWavesSelection: (model, analysis) =>
       modelChooserController.saveNonWavesSelection(model, analysis),
@@ -848,12 +872,12 @@ export function createControllers(config: ControllerFactoryConfig) {
         iconographyController?.onModelChange();
         scheduleUpdateLayers();
         schedulePersistState();
-        await catalogController.whenFramesLoaded();
+        await whenSwitchFramesLoaded();
       }
       newRunNotice.hide();
     } finally {
       setSelectorsBusy(false);
-      datasetLoader.end();
+      frameLoadNotice.loadEnded();
       latestRunRefreshInFlight = false;
     }
   }
@@ -889,7 +913,7 @@ export function createControllers(config: ControllerFactoryConfig) {
       });
       // Until the new model's frame is on screen: the switch's own frame load
       // can be superseded by the time sync it sets off, and return early.
-      await catalogController.whenFramesLoaded();
+      await whenSwitchFramesLoaded();
     } finally {
       setSelectorsBusy(false);
     }
@@ -905,7 +929,7 @@ export function createControllers(config: ControllerFactoryConfig) {
         onBack: canGoBack ? () => void changeModel(prevModel) : undefined,
       });
     } else {
-      datasetLoader.end();
+      frameLoadNotice.loadEnded();
     }
     // The model just changed, so whether it covers the view may have too. Only
     // listening on moveend left a stale notice on screen accusing the model the
@@ -995,10 +1019,10 @@ export function createControllers(config: ControllerFactoryConfig) {
         dom.inhouseAnalysisSelect.value,
       );
       await catalogController.ensureInhouseGroupLayers(mode);
-      await catalogController.whenFramesLoaded();
+      await whenSwitchFramesLoaded();
     } finally {
       setSelectorsBusy(false);
-      datasetLoader.end();
+      frameLoadNotice.loadEnded();
     }
     timelineController?.updateTimelineControlForMode(mode);
     schedulePersistState();
@@ -1093,7 +1117,8 @@ export function createControllers(config: ControllerFactoryConfig) {
         onBack: retry,
       }),
     showRetrying: () => datasetLoader.begin(t("status.loadingForecast")),
-    clear: () => datasetLoader.end(),
+    // The retry's loader goes, or the frame's error takes its place.
+    clear: () => frameLoadNotice.loadEnded(),
   });
 
   // --- Post-construction setup ---
@@ -1339,7 +1364,13 @@ export function createControllers(config: ControllerFactoryConfig) {
     setMapReady: (ready) => {
       mapReady = ready;
     },
-    initWeather: forecastStart.start,
+    initWeather: async () => {
+      if (!(await forecastStart.start())) return false;
+      // The forecast's controls are in. Its first frame may not be: its
+      // request can fail or be given up like any later one, and the error
+      // for that is then on screen.
+      return !frameLoadNotice.framesFailed();
+    },
     scheduleUpdateLayers,
     schedulePersistState,
   });

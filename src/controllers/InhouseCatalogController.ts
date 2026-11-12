@@ -23,6 +23,7 @@ import {
   filterTimesByRange,
 } from "../lib/timelineHelpers";
 import { decodeScalarGrid } from "../lib/imageProcessing";
+import { fetchFrameBlob, FrameStalledError } from "../lib/fetchFrame";
 import { fetchJsonWithTimeout } from "../lib/fetchJson";
 import { landingBounds } from "../lib/initialCamera";
 import { selectModel } from "../lib/selectModel";
@@ -195,6 +196,10 @@ export interface InhouseCatalogDeps {
   isMapReady: () => boolean;
   getLastFrameLoadHadErrors: () => boolean;
   setLastFrameLoadHadErrors: (v: boolean) => void;
+  /** Told how each frame-set load ended: `failed` when a frame the layer on
+   *  screen needs didn't load. A load that a newer one replaced isn't
+   *  reported; the newer one is. */
+  onFrameSetLoadEnded?: (failed: boolean) => void;
   getUiState: () => {
     layerMode: string;
     visible: boolean;
@@ -1038,8 +1043,9 @@ export class InhouseCatalogController {
         return await pending;
       } catch (error) {
         // The request we joined was cancelled (a dropped prefetch, or an older
-        // step). That says nothing about ours, so fetch it ourselves.
-        if (signal?.aborted) throw error;
+        // step). That says nothing about ours, so fetch it ourselves. One
+        // that stalled does: the same request again would wait as long again.
+        if (signal?.aborted || error instanceof FrameStalledError) throw error;
       }
     }
     const load = this.fetchAndDecodeTexture(url, signal);
@@ -1069,11 +1075,9 @@ export class InhouseCatalogController {
     url: string,
     signal?: AbortSignal,
   ): Promise<WeatherLayers.TextureData | null> {
-    const response = await fetch(url, { signal });
-    if (!response.ok) {
-      throw new Error(`Failed to load frame ${url} (${response.status})`);
-    }
-    const blob = await response.blob();
+    // Given up if no byte arrives for a while: a request that never answers
+    // would otherwise keep every load that awaits it waiting for good.
+    const blob = await fetchFrameBlob(url, signal);
     // Decode + process pixels on the main thread (task B1 keeps the work in the
     // shared, unit-tested processTexturePixels). NOTE: the off-thread worker path
     // (textureDecoderClient/textureDecoderWorker) is intentionally NOT used here
@@ -1537,6 +1541,7 @@ export class InhouseCatalogController {
       }
     }
     this.setInhouseWarning(warningMessages.join(" "));
+    this.deps.onFrameSetLoadEnded?.(this.deps.getLastFrameLoadHadErrors());
     this.deps.scheduleUpdateLayers();
     // Health safety net (task A3): if this model loaded but rendered no data
     // anywhere, demote it and fall back to the next covering model.

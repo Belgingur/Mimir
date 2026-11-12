@@ -23,8 +23,17 @@ export interface DatasetLoadingOverlay {
    * loader of the one they moved on to.
    */
   end(ticket?: number): void;
-  /** Replace the icon with an explicit error and an optional way back. */
-  fail(opts: { message: string; backLabel?: string; onBack?: () => void }): void;
+  /**
+   * Replace the icon with an explicit error and an optional way back. Returns
+   * a ticket: `end` with it takes this error away, and nothing shown since.
+   */
+  fail(opts: {
+    message: string;
+    backLabel?: string;
+    onBack?: () => void;
+  }): number;
+  /** Whether nothing has been shown since the load or the error `ticket` is for. */
+  isLatest(ticket: number): boolean;
 }
 
 export function createDatasetLoadingOverlay(
@@ -85,9 +94,9 @@ export function createDatasetLoadingOverlay(
       root.classList.remove("dataset-loader--error");
       clear();
     },
-    fail({ message, backLabel, onBack }): void {
+    fail({ message, backLabel, onBack }): number {
       // An error outranks any load still in flight: its end() must not clear it.
-      latest++;
+      const ticket = ++latest;
       cancelPending();
       root.classList.add("dataset-loader--error");
       clear();
@@ -104,6 +113,8 @@ export function createDatasetLoadingOverlay(
         card.appendChild(btn);
       }
       root.hidden = false;
+      return ticket;
     },
+    isLatest: (ticket: number): boolean => ticket === latest,
   };
 }

@@ -761,6 +761,59 @@ describe("TimelineController", () => {
       await flush();
       expect(ctrl.playbackState).toBe("waitingForFrame");
     });
+
+    it("ends a reader's step whose frame didn't come in the error state, and throws nothing into the void", async () => {
+      const { deps } = createDeps({ inhouseLayers: [{ times: ["a", "b"] }] });
+      const ctrl = new TimelineController(deps);
+      ctrl.activeTimelineDatetimes = ["a", "b"];
+      // What the catalog does when the frame the layer needs failed.
+      ctrl.lastFrameLoadHadErrors = true;
+      const unhandled = vi.fn();
+      process.on("unhandledRejection", unhandled);
+      try {
+        void ctrl.setSelectedIndex(1, "user");
+        vi.advanceTimersByTime(160);
+        await flush();
+        expect(ctrl.currentDatetime).toBe("b");
+        expect(ctrl.playbackState).toBe("error");
+        vi.useRealTimers();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(unhandled).not.toHaveBeenCalled();
+      } finally {
+        process.off("unhandledRejection", unhandled);
+      }
+    });
+
+    describe("reloadSelectedFrame", () => {
+      it("loads the selected time's frame again, at once, and ends idle", async () => {
+        const { deps, spies } = createDeps({
+          inhouseLayers: [{ times: ["a", "b"] }],
+        });
+        const ctrl = new TimelineController(deps);
+        ctrl.activeTimelineDatetimes = ["a", "b"];
+        ctrl.currentDatetime = "b";
+        await ctrl.reloadSelectedFrame();
+        expect(spies.loadInhouseFrameSet).toHaveBeenCalledTimes(1);
+        expect(ctrl.currentDatetime).toBe("b");
+        expect(ctrl.playbackState).toBe("idle");
+      });
+
+      it("resolves when the frame fails again, in the error state", async () => {
+        const { deps, spies } = createDeps({ inhouseLayers: [{ times: ["a"] }] });
+        spies.loadInhouseFrameSet.mockRejectedValueOnce(new Error("boom"));
+        const ctrl = new TimelineController(deps);
+        ctrl.activeTimelineDatetimes = ["a"];
+        await expect(ctrl.reloadSelectedFrame()).resolves.toBeUndefined();
+        expect(ctrl.playbackState).toBe("error");
+      });
+
+      it("does nothing without a timeline", async () => {
+        const { deps, spies } = createDeps();
+        const ctrl = new TimelineController(deps);
+        await ctrl.reloadSelectedFrame();
+        expect(spies.loadInhouseFrameSet).not.toHaveBeenCalled();
+      });
+    });
   });
 
   describe("keyboard actions", () => {

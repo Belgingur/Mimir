@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type * as WeatherLayers from "weatherlayers-gl";
+import { FRAME_STALL_MS, FrameStalledError } from "../src/lib/fetchFrame";
 import {
   InhouseCatalogController,
   CANONICAL_VARIABLES,
@@ -1140,6 +1141,36 @@ describe("InhouseCatalogController", () => {
       await expect(first).rejects.toThrow("aborted");
       expect(await second).not.toBeNull();
       expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it("gives up a frame whose request never answers, and doesn't ask again for a load that joined it", async () => {
+      stubTextureLoad(4, 2);
+      const fetchMock = vi.mocked(globalThis.fetch);
+      fetchMock.mockImplementation(
+        (_url, init) =>
+          new Promise((_resolve, reject) => {
+            (init as RequestInit).signal!.addEventListener("abort", () =>
+              reject(new DOMException("aborted", "AbortError")),
+            );
+          }),
+      );
+      vi.useFakeTimers();
+      try {
+        const settled = vi.fn();
+        const first = ctrl.loadInhouseTexture("/test/held.webp");
+        const second = ctrl.loadInhouseTexture("/test/held.webp");
+        first.then(settled, settled);
+        second.then(settled, settled);
+        await vi.advanceTimersByTimeAsync(FRAME_STALL_MS - 1);
+        expect(settled).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(1);
+        await expect(first).rejects.toBeInstanceOf(FrameStalledError);
+        // The same request again would only wait as long again.
+        await expect(second).rejects.toBeInstanceOf(FrameStalledError);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it("returns null when canvas context unavailable", async () => {
@@ -2424,6 +2455,103 @@ describe("InhouseCatalogController", () => {
 
       await ctrl.loadInhouseFrameSet();
       expect(dom.inhouseWarningEl.textContent).toContain("Frame load failed");
+    });
+
+    describe("reporting how the load ended", () => {
+      // The flag the catalog sets, as the app keeps it.
+      const withReport = () => {
+        let hadErrors = false;
+        const onFrameSetLoadEnded = vi.fn();
+        const reporting = new InhouseCatalogController(
+          makeDeps({
+            dom,
+            getLastFrameLoadHadErrors: () => hadErrors,
+            setLastFrameLoadHadErrors: (v) => {
+              hadErrors = v;
+            },
+            onFrameSetLoadEnded,
+          }),
+        );
+        reporting.inhouseLayers.push(makeLayer());
+        return { reporting, onFrameSetLoadEnded };
+      };
+      const texture = { data: new Uint8Array(4), width: 1, height: 1 };
+
+      it("reports a load whose frame came", async () => {
+        const { reporting, onFrameSetLoadEnded } = withReport();
+        vi.spyOn(reporting, "loadInhouseTexture").mockResolvedValue(texture);
+        await reporting.loadInhouseFrameSet();
+        expect(onFrameSetLoadEnded).toHaveBeenCalledTimes(1);
+        expect(onFrameSetLoadEnded).toHaveBeenCalledWith(false);
+      });
+
+      it("reports a load whose frame failed", async () => {
+        const { reporting, onFrameSetLoadEnded } = withReport();
+        vi.spyOn(reporting, "loadInhouseTexture").mockRejectedValue(
+          new Error("Failed to load frame /x.webp (500)"),
+        );
+        await reporting.loadInhouseFrameSet();
+        expect(onFrameSetLoadEnded).toHaveBeenCalledTimes(1);
+        expect(onFrameSetLoadEnded).toHaveBeenCalledWith(true);
+      });
+
+      it("reports the newer load only, when it replaced an older one", async () => {
+        const { reporting, onFrameSetLoadEnded } = withReport();
+        vi.spyOn(reporting, "loadInhouseTexture")
+          .mockImplementationOnce(() => Promise.reject(new Error("aborted")))
+          .mockResolvedValue(texture);
+        const first = reporting.loadInhouseFrameSet();
+        const second = reporting.loadInhouseFrameSet();
+        await Promise.all([first, second]);
+        expect(onFrameSetLoadEnded).toHaveBeenCalledTimes(1);
+        expect(onFrameSetLoadEnded).toHaveBeenCalledWith(false);
+      });
+    });
+
+    it("ends, with the error flagged and reported, when the frame's request never answers", async () => {
+      let hadErrors = false;
+      const onFrameSetLoadEnded = vi.fn();
+      deps = makeDeps({
+        dom,
+        getLastFrameLoadHadErrors: () => hadErrors,
+        setLastFrameLoadHadErrors: vi.fn((v: boolean) => {
+          hadErrors = v;
+        }),
+        onFrameSetLoadEnded,
+      });
+      ctrl = new InhouseCatalogController(deps);
+      ctrl.inhouseLayers.push(makeLayer());
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(
+          (_url: string, init: RequestInit) =>
+            new Promise((_resolve, reject) => {
+              init.signal!.addEventListener("abort", () =>
+                reject(new DOMException("aborted", "AbortError")),
+              );
+            }),
+        ),
+      );
+      vi.useFakeTimers();
+      try {
+        let done = false;
+        void ctrl.loadInhouseFrameSet();
+        const waiting = ctrl.whenFramesLoaded().then(() => {
+          done = true;
+        });
+        await vi.advanceTimersByTimeAsync(FRAME_STALL_MS - 1);
+        expect(done).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+        await waiting;
+        // The layer on screen (temperature) needed that frame.
+        expect(deps.setLastFrameLoadHadErrors).toHaveBeenLastCalledWith(true);
+        expect(dom.inhouseWarningEl.textContent).toContain("No data for");
+        expect(onFrameSetLoadEnded).toHaveBeenCalledTimes(1);
+        expect(onFrameSetLoadEnded).toHaveBeenCalledWith(true);
+      } finally {
+        vi.useRealTimers();
+        vi.unstubAllGlobals();
+      }
     });
 
     it("resolves whenFramesLoaded at once when nothing is loading", async () => {

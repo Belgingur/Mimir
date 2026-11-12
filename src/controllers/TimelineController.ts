@@ -657,10 +657,26 @@ export class TimelineController {
     if (source === "user") {
       this._timelineUpdateHandle = window.setTimeout(() => {
         this._timelineUpdateHandle = null;
-        void doLoad();
+        // Nothing awaits this load. A failed one has set the error state
+        // above, and the catalog has reported its frame (onFrameSetLoadEnded).
+        void doLoad().catch(() => {});
       }, 140);
     } else {
       await doLoad();
+    }
+  }
+
+  /**
+   * Loads the frame for the selected time again, after a load that failed.
+   * Resolves either way.
+   */
+  async reloadSelectedFrame(): Promise<void> {
+    if (!this._activeTimelineDatetimes.length) return;
+    try {
+      await this.setSelectedIndex(this.getActiveTimelineIndex(), "playback");
+      this.setPlaybackState("idle");
+    } catch {
+      // The error state is set, and the catalog has reported the frame.
     }
   }
 
