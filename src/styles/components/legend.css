@@ -83,7 +83,8 @@ body.view-iconography .legend-stack-card {
   display: grid;
   width: fit-content;
   gap: 5px;
-  padding: 8px 10px;
+  /* No padding on the right: the colour bar is the card's right edge (#80). */
+  padding: 8px 0 8px 10px;
   background: hsla(0, 0%, 100%, 0.5);
   font-size: 12px;
   line-height: 14px;
@@ -113,7 +114,10 @@ body.view-iconography .legend-stack-card {
 .precip-legend__scale {
   position: relative;
   display: grid;
-  grid-template-columns: 24px max-content;
+  /* Values first, the bar last. The legend sits at the map's bottom left, so
+     the colours face the map and the numbers face the window's edge. One fixed
+     layout: it doesn't flip when the legend is dragged. */
+  grid-template-columns: max-content 24px;
   width: fit-content;
   gap: 10px;
   min-height: 220px;
@@ -161,6 +165,9 @@ body.view-iconography .legend-stack-card {
 
 .precip-legend__label {
   position: absolute;
+  /* Right-aligned, against the bar. */
+  right: 0;
+  white-space: nowrap;
   transform: translateY(50%);
   font-size: 11px;
   color: var(--text);
@@ -175,9 +182,9 @@ body.view-iconography .legend-stack-card {
 .precip-legend__label--freezing::before {
   content: "";
   position: absolute;
-  right: 100%;
+  left: 100%;
   top: 50%;
   width: 10px;
-  margin-right: 3px;
+  margin-left: 3px;
   border-top: 1px solid var(--text);
 }

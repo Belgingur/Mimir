@@ -1953,13 +1953,13 @@ export class LayerComposer {
       <div class="precip-legend">
         <div class="precip-legend__title"><span class="precip-legend__unit">m/s</span></div>
         <div class="precip-legend__scale">
-          <div class="precip-legend__bar" style="background: linear-gradient(to top, ${gradient});"></div>
 ${this.legendLabelsHtml(
             this.windLegendTicks.map((value) => ({
               text: String(value),
               percent: this.getWindStopPercent(value),
             })),
           )}
+          <div class="precip-legend__bar" style="background: linear-gradient(to top, ${gradient});"></div>
         </div>
       </div>
     `;
@@ -2056,7 +2056,6 @@ ${this.legendLabelsHtml(
       <div class="precip-legend">
         <div class="precip-legend__title"><span class="precip-legend__unit">°C</span></div>
         <div class="precip-legend__scale">
-          <div class="precip-legend__bar" style="background: linear-gradient(to top, ${gradient});"></div>
 ${this.legendLabelsHtml(
             legendTicks(resolved).map((value) => ({
               text: String(value),
@@ -2067,6 +2066,7 @@ ${this.legendLabelsHtml(
                 value === 0 ? " precip-legend__label--freezing" : undefined,
             })),
           )}
+          <div class="precip-legend__bar" style="background: linear-gradient(to top, ${gradient});"></div>
         </div>
       </div>
     `;
@@ -2135,13 +2135,13 @@ ${this.legendLabelsHtml(
       <div class="precip-legend">
         <div class="precip-legend__title"><span class="precip-legend__unit">${t("unit.mmhr")}</span></div>
         <div class="precip-legend__scale">
-          <div class="precip-legend__bar" style="background: linear-gradient(to top, ${gradient}), ${PRECIP_LEGEND_BACKDROP};"></div>
 ${this.legendLabelsHtml(
             this.precipTicks.map((value) => ({
               text: String(value),
               percent: this.getPrecipStopPercent(value),
             })),
           )}
+          <div class="precip-legend__bar" style="background: linear-gradient(to top, ${gradient}), ${PRECIP_LEGEND_BACKDROP};"></div>
         </div>
       </div>
     `;
@@ -2183,7 +2183,6 @@ ${this.legendLabelsHtml(
     host.innerHTML = `
       <div class="precip-legend">
         <div class="precip-legend__scale">
-          <div class="precip-legend__bar" style="background: linear-gradient(to top, ${gradient});"></div>
 ${this.legendLabelsHtml(
             this.cloudTickLabels.map((label, i) => ({
               text: label,
@@ -2191,6 +2190,7 @@ ${this.legendLabelsHtml(
             })),
             "1.5em",
           )}
+          <div class="precip-legend__bar" style="background: linear-gradient(to top, ${gradient});"></div>
         </div>
       </div>
     `;
@@ -2251,13 +2251,13 @@ ${this.legendLabelsHtml(
       <div class="precip-legend">
         <div class="precip-legend__title"><span class="precip-legend__unit">mm</span></div>
         <div class="precip-legend__scale">
-          <div class="precip-legend__bar" style="background: linear-gradient(to top, ${gradient});"></div>
 ${this.legendLabelsHtml(
             this.snowDepthTicks.map((value, i) => ({
               text: this.snowDepthTickLabels[i] ?? String(value),
               percent: this.getSnowDepthStopPercent(value),
             })),
           )}
+          <div class="precip-legend__bar" style="background: linear-gradient(to top, ${gradient});"></div>
         </div>
       </div>
     `;
