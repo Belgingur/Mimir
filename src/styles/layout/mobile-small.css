@@ -117,8 +117,21 @@
      the precipitation legend has 19 labels, and 10px a row is the least that
      keeps its 11px numbers apart. */
   .legend-stack-card .precip-legend__scale {
+    grid-template-columns: max-content 24px;
     min-height: clamp(180px, calc(35vh - 40px), 220px);
     min-height: clamp(180px, calc(35dvh - 40px), 220px);
+  }
+
+  /* The desktop's 28px bar and 12px values (#97) don't fit here: at the 180px
+     floor the 19 precipitation labels are 10px apart, which 11px numbers
+     need. */
+  .legend-stack-card .precip-legend__bar {
+    width: 24px;
+  }
+
+  .legend-stack-card .precip-legend__sizer,
+  .legend-stack-card .precip-legend__label {
+    font-size: 11px;
   }
 
   /* ── 6. Zoom buttons: top-left, out of the way ──────────── */

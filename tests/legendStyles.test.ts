@@ -61,10 +61,13 @@ describe("the legend on phones (mobile-small.css)", () => {
     ]);
   });
 
-  it("keeps the full 220px as the scale's height everywhere else", () => {
-    expect(rulesFor(legend, ".precip-legend__scale")[0]).toMatch(
-      /min-height:\s*220px/,
+  it("keeps the bar at 24px and the values at 11px", () => {
+    expect(rulesFor(phone, "  .legend-stack-card .precip-legend__bar")[0]).toMatch(
+      /width:\s*24px;/,
     );
+    expect(
+      rulesFor(phone, "  .legend-stack-card .precip-legend__label")[0],
+    ).toMatch(/font-size:\s*11px;/);
   });
 });
 
@@ -86,5 +89,40 @@ describe("the legend's layout (#80)", () => {
     expect(
       rulesFor(legend, ".precip-legend__label--freezing::before")[0],
     ).toMatch(/left:\s*100%;/);
+  });
+});
+
+/** A `clamp(<min>px, <n>vh, <max>px)` height, worked out for a window height. */
+function clampHeight(value: string, windowHeight: number): number {
+  const match = value.match(
+    /^clamp\((\d+)px,\s*(\d+)vh,\s*(\d+)px\)$/,
+  );
+  if (!match) throw new Error(`not a px/vh/px clamp: ${value}`);
+  const [min, vh, max] = match.slice(1).map(Number);
+  return Math.min(max, Math.max(min, (vh / 100) * windowHeight));
+}
+
+describe("the legend's height on desktop (#97)", () => {
+  const scale = rulesFor(legend, ".precip-legend__scale")[0];
+  const height = scale.match(/min-height:\s*([^;]+);/)?.[1] ?? "";
+
+  it.each([
+    [700, 294],
+    [900, 378],
+    [1200, 440],
+  ])("in a %ipx-high window, is %ipx tall", (windowHeight, expected) => {
+    expect(clampHeight(height, windowHeight)).toBeCloseTo(expected);
+  });
+
+  it("never goes under the old 220px", () => {
+    expect(clampHeight(height, 400)).toBe(220);
+  });
+
+  it("has a 28px bar and 12px values", () => {
+    expect(scale).toMatch(/grid-template-columns:\s*max-content\s+28px;/);
+    expect(rulesFor(legend, ".precip-legend__bar")[0]).toMatch(/width:\s*28px;/);
+    expect(rulesFor(legend, ".precip-legend__label")[0]).toMatch(
+      /font-size:\s*12px;/,
+    );
   });
 });
