@@ -236,7 +236,7 @@ export interface InhouseCatalogDeps {
 
 const MB = 1024 * 1024;
 /** Cells of the finest model that must span MAX_ZOOM_REFERENCE_PX at the deepest zoom. */
-const MAX_ZOOM_CELLS = 24;
+const MAX_ZOOM_CELLS = 12;
 const MAX_ZOOM_REFERENCE_PX = 1024;
 
 // ---------------------------------------------------------------------------
@@ -617,7 +617,7 @@ export class InhouseCatalogController {
       85,
     );
     // Cap where MAX_ZOOM_CELLS of those cells span MAX_ZOOM_REFERENCE_PX pixels
-    // (~43 px per cell). A fixed reference, not the viewport: on-screen cell
+    // (~85 px per cell). A fixed reference, not the viewport: on-screen cell
     // size depends only on zoom, so tying the cap to the viewport's short side
     // gave phones ~1.4 zoom levels less than desktops for no visual reason.
     const targetSpanMeters = resolutionMeters * MAX_ZOOM_CELLS;
