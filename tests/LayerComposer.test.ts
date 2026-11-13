@@ -1791,6 +1791,26 @@ describe("LayerComposer", () => {
     });
   });
 
+  describe("the vertical legends' layout (#80)", () => {
+    const legends = [
+      "renderTempLegend",
+      "renderWindLegend",
+      "renderPrecipLegend",
+      "renderCloudLegend",
+      "renderSnowDepthLegend",
+    ];
+
+    it.each(legends)("%s puts the values before the bar", (render) => {
+      const composer = new LayerComposer(makeDeps());
+      const host = document.createElement("div");
+      callPrivate(composer, render, host);
+      const scale = host.querySelector(".precip-legend__scale");
+      expect(
+        [...(scale?.children ?? [])].map((el) => el.className),
+      ).toEqual(["precip-legend__labels", "precip-legend__bar"]);
+    });
+  });
+
   describe("buildWavePeriodLabels", () => {
     it("returns labels based on scalar scans", () => {
       const composer = new LayerComposer(makeDeps());

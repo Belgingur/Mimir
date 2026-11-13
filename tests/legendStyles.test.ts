@@ -67,3 +67,24 @@ describe("the legend on phones (mobile-small.css)", () => {
     );
   });
 });
+
+describe("the legend's layout (#80)", () => {
+  it("puts the values in the first column and the bar in the last", () => {
+    expect(rulesFor(legend, ".precip-legend__scale")[0]).toMatch(
+      /grid-template-columns:\s*max-content\s+\d+px;/,
+    );
+  });
+
+  it("leaves no padding to the right of the bar", () => {
+    expect(rulesFor(legend, ".precip-legend")[0]).toMatch(
+      /padding:\s*\S+\s+0\s+\S+\s+\S+;/,
+    );
+  });
+
+  it("right-aligns the values against the bar, with the freezing mark between them", () => {
+    expect(rulesFor(legend, ".precip-legend__label")[0]).toMatch(/right:\s*0;/);
+    expect(
+      rulesFor(legend, ".precip-legend__label--freezing::before")[0],
+    ).toMatch(/left:\s*100%;/);
+  });
+});
