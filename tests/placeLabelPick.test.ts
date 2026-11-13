@@ -6,6 +6,7 @@ import {
   pickPlaceLabel,
   SETTLEMENT_LAYER_IDS,
 } from "../src/lib/placeLabelPick";
+import { LANDMARK_LAYER_IDS } from "../src/lib/landmarkLabels";
 
 interface FakeFeature {
   sourceLayer?: string;
@@ -241,6 +242,44 @@ function makeLabelMap(
   };
   return map as unknown as maplibregl.Map;
 }
+
+describe("pickPlaceLabel — peaks", () => {
+  const PEAK_LAYERS = [...SETTLEMENT_LAYER_IDS, LANDMARK_LAYER_IDS.peaks];
+  const peak = (name: string, lon: number, lat: number, ele?: unknown): FakeFeature => ({
+    sourceLayer: "mountain_peak",
+    properties: { name, class: "volcano", rank: 1, ...(ele === undefined ? {} : { ele }) },
+    geometry: { type: "Point", coordinates: [lon, lat] },
+  });
+
+  it("queries the peak layer when the style has it", () => {
+    const { map, queryRenderedFeatures } = makeMap([], { presentLayers: PEAK_LAYERS });
+    pickPlaceLabel(map, POINT, { coarsePointer: false });
+    expect(queryRenderedFeatures).toHaveBeenCalledWith(expect.anything(), {
+      layers: PEAK_LAYERS,
+    });
+  });
+
+  it("resolves a click on a peak to its name alone, without its height", () => {
+    const { map } = makeMap([peak("Hvannadalshnúkur", 100, 50, 2110)], {
+      presentLayers: PEAK_LAYERS,
+    });
+    expect(pickPlaceLabel(map, POINT, { coarsePointer: false })).toEqual({
+      name: "Hvannadalshnúkur",
+      longitude: 100,
+      latitude: 50,
+      placeClass: "volcano",
+      rank: 1,
+    });
+  });
+
+  it("lets a town win over a peak at the same spot", () => {
+    const { map } = makeMap(
+      [peak("Esja", 100, 50, 914), makeFeature("Mosfellsbær", 101, 50, { class: "town" })],
+      { presentLayers: PEAK_LAYERS },
+    );
+    expect(pickPlaceLabel(map, POINT, { coarsePointer: false })?.name).toBe("Mosfellsbær");
+  });
+});
 
 describe("pickPlaceLabel — a click beside a long name", () => {
   // Seltjarnarnes at full zoom: the name is drawn centred on the town's point

@@ -9,8 +9,10 @@ import {
   buildPeakIcon,
   ensureLandmarkLabels,
   ISLAND_FILTER,
+  LANDMARK_HALO_WIDTH,
   LANDMARK_LAYER_IDS,
   PEAK_FILTER,
+  PEAK_HALO_WIDTH,
   PEAK_ICON_ID,
   PEAK_NAME_MIN_ZOOM,
   WATER_NAME_FILTER,
@@ -91,6 +93,33 @@ describe("ensureLandmarkLabels", () => {
     const field = peaks?.layout?.["text-field"] as unknown[];
     expect(field.slice(0, 4)).toEqual(["step", ["zoom"], "", PEAK_NAME_MIN_ZOOM]);
     expect(peaks?.layout?.["icon-image"]).toBe(PEAK_ICON_ID);
+  });
+
+  it("names peaks from z8, at 12 px there and 14 px at the deepest zoom, with a stronger halo", () => {
+    const { map, addLayer } = makeMap();
+    ensureLandmarkLabels(map, "place_other");
+    const peaks = addLayer.mock.calls
+      .map(
+        ([layer]) =>
+          layer as {
+            id: string;
+            layout?: Record<string, unknown>;
+            paint?: Record<string, unknown>;
+          },
+      )
+      .find((layer) => layer.id === LANDMARK_LAYER_IDS.peaks);
+    expect(PEAK_NAME_MIN_ZOOM).toBe(8);
+    expect(peaks?.layout?.["text-size"]).toEqual([
+      "interpolate",
+      ["linear"],
+      ["zoom"],
+      8,
+      12,
+      10.5,
+      14,
+    ]);
+    expect(peaks?.paint?.["text-halo-width"]).toBe(PEAK_HALO_WIDTH);
+    expect(PEAK_HALO_WIDTH).toBeGreaterThan(LANDMARK_HALO_WIDTH);
   });
 
   it("produces layers the style spec accepts", () => {

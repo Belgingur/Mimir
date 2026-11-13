@@ -29,6 +29,11 @@ export const LANDMARK_TEXT_COLOR = "#efe2c6";
 /** Water features: a pale blue. */
 export const WATER_NAME_TEXT_COLOR = "#cde6f0";
 export const LANDMARK_HALO_WIDTH = 1.2;
+/**
+ * Peak names sit over the forecast's colours with no water or coast under
+ * them, so they get a wider halo than the other landmark names.
+ */
+export const PEAK_HALO_WIDTH = 1.8;
 export const LANDMARK_FONT = ["Metropolis Medium Italic", "Noto Sans Italic"];
 
 /**
@@ -51,9 +56,9 @@ export const PEAK_MIN_ELEVATION_BY_ZOOM: maplibregl.ExpressionSpecification = [
 
 /**
  * Below this a peak is a triangle with no name: it says "mountain here"
- * without filling the map with text. Name and height come in from z9.
+ * without filling the map with text. Name and height come in from z8.
  */
-export const PEAK_NAME_MIN_ZOOM = 9;
+export const PEAK_NAME_MIN_ZOOM = 8;
 
 /** Space kept clear around each peak, so a high range shows a few, not all. */
 export const PEAK_PADDING_PX = 30;
@@ -102,6 +107,17 @@ const TEXT_SIZE: maplibregl.ExpressionSpecification = [
   11,
   10,
   12.5,
+];
+
+/** Peak names: 12 px where they first show, 14 px at the deepest zoom. */
+export const PEAK_TEXT_SIZE: maplibregl.ExpressionSpecification = [
+  "interpolate",
+  ["linear"],
+  ["zoom"],
+  PEAK_NAME_MIN_ZOOM,
+  12,
+  10.5,
+  14,
 ];
 
 /** Larger for the larger islands: Sjælland or Streymoy, not a skerry. */
@@ -192,10 +208,13 @@ export function ensureLandmarkLabels(
     map.addImage(PEAK_ICON_ID, buildPeakIcon(), { pixelRatio: 2 });
   }
 
-  const paint = (color: string): maplibregl.SymbolLayerSpecification["paint"] => ({
+  const paint = (
+    color: string,
+    haloWidth = LANDMARK_HALO_WIDTH,
+  ): maplibregl.SymbolLayerSpecification["paint"] => ({
     "text-color": color,
     "text-halo-color": LABEL_HALO_COLOR,
-    "text-halo-width": LANDMARK_HALO_WIDTH,
+    "text-halo-width": haloWidth,
     "text-halo-blur": LABEL_HALO_BLUR,
   });
   const add = (layer: maplibregl.SymbolLayerSpecification) => {
@@ -269,7 +288,7 @@ export function ensureLandmarkLabels(
         ],
       ] as maplibregl.ExpressionSpecification,
       "text-font": LANDMARK_FONT,
-      "text-size": TEXT_SIZE,
+      "text-size": PEAK_TEXT_SIZE,
       "text-anchor": "top",
       "text-offset": [0, 0.55],
       "text-max-width": 8,
@@ -277,6 +296,6 @@ export function ensureLandmarkLabels(
       // Higher peaks win collisions against lower neighbours.
       "symbol-sort-key": ["-", 0, ["to-number", ["get", "ele"], 0]],
     },
-    paint: paint(LANDMARK_TEXT_COLOR),
+    paint: paint(LANDMARK_TEXT_COLOR, PEAK_HALO_WIDTH),
   });
 }
