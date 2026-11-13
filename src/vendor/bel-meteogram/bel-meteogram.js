@@ -23,107 +23,107 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-function s0(e, t, i, n) {
-  const o = Math.PI / 180, s = (e + i) / 2 * o, l = (i - e) * o;
-  let a = (n - t) * o;
-  a > Math.PI && (a -= 2 * Math.PI), a < -Math.PI && (a += 2 * Math.PI);
-  const r = a * Math.cos(s);
-  return Math.hypot(r, l) * 6371;
+function l0(e, t, i, n) {
+  const o = Math.PI / 180, s = (e + i) / 2 * o, a = (i - e) * o;
+  let l = (n - t) * o;
+  l > Math.PI && (l -= 2 * Math.PI), l < -Math.PI && (l += 2 * Math.PI);
+  const r = l * Math.cos(s);
+  return Math.hypot(r, a) * 6371;
 }
-function W0(e) {
+function K0(e) {
   return e.apiUrl ? e.apiUrl : `${new URL(import.meta.url).origin}/api/v2/widget/meteo/config/${e.clientName}`;
 }
-const N0 = 3600 * 1e3, O2 = 2e4;
-async function n0(e, t, i = {}, n) {
+const X0 = 3600 * 1e3, R2 = 2e4;
+async function r0(e, t, i = {}, n) {
   const o = new AbortController();
   let s = !1;
-  const l = setTimeout(() => {
+  const a = setTimeout(() => {
     s = !0, o.abort();
-  }, O2), a = () => o.abort(n?.reason);
-  n?.aborted ? a() : n?.addEventListener("abort", a, { once: !0 });
+  }, R2), l = () => o.abort(n?.reason);
+  n?.aborted ? l() : n?.addEventListener("abort", l, { once: !0 });
   try {
     const r = await fetch(e, { ...i, signal: o.signal });
     if (!r.ok) throw new Error(`${t}: HTTP ${r.status}`);
     return { json: await r.json(), response: r };
   } catch (r) {
-    throw s ? new Error(`${t}: timed out after ${O2 / 1e3} s`) : r;
+    throw s ? new Error(`${t}: timed out after ${R2 / 1e3} s`) : r;
   } finally {
-    clearTimeout(l), n?.removeEventListener("abort", a);
+    clearTimeout(a), n?.removeEventListener("abort", l);
   }
 }
-function R2(e, t) {
+function W2(e, t) {
   return t ? new Promise((i, n) => {
-    const o = () => n(j0(t));
+    const o = () => n(J0(t));
     if (t.aborted) return o();
     t.addEventListener("abort", o, { once: !0 }), e.then(i, n).finally(() => t.removeEventListener("abort", o));
   }) : e;
 }
-function j0(e) {
+function J0(e) {
   return e.reason ?? new DOMException("The operation was aborted.", "AbortError");
 }
-const a2 = /* @__PURE__ */ new Map();
-function l0(e, t, i) {
-  const n = a2.get(e);
-  if (n && Date.now() - n.at < N0)
-    return R2(n.json, i);
-  const o = n0(e, t).then((s) => s.json);
-  return a2.set(e, { at: Date.now(), json: o }), o.catch(() => {
-    a2.get(e)?.json === o && a2.delete(e);
-  }), R2(o, i);
+const r2 = /* @__PURE__ */ new Map();
+function c0(e, t, i) {
+  const n = r2.get(e);
+  if (n && Date.now() - n.at < X0)
+    return W2(n.json, i);
+  const o = r0(e, t).then((s) => s.json);
+  return r2.set(e, { at: Date.now(), json: o }), o.catch(() => {
+    r2.get(e)?.json === o && r2.delete(e);
+  }), W2(o, i);
 }
-async function q0(e, t) {
-  return (await l0(W0(e), "config", t)).forecasts;
+async function Z0(e, t) {
+  return (await c0(K0(e), "config", t)).forecasts;
 }
-function Y0(e, t, i) {
+function Q0(e, t, i) {
   return !e || !t ? "" : e === "schedule" ? `${e}/${t}/${i}` : `${e}/${t}`;
 }
-function K0(e, t) {
+function ee(e, t) {
   return t ? e.find((i) => i.id === t) : e[0];
 }
-function V0(e, t) {
-  return l0(e, "forecast", t);
+function te(e, t) {
+  return c0(e, "forecast", t);
 }
-function _2(e, t, i, n, o) {
-  const s = n !== void 0 && Number.isFinite(n) ? `?duration=${n}h` : "", l = o && a0(e) ? `station/${encodeURIComponent(o)}` : `latlon/${t},${i}`;
-  return e.station_data_url.replace("[station]", l).replace("meteogram.xml", `meteogram.json${s}`);
+function y2(e, t, i, n, o) {
+  const s = n !== void 0 && Number.isFinite(n) ? `?duration=${n}h` : "", a = o && d0(e) ? `station/${encodeURIComponent(o)}` : `latlon/${t},${i}`;
+  return e.station_data_url.replace("[station]", a).replace("meteogram.xml", `meteogram.json${s}`);
 }
-function a0(e) {
+function d0(e) {
   return !e.forecast_id?.startsWith("upstream/");
 }
-const X0 = 1;
-function J0(e, t, i) {
-  let n = null, o = X0;
+const ie = 1;
+function oe(e, t, i) {
+  let n = null, o = ie;
   for (const s of e) {
     if (!s.extra?.ref) continue;
-    const l = s0(t, i, s.lat, s.lon);
-    l <= o && (n = s, o = l);
+    const a = l0(t, i, s.lat, s.lon);
+    a <= o && (n = s, o = a);
   }
   return n;
 }
-async function y2(e, t, i) {
+async function w2(e, t, i) {
   const n = new Headers();
   t.user && t.password && n.set("Authorization", "Basic " + btoa(`${t.user}:${t.password}`));
-  const { json: o, response: s } = await n0(
+  const { json: o, response: s } = await r0(
     e,
     "meteogram",
     { headers: n },
     i
-  ), l = s.headers.get("Last-Modified");
+  ), a = s.headers.get("Last-Modified");
   return {
     data: o,
-    lastModified: l ? new Date(l) : null
+    lastModified: a ? new Date(a) : null
   };
 }
-function Z0(e, t, i, n = /* @__PURE__ */ new Date()) {
-  const o = W2(e.meta?.last_modified) ?? t ?? n;
-  return { analysisTime: W2(e.meta?.analysis) ?? (i !== void 0 ? new Date(i) : o), lastModified: o };
+function se(e, t, i, n = /* @__PURE__ */ new Date()) {
+  const o = N2(e.meta?.last_modified) ?? t ?? n;
+  return { analysisTime: N2(e.meta?.analysis) ?? (i !== void 0 ? new Date(i) : o), lastModified: o };
 }
-function W2(e) {
+function N2(e) {
   if (!e) return null;
   const t = new Date(e);
   return isNaN(t.getTime()) ? null : t;
 }
-const M = {
+const w = {
   /** Temperature at or above 0 °C — also the line, the dots and the swatch. */
   temp: "#C81D25",
   /** Temperature below 0 °C. */
@@ -152,46 +152,541 @@ const M = {
   /** The "now" marker line — the same accent on the phone and desktop charts.
       3.1:1 on white, the non-text minimum; the old #F0A32F was 2.1:1. */
   now: "#D17F00"
-}, Q0 = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2301d__01d__a)'%3e%3cpath%20fill='url(%2301d__01d__b)'%20d='M75.6%2056.9L91%2050l-15.4-6.8%209.8-13.7-16.7%201.8%201.7-16.8-13.6%209.9L50%209l-6.8%2015.4-13.7-9.9%201.8%2016.7-16.8-1.7%209.9%2013.6L9%2050l15.4%206.8-9.9%2013.7%2016.7-1.8-1.7%2016.8%2013.6-9.9L50%2091l6.8-15.4%2013.7%209.8-1.8-16.7%2016.8%201.7-9.9-13.5z'/%3e%3cpath%20fill='%23FFD348'%20d='M28.284%2062.509c6.901%2011.908%2022.205%2016.01%2034.208%209.206C74.496%2064.91%2078.497%2049.5%2071.695%2037.491c-6.902-11.908-22.206-16.01-34.21-9.206-11.901%206.905-16.002%2022.315-9.2%2034.224z'/%3e%3cpath%20fill='url(%2301d__01d__c)'%20d='M31.8%2060.493c5.798%209.998%2018.695%2013.497%2028.693%207.699%209.998-5.799%2013.497-18.696%207.699-28.694C62.393%2029.5%2049.496%2026%2039.498%2031.799%2029.5%2037.6%2026%2050.496%2031.799%2060.493z'/%3e%3c/g%3e%3cdefs%3e%3cradialGradient%20id='01d__01d__b'%20cx='0'%20cy='0'%20r='1'%20gradientTransform='matrix(41%200%200%2041%2050%2050)'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.514'%20stop-color='%23D6B849'/%3e%3cstop%20offset='.652'%20stop-color='%23FFCE47'/%3e%3cstop%20offset='1'%20stop-color='%23FFDB73'/%3e%3c/radialGradient%3e%3clinearGradient%20id='01d__01d__c'%20x1='36.496'%20x2='63.495'%20y1='33.908'%20y2='66.084'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23FFAF22'/%3e%3cstop%20offset='.99'%20stop-color='%23F09900'/%3e%3c/linearGradient%3e%3cclipPath%20id='01d__01d__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3c/defs%3e%3c/svg%3e", ee = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cpath%20fill='url(%2301n__01n__a)'%20d='M51.4%2021c2.4%204.2%203.9%209.1%203.9%2014.3%200%2015.8-12.8%2028.6-28.6%2028.6-1.3%200-2.5-.1-3.7-.3C28%2072.2%2037.2%2078%2047.7%2078c15.8%200%2028.6-12.8%2028.6-28.6%200-14.6-10.8-26.6-24.9-28.4z'/%3e%3cdefs%3e%3clinearGradient%20id='01n__01n__a'%20x1='34.425'%20x2='71.181'%20y1='75.492'%20y2='31.689'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23686E73'/%3e%3cstop%20offset='.989'%20stop-color='%236A7075'/%3e%3c/linearGradient%3e%3c/defs%3e%3c/svg%3e", te = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2302d__02d__a)'%3e%3cpath%20fill='url(%2302d__02d__b)'%20fill-rule='evenodd'%20d='M79.698%2037.47L85.4%2029.5l-16.7%201.8%201.7-16.8-13.6%209.9L50%209l-6.8%2015.4-13.7-9.9%201.8%2016.7-16.8-1.7%209.9%2013.6L9%2050l15.4%206.8-9.9%2013.7%2016.7-1.8-1.7%2016.8%2013.6-9.9L50%2091l6.8-15.4%2013.7%209.8-1.35-12.524H53.466c-3.222%200-6.258-1.177-8.55-3.408-2.417-2.292-3.718-5.39-3.78-8.737v-.123c0-3.16%201.24-6.135%203.47-8.365a12.25%2012.25%200%20018.117-3.718c1.673-2.417%204.461-3.842%207.497-3.842h.682C64.248%2039.974%2069.762%2037%2075.649%2037c1.384%200%202.741.163%204.05.47z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23FFD348'%20fill-rule='evenodd'%20d='M60.178%2072.876c-11.59%205.094-25.43.788-31.894-10.367-6.802-11.909-2.701-27.32%209.202-34.224%2011.991-6.798%2027.276-2.71%2034.188%209.17a18.36%2018.36%200%2000-10.772%207.228h-.682c-3.036%200-5.824%201.425-7.497%203.842a12.25%2012.25%200%2000-8.117%203.718%2011.765%2011.765%200%2000-3.47%208.365v.123c.062%203.346%201.363%206.445%203.78%208.737%202.292%202.23%205.328%203.408%208.55%203.408h6.712z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2302d__02d__c)'%20fill-rule='evenodd'%20d='M46.356%2070.665C40.454%2069.61%2035.027%2066.058%2031.8%2060.493c-5.798-9.998-2.3-22.895%207.699-28.694%209.774-5.669%2022.32-2.45%2028.294%207.038a18.394%2018.394%200%2000-6.89%205.846h-.682c-3.036%200-5.824%201.425-7.497%203.842a12.25%2012.25%200%2000-8.117%203.718%2011.766%2011.766%200%2000-3.47%208.365v.123c.062%203.346%201.363%206.445%203.78%208.737.452.44.934.84%201.44%201.197z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23DDD'%20fill-rule='evenodd'%20d='M90.272%2052.428c-1.177-7.001-7.374-12.33-14.623-12.33-5.639%200-10.72%203.16-13.198%208.117a5.715%205.715%200%2000-2.23-.434c-2.603%200-4.834%201.55-5.701%203.842-.372-.062-.682-.062-1.054-.062-2.54%200-4.895.992-6.63%202.788-1.672%201.735-2.602%203.966-2.602%206.32v.124c.062%202.54%201.053%204.833%202.85%206.506%201.673%201.673%203.966%202.603%206.382%202.603H87.98c4.895%200%208.923-3.966%208.923-8.86%200-4.09-2.788-7.622-6.63-8.614z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2302d__02d__d)'%20fill-rule='evenodd'%20d='M90.272%2052.428c-1.177-7.001-7.374-12.33-14.623-12.33-5.639%200-10.72%203.16-13.198%208.117a5.715%205.715%200%2000-2.23-.434c-2.603%200-4.834%201.55-5.701%203.842-.372-.062-.682-.062-1.054-.062-2.54%200-4.895.992-6.63%202.788-1.672%201.735-2.602%203.966-2.602%206.32v.124c.062%202.54%201.053%204.833%202.85%206.506%201.673%201.673%203.966%202.603%206.382%202.603H87.98c4.895%200%208.923-3.966%208.923-8.86%200-4.09-2.788-7.622-6.63-8.614z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2302d__02d__e)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M58.176%2065.503c1.107%200%2015.396-.789%2016.407-1.24%201.382-.616-1.481-4.32%200-4.628.669-.139%201.652-.575%201.652-.575s2.698-.992%203.163-.992c.465%200%20.232-1.837.086-2.98l-.086-.819c0-.539-1.606-1.657-1.86-3.017-.175-.947.263-2.221.172-2.459%200%200-.032-.017-.023-.02.01-.002.017.005.023.02.07.033.571.203.571.203%201.207.409%203.116%201.078%204.834%202.256%201.028.704%202.442%202.053%202.442%202.053s1.02.788%201.276%201.045c.62.62%202.478%202.478%203.718%202.478h3.098l1.394.985.31%201.99c0%204.895-4.028%208.86-8.923%208.86H51.36s2.788-3.16%206.816-3.16z'/%3e%3c/g%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='02d__02d__c'%20x1='36.496'%20x2='63.495'%20y1='33.908'%20y2='66.084'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23FFAF22'/%3e%3cstop%20offset='.99'%20stop-color='%23F09900'/%3e%3c/linearGradient%3e%3clinearGradient%20id='02d__02d__d'%20x1='69.329'%20x2='70.568'%20y1='49.702'%20y2='69.902'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cradialGradient%20id='02d__02d__b'%20cx='0'%20cy='0'%20r='1'%20gradientTransform='matrix(41%200%200%2041%2050%2050)'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.514'%20stop-color='%23D6B849'/%3e%3cstop%20offset='.652'%20stop-color='%23FFCE47'/%3e%3cstop%20offset='1'%20stop-color='%23FFDB73'/%3e%3c/radialGradient%3e%3cclipPath%20id='02d__02d__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='02d__02d__e'%20width='52.668'%20height='28.565'%20x='47.022'%20y='44.435'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1382'%20stdDeviation='2.169'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", ie = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2302n__02n__a)'%3e%3cpath%20fill='url(%2302n__02n__b)'%20fill-rule='evenodd'%20d='M48.3%2032.3c0-5.2-1.5-10.1-3.9-14.3%2011.477%201.465%2020.767%209.688%2023.827%2020.57a18.396%2018.396%200%2000-7.461%206.113h-.682c-3.036%200-5.824%201.425-7.497%203.842a12.25%2012.25%200%2000-8.117%203.718A11.765%2011.765%200%200041%2060.608v.123c.062%203.346%201.363%206.445%203.78%208.737%201.917%201.866%204.355%202.995%206.986%203.314A28.525%2028.525%200%200140.7%2075C30.2%2075%2021%2069.2%2016%2060.6c1.2.2%202.4.3%203.7.3%2015.8%200%2028.6-12.8%2028.6-28.6z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23DDD'%20fill-rule='evenodd'%20d='M90.272%2052.428c-1.177-7.001-7.374-12.33-14.623-12.33-5.639%200-10.72%203.16-13.198%208.117a5.715%205.715%200%2000-2.23-.434c-2.603%200-4.834%201.55-5.701%203.842-.372-.062-.682-.062-1.053-.062-2.541%200-4.896.992-6.63%202.788-1.674%201.735-2.603%203.966-2.603%206.32v.124c.062%202.54%201.053%204.833%202.85%206.506%201.673%201.673%203.966%202.603%206.383%202.603h34.512c4.895%200%208.923-3.966%208.923-8.86%200-4.09-2.788-7.622-6.63-8.614z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2302n__02n__c)'%20fill-rule='evenodd'%20d='M90.272%2052.428c-1.177-7.001-7.374-12.33-14.623-12.33-5.639%200-10.72%203.16-13.198%208.117a5.715%205.715%200%2000-2.23-.434c-2.603%200-4.834%201.55-5.701%203.842-.372-.062-.682-.062-1.053-.062-2.541%200-4.896.992-6.63%202.788-1.674%201.735-2.603%203.966-2.603%206.32v.124c.062%202.54%201.053%204.833%202.85%206.506%201.673%201.673%203.966%202.603%206.383%202.603h34.512c4.895%200%208.923-3.966%208.923-8.86%200-4.09-2.788-7.622-6.63-8.614z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2302n__02n__d)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M58.176%2065.503c1.107%200%2015.396-.789%2016.407-1.24%201.382-.616-1.481-4.32%200-4.628.669-.139%201.652-.575%201.652-.575s2.698-.992%203.163-.992c.465%200%20.232-1.837.086-2.98l-.086-.819c0-.539-1.606-1.657-1.86-3.017-.175-.947.263-2.221.172-2.459%200%200-.032-.017-.022-.02.008-.002.016.005.022.02.07.033.571.203.571.203%201.207.409%203.116%201.078%204.834%202.256%201.028.704%202.442%202.053%202.442%202.053s1.02.788%201.276%201.045c.62.62%202.478%202.478%203.718%202.478h3.098l1.394.985.31%201.99c0%204.895-4.028%208.86-8.923%208.86H51.36s2.788-3.16%206.816-3.16z'/%3e%3c/g%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='02n__02n__b'%20x1='27.425'%20x2='64.181'%20y1='72.492'%20y2='28.689'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23686E73'/%3e%3cstop%20offset='.989'%20stop-color='%236A7075'/%3e%3c/linearGradient%3e%3clinearGradient%20id='02n__02n__c'%20x1='69.329'%20x2='70.568'%20y1='49.702'%20y2='69.902'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='02n__02n__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='02n__02n__d'%20width='52.668'%20height='28.565'%20x='47.022'%20y='44.435'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1384'%20stdDeviation='2.169'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", oe = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2303d__03d__a)'%3e%3cpath%20fill='url(%2303d__03d__b)'%20fill-rule='evenodd'%20d='M52.315%2018.517l1.757-2.457-11.356%201.224L43.872%205.86l-9.248%206.732L30%202.12l-4.624%2010.472L16.06%205.86l1.224%2011.356L5.86%2016.06l6.732%209.248L2.12%2030l10.472%204.624L5.86%2043.94l.57-.061c.369-.441.759-.868%201.17-1.279%203.5-3.6%208.1-5.7%2013.1-6%202.7-3.9%207.2-6.2%2012.1-6.2h1.1c4.363-6.14%2011.011-10.453%2018.415-11.883z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23FFD348'%20fill-rule='evenodd'%20d='M14.867%2037.83A20.01%2020.01%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.679%2029.679%200%200110.672-9.21c-4.775-7.863-15.023-10.525-23.082-5.956-7.87%204.565-10.725%2014.6-6.623%2022.597z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2303d__03d__c)'%20fill-rule='evenodd'%20d='M17.565%2037.034c1.022-.224%202.07-.37%203.135-.434%202.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.635%2029.635%200%20018.287-7.849c-4.026-6.562-12.633-8.81-19.328-4.927-6.765%203.923-9.155%2012.626-5.294%2019.41z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23DDD'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2303d__03d__d)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2303d__03d__e)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='03d__03d__c'%20x1='20.817'%20x2='39.177'%20y1='19.057'%20y2='40.937'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23FFAF22'/%3e%3cstop%20offset='.99'%20stop-color='%23F09900'/%3e%3c/linearGradient%3e%3clinearGradient%20id='03d__03d__d'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cradialGradient%20id='03d__03d__b'%20cx='0'%20cy='0'%20r='1'%20gradientTransform='translate(30%2030)%20scale(27.88)'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.514'%20stop-color='%23D6B849'/%3e%3cstop%20offset='.652'%20stop-color='%23FFCE47'/%3e%3cstop%20offset='1'%20stop-color='%23FFDB73'/%3e%3c/radialGradient%3e%3cclipPath%20id='03d__03d__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='03d__03d__e'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1385'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", se = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2303n__03n__a)'%3e%3cpath%20fill='url(%2303n__03n__b)'%20fill-rule='evenodd'%20d='M28.443%2013.565c0-3.869-1.116-7.514-2.902-10.638%209.666%201.234%2017.247%208.91%2018.378%2018.607A29.67%2029.67%200%200033.9%2030.4h-1.1c-4.9%200-9.4%202.3-12.1%206.2-4.058.243-7.853%201.673-11.01%204.128a21.853%2021.853%200%2001-5.275-6.11c.892.148%201.785.222%202.752.222%2011.754%200%2021.276-9.522%2021.276-21.275z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23DDD'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2303n__03n__c)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2303n__03n__d)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='03n__03n__b'%20x1='12.914'%20x2='40.256'%20y1='43.464'%20y2='10.878'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23686E73'/%3e%3cstop%20offset='.989'%20stop-color='%236A7075'/%3e%3c/linearGradient%3e%3clinearGradient%20id='03n__03n__c'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='03n__03n__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='03n__03n__d'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1387'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", ne = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2304__04__a)'%3e%3cpath%20fill='%23DDD'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2304__04__b)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2304__04__c)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='04__04__b'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='04__04__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='04__04__c'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1388'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", le = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2305d__05d__a)'%3e%3cpath%20fill='url(%2305d__05d__b)'%20fill-rule='evenodd'%20d='M52.315%2018.517l1.757-2.457-11.356%201.224L43.872%205.86l-9.248%206.732L30%202.12l-4.624%2010.472L16.06%205.86l1.224%2011.356L5.86%2016.06l6.732%209.248L2.12%2030l10.472%204.624L5.86%2043.94l.57-.061c.369-.441.759-.868%201.17-1.279%203.5-3.6%208.1-5.7%2013.1-6%202.7-3.9%207.2-6.2%2012.1-6.2h1.1c4.363-6.14%2011.011-10.453%2018.415-11.883z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23FFD348'%20fill-rule='evenodd'%20d='M14.867%2037.83A20.01%2020.01%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.679%2029.679%200%200110.672-9.21c-4.775-7.863-15.023-10.525-23.082-5.956-7.87%204.565-10.725%2014.6-6.623%2022.597z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2305d__05d__c)'%20fill-rule='evenodd'%20d='M17.565%2037.034c1.022-.224%202.07-.37%203.135-.434%202.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.635%2029.635%200%20018.287-7.849c-4.026-6.562-12.633-8.81-19.328-4.927-6.765%203.923-9.155%2012.626-5.294%2019.41z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23B2B2B2'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2305d__05d__d)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2305d__05d__e)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%23006EDB'%20d='M35.5%2090c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm13%209c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm15-9c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='05d__05d__c'%20x1='20.817'%20x2='39.177'%20y1='19.057'%20y2='40.937'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23FFAF22'/%3e%3cstop%20offset='.99'%20stop-color='%23F09900'/%3e%3c/linearGradient%3e%3clinearGradient%20id='05d__05d__d'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cradialGradient%20id='05d__05d__b'%20cx='0'%20cy='0'%20r='1'%20gradientTransform='translate(30%2030)%20scale(27.88)'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.514'%20stop-color='%23D6B849'/%3e%3cstop%20offset='.652'%20stop-color='%23FFCE47'/%3e%3cstop%20offset='1'%20stop-color='%23FFDB73'/%3e%3c/radialGradient%3e%3cclipPath%20id='05d__05d__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='05d__05d__e'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1389'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", ae = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2305n__05n__a)'%3e%3cpath%20fill='url(%2305n__05n__b)'%20fill-rule='evenodd'%20d='M28.443%2013.565c0-3.869-1.116-7.514-2.902-10.638%209.666%201.234%2017.247%208.91%2018.378%2018.607A29.67%2029.67%200%200033.9%2030.4h-1.1c-4.9%200-9.4%202.3-12.1%206.2-4.058.243-7.853%201.673-11.01%204.128a21.853%2021.853%200%2001-5.275-6.11c.892.148%201.785.222%202.752.222%2011.754%200%2021.276-9.522%2021.276-21.275z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23B2B2B2'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2305n__05n__c)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2305n__05n__d)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%23006EDB'%20d='M35.5%2090c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm13%209c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm15-9c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='05n__05n__b'%20x1='12.914'%20x2='40.256'%20y1='43.464'%20y2='10.878'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23686E73'/%3e%3cstop%20offset='.989'%20stop-color='%236A7075'/%3e%3c/linearGradient%3e%3clinearGradient%20id='05n__05n__c'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='05n__05n__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='05n__05n__d'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1391'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", re = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2307d__07d__a)'%3e%3cpath%20fill='url(%2307d__07d__b)'%20fill-rule='evenodd'%20d='M52.315%2018.517l1.757-2.457-11.356%201.224L43.872%205.86l-9.248%206.732L30%202.12l-4.624%2010.472L16.06%205.86l1.224%2011.356L5.86%2016.06l6.732%209.248L2.12%2030l10.472%204.624L5.86%2043.94l.57-.061c.369-.441.759-.868%201.17-1.279%203.5-3.6%208.1-5.7%2013.1-6%202.7-3.9%207.2-6.2%2012.1-6.2h1.1c4.363-6.14%2011.011-10.453%2018.415-11.883z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23FFD348'%20fill-rule='evenodd'%20d='M14.867%2037.83A20.01%2020.01%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.679%2029.679%200%200110.672-9.21c-4.775-7.863-15.023-10.525-23.082-5.956-7.87%204.565-10.725%2014.6-6.623%2022.597z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2307d__07d__c)'%20fill-rule='evenodd'%20d='M17.565%2037.034c1.022-.224%202.07-.37%203.135-.434%202.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.635%2029.635%200%20018.287-7.849c-4.026-6.562-12.633-8.81-19.328-4.927-6.765%203.923-9.155%2012.626-5.294%2019.41z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23B2B2B2'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2307d__07d__d)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2307d__07d__e)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M40.7%2083.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3cpath%20fill='%23006EDB'%20d='M49.5%20100c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm15-8c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='07d__07d__c'%20x1='20.817'%20x2='39.177'%20y1='19.057'%20y2='40.937'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23FFAF22'/%3e%3cstop%20offset='.99'%20stop-color='%23F09900'/%3e%3c/linearGradient%3e%3clinearGradient%20id='07d__07d__d'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cradialGradient%20id='07d__07d__b'%20cx='0'%20cy='0'%20r='1'%20gradientTransform='translate(30%2030)%20scale(27.88)'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.514'%20stop-color='%23D6B849'/%3e%3cstop%20offset='.652'%20stop-color='%23FFCE47'/%3e%3cstop%20offset='1'%20stop-color='%23FFDB73'/%3e%3c/radialGradient%3e%3cclipPath%20id='07d__07d__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='07d__07d__e'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1395'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", ce = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2307n__07n__a)'%3e%3cpath%20fill='url(%2307n__07n__b)'%20fill-rule='evenodd'%20d='M28.443%2013.565c0-3.869-1.116-7.514-2.902-10.638%209.666%201.234%2017.247%208.91%2018.378%2018.607A29.67%2029.67%200%200033.9%2030.4h-1.1c-4.9%200-9.4%202.3-12.1%206.2-4.058.244-7.853%201.673-11.01%204.128a21.852%2021.852%200%2001-5.275-6.11c.892.148%201.785.222%202.752.222%2011.754%200%2021.276-9.522%2021.276-21.275z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23B2B2B2'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2307n__07n__c)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2307n__07n__d)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M40.7%2083.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3cpath%20fill='%23006EDB'%20d='M49.5%20100c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm15-8c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='07n__07n__b'%20x1='12.914'%20x2='40.256'%20y1='43.464'%20y2='10.878'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23686E73'/%3e%3cstop%20offset='.989'%20stop-color='%236A7075'/%3e%3c/linearGradient%3e%3clinearGradient%20id='07n__07n__c'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='07n__07n__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='07n__07n__d'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1397'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", de = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2308d__08d__a)'%3e%3cpath%20fill='url(%2308d__08d__b)'%20fill-rule='evenodd'%20d='M52.315%2018.517l1.757-2.457-11.356%201.224L43.872%205.86l-9.248%206.732L30%202.12l-4.624%2010.472L16.06%205.86l1.224%2011.356L5.86%2016.06l6.732%209.248L2.12%2030l10.472%204.624L5.86%2043.94l.57-.061c.369-.441.759-.868%201.17-1.279%203.5-3.6%208.1-5.7%2013.1-6%202.7-3.9%207.2-6.2%2012.1-6.2h1.1c4.363-6.14%2011.011-10.453%2018.415-11.883z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23FFD348'%20fill-rule='evenodd'%20d='M14.867%2037.83A20.01%2020.01%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.679%2029.679%200%200110.672-9.21c-4.775-7.863-15.023-10.525-23.082-5.956-7.87%204.565-10.725%2014.6-6.623%2022.597z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2308d__08d__c)'%20fill-rule='evenodd'%20d='M17.565%2037.034c1.022-.224%202.07-.37%203.135-.434%202.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.635%2029.635%200%20018.287-7.849c-4.026-6.562-12.633-8.81-19.328-4.927-6.765%203.923-9.155%2012.626-5.294%2019.41z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23B2B2B2'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2308d__08d__d)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2308d__08d__e)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M41.7%2083.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm28%200h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm-14%209h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='08d__08d__c'%20x1='20.817'%20x2='39.177'%20y1='19.057'%20y2='40.937'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23FFAF22'/%3e%3cstop%20offset='.99'%20stop-color='%23F09900'/%3e%3c/linearGradient%3e%3clinearGradient%20id='08d__08d__d'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cradialGradient%20id='08d__08d__b'%20cx='0'%20cy='0'%20r='1'%20gradientTransform='translate(30%2030)%20scale(27.88)'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.514'%20stop-color='%23D6B849'/%3e%3cstop%20offset='.652'%20stop-color='%23FFCE47'/%3e%3cstop%20offset='1'%20stop-color='%23FFDB73'/%3e%3c/radialGradient%3e%3cclipPath%20id='08d__08d__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='08d__08d__e'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1398'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", pe = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2308n__08n__a)'%3e%3cpath%20fill='url(%2308n__08n__b)'%20fill-rule='evenodd'%20d='M28.443%2013.565c0-3.869-1.116-7.514-2.902-10.638%209.666%201.234%2017.247%208.91%2018.378%2018.607A29.67%2029.67%200%200033.9%2030.4h-1.1c-4.9%200-9.4%202.3-12.1%206.2-4.058.244-7.853%201.673-11.01%204.128a21.852%2021.852%200%2001-5.275-6.11c.892.148%201.785.222%202.752.222%2011.754%200%2021.276-9.522%2021.276-21.275z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23B2B2B2'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2308n__08n__c)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2308n__08n__d)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M41.7%2083.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm28%200h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm-14%209h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='08n__08n__b'%20x1='12.914'%20x2='40.256'%20y1='43.464'%20y2='10.878'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23686E73'/%3e%3cstop%20offset='.989'%20stop-color='%236A7075'/%3e%3c/linearGradient%3e%3clinearGradient%20id='08n__08n__c'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='08n__08n__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='08n__08n__d'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1400'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", he = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2309__09__a)'%3e%3cpath%20fill='%23B2B2B2'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2309__09__b)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2309__09__c)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%23006EDB'%20d='M35.5%2090c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm13%209c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm15-9c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='09__09__b'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='09__09__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='09__09__c'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1401'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", ue = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2310__10__a)'%3e%3cpath%20fill='%23999'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2310__10__b)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2310__10__c)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%23006EDB'%20d='M21.5%2090c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm14%209c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm42%200c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm-14-9c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm-13%200c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='10__10__b'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='10__10__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='10__10__c'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1402'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", fe = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2312__12__a)'%3e%3cpath%20fill='%23B2B2B2'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2312__12__b)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2312__12__c)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M40.7%2083.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3cpath%20fill='%23006EDB'%20d='M49.5%20100c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm15-8c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='12__12__b'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='12__12__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='12__12__c'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1404'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", me = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2313__13__a)'%3e%3cpath%20fill='%23B2B2B2'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2313__13__b)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2313__13__c)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M41.7%2083.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm28%200h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm-14%209h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='13__13__b'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='13__13__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='13__13__c'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1405'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", ge = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2340d__40d__a)'%3e%3cpath%20fill='url(%2340d__40d__b)'%20fill-rule='evenodd'%20d='M52.315%2018.517l1.757-2.457-11.356%201.224L43.872%205.86l-9.248%206.732L30%202.12l-4.624%2010.472L16.06%205.86l1.224%2011.356L5.86%2016.06l6.732%209.248L2.12%2030l10.472%204.624L5.86%2043.94l.57-.061A19.46%2019.46%200%20017.6%2042.6c3.5-3.6%208.1-5.7%2013.1-6%202.7-3.9%207.2-6.2%2012.1-6.2h1.1c4.363-6.14%2011.011-10.453%2018.415-11.883z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23FFD348'%20fill-rule='evenodd'%20d='M14.867%2037.83A20.01%2020.01%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.679%2029.679%200%200110.672-9.21c-4.775-7.863-15.023-10.525-23.082-5.956-7.87%204.565-10.725%2014.6-6.623%2022.597z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2340d__40d__c)'%20fill-rule='evenodd'%20d='M17.565%2037.034A20.22%2020.22%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.632%2029.632%200%20018.287-7.85c-4.026-6.561-12.633-8.81-19.328-4.927-6.765%203.924-9.155%2012.627-5.294%2019.41z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23CCC'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2340d__40d__d)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2340d__40d__e)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%23006EDB'%20d='M35.5%2099c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm24-9c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='40d__40d__c'%20x1='20.817'%20x2='39.177'%20y1='19.057'%20y2='40.937'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23FFAF22'/%3e%3cstop%20offset='.99'%20stop-color='%23F09900'/%3e%3c/linearGradient%3e%3clinearGradient%20id='40d__40d__d'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cradialGradient%20id='40d__40d__b'%20cx='0'%20cy='0'%20r='1'%20gradientTransform='translate(30%2030)%20scale(27.88)'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.514'%20stop-color='%23D6B849'/%3e%3cstop%20offset='.652'%20stop-color='%23FFCE47'/%3e%3cstop%20offset='1'%20stop-color='%23FFDB73'/%3e%3c/radialGradient%3e%3cclipPath%20id='40d__40d__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='40d__40d__e'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1439'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", xe = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2340n__40n__a)'%3e%3cpath%20fill='url(%2340n__40n__b)'%20fill-rule='evenodd'%20d='M28.443%2013.565c0-3.869-1.116-7.514-2.902-10.638%209.666%201.234%2017.247%208.91%2018.378%2018.607A29.67%2029.67%200%200033.9%2030.4h-1.1c-4.9%200-9.4%202.3-12.1%206.2-4.058.243-7.853%201.673-11.01%204.128a21.853%2021.853%200%2001-5.275-6.111c.892.149%201.785.223%202.752.223%2011.754%200%2021.276-9.522%2021.276-21.275z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23CCC'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2340n__40n__c)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2340n__40n__d)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%23006EDB'%20d='M35.5%2099c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm24-9c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='40n__40n__b'%20x1='12.914'%20x2='40.256'%20y1='43.464'%20y2='10.878'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23686E73'/%3e%3cstop%20offset='.989'%20stop-color='%236A7075'/%3e%3c/linearGradient%3e%3clinearGradient%20id='40n__40n__c'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='40n__40n__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='40n__40n__d'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1441'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", ve = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2341d__41d__a)'%3e%3cpath%20fill='url(%2341d__41d__b)'%20fill-rule='evenodd'%20d='M52.315%2018.517l1.757-2.457-11.356%201.224L43.872%205.86l-9.248%206.732L30%202.12l-4.624%2010.472L16.06%205.86l1.224%2011.356L5.86%2016.06l6.732%209.248L2.12%2030l10.472%204.624L5.86%2043.94l.57-.061A19.46%2019.46%200%20017.6%2042.6c3.5-3.6%208.1-5.7%2013.1-6%202.7-3.9%207.2-6.2%2012.1-6.2h1.1c4.363-6.14%2011.011-10.453%2018.415-11.883z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23FFD348'%20fill-rule='evenodd'%20d='M14.867%2037.83A20.01%2020.01%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.679%2029.679%200%200110.672-9.21c-4.775-7.863-15.023-10.525-23.082-5.956-7.87%204.565-10.725%2014.6-6.623%2022.597z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2341d__41d__c)'%20fill-rule='evenodd'%20d='M17.565%2037.034A20.22%2020.22%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.632%2029.632%200%20018.287-7.85c-4.026-6.561-12.633-8.81-19.328-4.927-6.765%203.924-9.155%2012.627-5.294%2019.41z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23999'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2341d__41d__d)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2341d__41d__e)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%23006EDB'%20d='M21.5%2090c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm14%209c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm42%200c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm-14-9c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm-13%200c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='41d__41d__c'%20x1='20.817'%20x2='39.177'%20y1='19.057'%20y2='40.937'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23FFAF22'/%3e%3cstop%20offset='.99'%20stop-color='%23F09900'/%3e%3c/linearGradient%3e%3clinearGradient%20id='41d__41d__d'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cradialGradient%20id='41d__41d__b'%20cx='0'%20cy='0'%20r='1'%20gradientTransform='translate(30%2030)%20scale(27.88)'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.514'%20stop-color='%23D6B849'/%3e%3cstop%20offset='.652'%20stop-color='%23FFCE47'/%3e%3cstop%20offset='1'%20stop-color='%23FFDB73'/%3e%3c/radialGradient%3e%3cclipPath%20id='41d__41d__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='41d__41d__e'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1442'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", be = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2341n__41n__a)'%3e%3cpath%20fill='url(%2341n__41n__b)'%20fill-rule='evenodd'%20d='M28.443%2013.565c0-3.869-1.116-7.514-2.902-10.638%209.666%201.234%2017.247%208.91%2018.378%2018.607A29.67%2029.67%200%200033.9%2030.4h-1.1c-4.9%200-9.4%202.3-12.1%206.2-4.058.243-7.853%201.673-11.01%204.128a21.853%2021.853%200%2001-5.275-6.111c.892.149%201.785.223%202.752.223%2011.754%200%2021.276-9.522%2021.276-21.275z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23999'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2341n__41n__c)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2341n__41n__d)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%23006EDB'%20d='M21.5%2090c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm14%209c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm42%200c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm-14-9c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm-13%200c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='41n__41n__b'%20x1='12.914'%20x2='40.256'%20y1='43.464'%20y2='10.878'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23686E73'/%3e%3cstop%20offset='.989'%20stop-color='%236A7075'/%3e%3c/linearGradient%3e%3clinearGradient%20id='41n__41n__c'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='41n__41n__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='41n__41n__d'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1444'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", _e = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2342d__42d__a)'%3e%3cpath%20fill='url(%2342d__42d__b)'%20fill-rule='evenodd'%20d='M52.315%2018.517l1.757-2.457-11.356%201.224L43.872%205.86l-9.248%206.732L30%202.12l-4.624%2010.472L16.06%205.86l1.224%2011.356L5.86%2016.06l6.732%209.248L2.12%2030l10.472%204.624L5.86%2043.94l.57-.061A19.46%2019.46%200%20017.6%2042.6c3.5-3.6%208.1-5.7%2013.1-6%202.7-3.9%207.2-6.2%2012.1-6.2h1.1c4.363-6.14%2011.011-10.453%2018.415-11.883z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23FFD348'%20fill-rule='evenodd'%20d='M14.867%2037.83A20.01%2020.01%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.679%2029.679%200%200110.672-9.21c-4.775-7.863-15.023-10.525-23.082-5.956-7.87%204.565-10.725%2014.6-6.623%2022.597z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2342d__42d__c)'%20fill-rule='evenodd'%20d='M17.565%2037.034A20.22%2020.22%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.632%2029.632%200%20018.287-7.85c-4.026-6.561-12.633-8.81-19.328-4.927-6.765%203.924-9.155%2012.627-5.294%2019.41z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23CCC'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2342d__42d__d)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2342d__42d__e)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M40.7%2090.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3cpath%20fill='%23006EDB'%20d='M63.5%2091c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='42d__42d__c'%20x1='20.817'%20x2='39.177'%20y1='19.057'%20y2='40.937'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23FFAF22'/%3e%3cstop%20offset='.99'%20stop-color='%23F09900'/%3e%3c/linearGradient%3e%3clinearGradient%20id='42d__42d__d'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cradialGradient%20id='42d__42d__b'%20cx='0'%20cy='0'%20r='1'%20gradientTransform='translate(30%2030)%20scale(27.88)'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.514'%20stop-color='%23D6B849'/%3e%3cstop%20offset='.652'%20stop-color='%23FFCE47'/%3e%3cstop%20offset='1'%20stop-color='%23FFDB73'/%3e%3c/radialGradient%3e%3cclipPath%20id='42d__42d__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='42d__42d__e'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1445'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", ye = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2342n__42n__a)'%3e%3cpath%20fill='url(%2342n__42n__b)'%20fill-rule='evenodd'%20d='M28.443%2013.565c0-3.869-1.116-7.514-2.902-10.638%209.666%201.234%2017.247%208.91%2018.378%2018.607A29.67%2029.67%200%200033.9%2030.4h-1.1c-4.9%200-9.4%202.3-12.1%206.2-4.058.243-7.853%201.673-11.01%204.128a21.853%2021.853%200%2001-5.275-6.111c.892.149%201.785.223%202.752.223%2011.754%200%2021.276-9.522%2021.276-21.275z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23CCC'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2342n__42n__c)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2342n__42n__d)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M40.7%2090.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3cpath%20fill='%23006EDB'%20d='M63.5%2091c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='42n__42n__b'%20x1='12.914'%20x2='40.256'%20y1='43.464'%20y2='10.878'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23686E73'/%3e%3cstop%20offset='.989'%20stop-color='%236A7075'/%3e%3c/linearGradient%3e%3clinearGradient%20id='42n__42n__c'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='42n__42n__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='42n__42n__d'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1447'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", we = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2343d__43d__a)'%3e%3cpath%20fill='url(%2343d__43d__b)'%20fill-rule='evenodd'%20d='M52.315%2018.517l1.757-2.457-11.356%201.224L43.872%205.86l-9.248%206.732L30%202.12l-4.624%2010.472L16.06%205.86l1.224%2011.356L5.86%2016.06l6.732%209.248L2.12%2030l10.472%204.624L5.86%2043.94l.57-.061A19.46%2019.46%200%20017.6%2042.6c3.5-3.6%208.1-5.7%2013.1-6%202.7-3.9%207.2-6.2%2012.1-6.2h1.1c4.363-6.14%2011.011-10.453%2018.415-11.883z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23FFD348'%20fill-rule='evenodd'%20d='M14.867%2037.83A20.01%2020.01%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.679%2029.679%200%200110.672-9.21c-4.775-7.863-15.023-10.525-23.082-5.956-7.87%204.565-10.725%2014.6-6.623%2022.597z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2343d__43d__c)'%20fill-rule='evenodd'%20d='M17.565%2037.034A20.22%2020.22%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.632%2029.632%200%20018.287-7.85c-4.026-6.561-12.633-8.81-19.328-4.927-6.765%203.924-9.155%2012.627-5.294%2019.41z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23999'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2343d__43d__d)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2343d__43d__e)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M26.7%2081.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm43%209h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3cpath%20fill='%23006EDB'%20d='M35.5%2099c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm15-8c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm28%200c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='43d__43d__c'%20x1='20.817'%20x2='39.177'%20y1='19.057'%20y2='40.937'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23FFAF22'/%3e%3cstop%20offset='.99'%20stop-color='%23F09900'/%3e%3c/linearGradient%3e%3clinearGradient%20id='43d__43d__d'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cradialGradient%20id='43d__43d__b'%20cx='0'%20cy='0'%20r='1'%20gradientTransform='translate(30%2030)%20scale(27.88)'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.514'%20stop-color='%23D6B849'/%3e%3cstop%20offset='.652'%20stop-color='%23FFCE47'/%3e%3cstop%20offset='1'%20stop-color='%23FFDB73'/%3e%3c/radialGradient%3e%3cclipPath%20id='43d__43d__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='43d__43d__e'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1448'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", Me = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2343n__43n__a)'%3e%3cpath%20fill='url(%2343n__43n__b)'%20fill-rule='evenodd'%20d='M28.443%2013.565c0-3.869-1.116-7.514-2.902-10.638%209.666%201.234%2017.247%208.91%2018.378%2018.607A29.67%2029.67%200%200033.9%2030.4h-1.1c-4.9%200-9.4%202.3-12.1%206.2-4.058.243-7.853%201.673-11.01%204.128a21.853%2021.853%200%2001-5.275-6.111c.892.149%201.785.223%202.752.223%2011.754%200%2021.276-9.522%2021.276-21.275z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23999'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2343n__43n__c)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2343n__43n__d)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M26.7%2081.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm43%209h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3cpath%20fill='%23006EDB'%20d='M35.5%2099c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm15-8c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm28%200c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='43n__43n__b'%20x1='12.914'%20x2='40.256'%20y1='43.464'%20y2='10.878'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23686E73'/%3e%3cstop%20offset='.989'%20stop-color='%236A7075'/%3e%3c/linearGradient%3e%3clinearGradient%20id='43n__43n__c'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='43n__43n__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='43n__43n__d'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1450'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", $e = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2344d__44d__a)'%3e%3cpath%20fill='url(%2344d__44d__b)'%20fill-rule='evenodd'%20d='M52.315%2018.517l1.757-2.457-11.356%201.224L43.872%205.86l-9.248%206.732L30%202.12l-4.624%2010.472L16.06%205.86l1.224%2011.356L5.86%2016.06l6.732%209.248L2.12%2030l10.472%204.624L5.86%2043.94l.57-.061A19.46%2019.46%200%20017.6%2042.6c3.5-3.6%208.1-5.7%2013.1-6%202.7-3.9%207.2-6.2%2012.1-6.2h1.1c4.363-6.14%2011.011-10.453%2018.415-11.883z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23FFD348'%20fill-rule='evenodd'%20d='M14.867%2037.83A20.01%2020.01%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.679%2029.679%200%200110.672-9.21c-4.775-7.863-15.023-10.525-23.082-5.956-7.87%204.565-10.725%2014.6-6.623%2022.597z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2344d__44d__c)'%20fill-rule='evenodd'%20d='M17.565%2037.034A20.22%2020.22%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.632%2029.632%200%20018.287-7.85c-4.026-6.561-12.633-8.81-19.328-4.927-6.765%203.924-9.155%2012.627-5.294%2019.41z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23CCC'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2344d__44d__d)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2344d__44d__e)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M40.7%2092.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm29-9h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='44d__44d__c'%20x1='20.817'%20x2='39.177'%20y1='19.057'%20y2='40.937'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23FFAF22'/%3e%3cstop%20offset='.99'%20stop-color='%23F09900'/%3e%3c/linearGradient%3e%3clinearGradient%20id='44d__44d__d'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cradialGradient%20id='44d__44d__b'%20cx='0'%20cy='0'%20r='1'%20gradientTransform='translate(30%2030)%20scale(27.88)'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.514'%20stop-color='%23D6B849'/%3e%3cstop%20offset='.652'%20stop-color='%23FFCE47'/%3e%3cstop%20offset='1'%20stop-color='%23FFDB73'/%3e%3c/radialGradient%3e%3cclipPath%20id='44d__44d__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='44d__44d__e'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1451'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", Be = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2344n__44n__a)'%3e%3cpath%20fill='url(%2344n__44n__b)'%20fill-rule='evenodd'%20d='M28.443%2013.565c0-3.869-1.116-7.514-2.902-10.638%209.666%201.234%2017.247%208.91%2018.378%2018.607A29.67%2029.67%200%200033.9%2030.4h-1.1c-4.9%200-9.4%202.3-12.1%206.2-4.058.243-7.853%201.673-11.01%204.128a21.853%2021.853%200%2001-5.275-6.111c.892.149%201.785.223%202.752.223%2011.754%200%2021.276-9.522%2021.276-21.275z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23CCC'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2344n__44n__c)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2344n__44n__d)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M40.7%2092.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm29-9h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='44n__44n__b'%20x1='12.914'%20x2='40.256'%20y1='43.464'%20y2='10.878'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23686E73'/%3e%3cstop%20offset='.989'%20stop-color='%236A7075'/%3e%3c/linearGradient%3e%3clinearGradient%20id='44n__44n__c'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='44n__44n__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='44n__44n__d'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1453'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", ke = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2345d__45d__a)'%3e%3cpath%20fill='url(%2345d__45d__b)'%20fill-rule='evenodd'%20d='M52.315%2018.517l1.757-2.457-11.356%201.224L43.872%205.86l-9.248%206.732L30%202.12l-4.624%2010.472L16.06%205.86l1.224%2011.356L5.86%2016.06l6.732%209.248L2.12%2030l10.472%204.624L5.86%2043.94l.57-.061A19.46%2019.46%200%20017.6%2042.6c3.5-3.6%208.1-5.7%2013.1-6%202.7-3.9%207.2-6.2%2012.1-6.2h1.1c4.363-6.14%2011.011-10.453%2018.415-11.883z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23FFD348'%20fill-rule='evenodd'%20d='M14.867%2037.83A20.01%2020.01%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.679%2029.679%200%200110.672-9.21c-4.775-7.863-15.023-10.525-23.082-5.956-7.87%204.565-10.725%2014.6-6.623%2022.597z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2345d__45d__c)'%20fill-rule='evenodd'%20d='M17.565%2037.034A20.22%2020.22%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.632%2029.632%200%20018.287-7.85c-4.026-6.561-12.633-8.81-19.328-4.927-6.765%203.924-9.155%2012.627-5.294%2019.41z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23999'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2345d__45d__d)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2345d__45d__e)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M54.7%2083.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm28%200h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm-14%209h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm-28%200h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm-14-9h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='45d__45d__c'%20x1='20.817'%20x2='39.177'%20y1='19.057'%20y2='40.937'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23FFAF22'/%3e%3cstop%20offset='.99'%20stop-color='%23F09900'/%3e%3c/linearGradient%3e%3clinearGradient%20id='45d__45d__d'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cradialGradient%20id='45d__45d__b'%20cx='0'%20cy='0'%20r='1'%20gradientTransform='translate(30%2030)%20scale(27.88)'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.514'%20stop-color='%23D6B849'/%3e%3cstop%20offset='.652'%20stop-color='%23FFCE47'/%3e%3cstop%20offset='1'%20stop-color='%23FFDB73'/%3e%3c/radialGradient%3e%3cclipPath%20id='45d__45d__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='45d__45d__e'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1454'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", Se = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2345n__45n__a)'%3e%3cpath%20fill='url(%2345n__45n__b)'%20fill-rule='evenodd'%20d='M28.443%2013.565c0-3.869-1.116-7.514-2.902-10.638%209.666%201.234%2017.247%208.91%2018.378%2018.607A29.67%2029.67%200%200033.9%2030.4h-1.1c-4.9%200-9.4%202.3-12.1%206.2-4.058.243-7.853%201.673-11.01%204.128a21.853%2021.853%200%2001-5.275-6.111c.892.149%201.785.223%202.752.223%2011.754%200%2021.276-9.522%2021.276-21.275z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23999'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2345n__45n__c)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2345n__45n__d)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M54.7%2083.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm28%200h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm-14%209h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm-28%200h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm-14-9h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='45n__45n__b'%20x1='12.914'%20x2='40.256'%20y1='43.464'%20y2='10.878'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23686E73'/%3e%3cstop%20offset='.989'%20stop-color='%236A7075'/%3e%3c/linearGradient%3e%3clinearGradient%20id='45n__45n__c'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='45n__45n__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='45n__45n__d'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1456'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", ze = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2346__46__a)'%3e%3cpath%20fill='%23CCC'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2346__46__b)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2346__46__c)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%23006EDB'%20d='M35.5%2099c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm24-9c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='46__46__b'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='46__46__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='46__46__c'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1457'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", Ce = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2347__47__a)'%3e%3cpath%20fill='%23CCC'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2347__47__b)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2347__47__c)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M40.7%2090.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3cpath%20fill='%23006EDB'%20d='M63.5%2091c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='47__47__b'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='47__47__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='47__47__c'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1458'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", Te = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2348__48__a)'%3e%3cpath%20fill='%23999'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2348__48__b)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2348__48__c)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M26.7%2081.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm43%209h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3cpath%20fill='%23006EDB'%20d='M35.5%2099c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm15-8c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm28%200c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='48__48__b'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='48__48__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='48__48__c'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1459'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", Fe = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2349__49__a)'%3e%3cpath%20fill='%23CCC'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2349__49__b)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2349__49__c)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M40.7%2092.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm29-9h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='49__49__b'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='49__49__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='49__49__c'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1460'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", Ee = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2350__50__a)'%3e%3cpath%20fill='%23999'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2350__50__b)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2350__50__c)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M54.7%2083.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm28%200h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm-14%209h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm-28%200h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm-14-9h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='50__50__b'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='50__50__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='50__50__c'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1461'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", Ae = /* @__PURE__ */ Object.assign({
-  "./assets/symbols/01d.svg": Q0,
-  "./assets/symbols/01n.svg": ee,
-  "./assets/symbols/02d.svg": te,
-  "./assets/symbols/02n.svg": ie,
-  "./assets/symbols/03d.svg": oe,
-  "./assets/symbols/03n.svg": se,
-  "./assets/symbols/04.svg": ne,
-  "./assets/symbols/05d.svg": le,
-  "./assets/symbols/05n.svg": ae,
-  "./assets/symbols/07d.svg": re,
-  "./assets/symbols/07n.svg": ce,
-  "./assets/symbols/08d.svg": de,
-  "./assets/symbols/08n.svg": pe,
-  "./assets/symbols/09.svg": he,
-  "./assets/symbols/10.svg": ue,
-  "./assets/symbols/12.svg": fe,
-  "./assets/symbols/13.svg": me,
-  "./assets/symbols/40d.svg": ge,
-  "./assets/symbols/40n.svg": xe,
-  "./assets/symbols/41d.svg": ve,
-  "./assets/symbols/41n.svg": be,
-  "./assets/symbols/42d.svg": _e,
-  "./assets/symbols/42n.svg": ye,
-  "./assets/symbols/43d.svg": we,
-  "./assets/symbols/43n.svg": Me,
-  "./assets/symbols/44d.svg": $e,
-  "./assets/symbols/44n.svg": Be,
-  "./assets/symbols/45d.svg": ke,
-  "./assets/symbols/45n.svg": Se,
-  "./assets/symbols/46.svg": ze,
-  "./assets/symbols/47.svg": Ce,
-  "./assets/symbols/48.svg": Te,
-  "./assets/symbols/49.svg": Fe,
-  "./assets/symbols/50.svg": Ee
-});
-function e2(e) {
-  return e ? Ae[`./assets/symbols/${e}.svg`] ?? "" : "";
+}, ne = {
+  nextHours: (e) => `Næstu ${e} klst.`,
+  forecastSpan: (e, t) => `${e} ${e === 1 ? "dagur" : "dagar"} · til ${t}`,
+  swipe: "strjúktu til hliðar →",
+  legTemp: "Hiti (°C)",
+  legPrecip: "Úrkoma (mm)",
+  legPmax: "Hámarksúrkoma (mm)",
+  legWind: "Vindur (m/s)",
+  legGust: "Vindhviða (m/s)",
+  laneTemp: "Hiti",
+  lanePrecip: "Úrkoma",
+  laneWind: "Vindur",
+  loading: "Sæki spá…",
+  error: "Ekki tókst að sækja spá",
+  retry: "Reyna aftur",
+  close: "Loka",
+  weekdays: ["sun.", "mán.", "þri.", "mið.", "fim.", "fös.", "lau."],
+  months: [
+    "janúar",
+    "febrúar",
+    "mars",
+    "apríl",
+    "maí",
+    "júní",
+    "júlí",
+    "ágúst",
+    "september",
+    "október",
+    "nóvember",
+    "desember"
+  ],
+  compass: ["N", "NA", "A", "SA", "S", "SV", "V", "NV"],
+  dayLabel: (e, t, i) => `${e} ${t}. ${i}`,
+  dateLabel: (e, t) => `${e}. ${t}`,
+  now: "Veðrið núna",
+  feels: "Líðan",
+  precip: "Úrkoma",
+  wind: "Vindur",
+  table: "Tafla",
+  graph: "Graf",
+  both: "Bæði",
+  today: "Í dag",
+  tomorrow: "Á morgun",
+  timeCol: "Kl.",
+  tempCol: "Hiti",
+  settings: "Stillingar",
+  forecastModel: "Spálíkan",
+  language: "Tungumál",
+  location: "Staðsetning",
+  search: "Leita að stað eða veðurstöð…",
+  analysis: "Greiningartími",
+  lastUpdate: "Síðast uppfært",
+  next48: "Næstu 48 klst.",
+  axTemp: "Hiti (°C)",
+  axWind: "Vindur (m/s)",
+  fullscreen: "Fullskjár",
+  exitFullscreen: "Loka fullskjá",
+  scrubSlider: "Tími spár",
+  minimize: "Minnka",
+  expand: "Stækka",
+  resize: "Breyta stærð",
+  correctedDetail: (e, t) => `Leiðrétt m.v. mælingar á stöðinni ${e}${t ? `: ${t.toLowerCase()}` : ""}`,
+  stationPlace: (e, t) => `${e}: spá fyrir veðurstöð ${t} km frá miðbænum`,
+  noForecastForTime: "Engin spá fyrir þennan tíma",
+  monthsShort: [
+    "jan",
+    "feb",
+    "mar",
+    "apr",
+    "maí",
+    "jún",
+    "júl",
+    "ágú",
+    "sep",
+    "okt",
+    "nóv",
+    "des"
+  ],
+  metaLine: (e, t) => `Greiningartími: ${e} · Síðast uppfært: ${t}`,
+  decimal: ","
+}, ae = {
+  nextHours: (e) => `Next ${e} hours`,
+  forecastSpan: (e, t) => `${e} ${e === 1 ? "day" : "days"} · to ${t}`,
+  swipe: "swipe sideways →",
+  legTemp: "Temp (°C)",
+  legPrecip: "Precip (mm)",
+  legPmax: "Max precip (mm)",
+  legWind: "Wind (m/s)",
+  legGust: "Gusts (m/s)",
+  laneTemp: "Temp",
+  lanePrecip: "Precip",
+  laneWind: "Wind",
+  loading: "Loading forecast…",
+  error: "Could not load the forecast",
+  retry: "Retry",
+  close: "Close",
+  weekdays: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+  months: [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December"
+  ],
+  compass: ["N", "NE", "E", "SE", "S", "SW", "W", "NW"],
+  dayLabel: (e, t, i) => `${e} ${t} ${i}`,
+  dateLabel: (e, t) => `${e} ${t}`,
+  now: "The weather now",
+  feels: "Feels like",
+  precip: "Precipitation",
+  wind: "Wind",
+  table: "Table",
+  graph: "Graph",
+  both: "Both",
+  today: "Today",
+  tomorrow: "Tomorrow",
+  timeCol: "Time",
+  tempCol: "Temp",
+  settings: "Settings",
+  forecastModel: "Forecast model",
+  language: "Language",
+  location: "Location",
+  search: "Search for a place or station…",
+  analysis: "Analysis",
+  lastUpdate: "Last update",
+  next48: "Next 48 hours",
+  axTemp: "Temp (°C)",
+  axWind: "Wind (m/s)",
+  fullscreen: "Fullscreen",
+  exitFullscreen: "Exit fullscreen",
+  scrubSlider: "Forecast time",
+  minimize: "Minimize",
+  expand: "Expand",
+  resize: "Resize",
+  correctedDetail: (e, t) => `Corrected against observations at ${e}${t ? `: ${t.toLowerCase()}` : ""}`,
+  stationPlace: (e, t) => `Forecast for the weather station ${t} km from ${e} centre`,
+  noForecastForTime: "No forecast for this time",
+  monthsShort: [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec"
+  ],
+  metaLine: (e, t) => `Analysis: ${e} · Last update: ${t}`,
+  decimal: "."
+}, le = {
+  nextHours: (e) => `Próximas ${e} h`,
+  forecastSpan: (e, t) => `${e} ${e === 1 ? "día" : "días"} · hasta ${t}`,
+  swipe: "desliza de lado →",
+  legTemp: "Temp. (°C)",
+  legPrecip: "Precip. (mm)",
+  legPmax: "Precip. máx. (mm)",
+  legWind: "Viento (m/s)",
+  legGust: "Rachas (m/s)",
+  laneTemp: "Temp.",
+  lanePrecip: "Precip.",
+  laneWind: "Viento",
+  loading: "Cargando pronóstico…",
+  error: "No se pudo cargar el pronóstico",
+  retry: "Reintentar",
+  close: "Cerrar",
+  weekdays: ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"],
+  months: [
+    "enero",
+    "febrero",
+    "marzo",
+    "abril",
+    "mayo",
+    "junio",
+    "julio",
+    "agosto",
+    "septiembre",
+    "octubre",
+    "noviembre",
+    "diciembre"
+  ],
+  compass: ["N", "NE", "E", "SE", "S", "SO", "O", "NO"],
+  dayLabel: (e, t, i) => `${e} ${t} ${i}`,
+  dateLabel: (e, t) => `${e} ${t}`,
+  now: "El tiempo ahora",
+  feels: "Sensación",
+  precip: "Precipitación",
+  wind: "Viento",
+  table: "Tabla",
+  graph: "Gráfico",
+  both: "Ambos",
+  today: "Hoy",
+  tomorrow: "Mañana",
+  timeCol: "Hora",
+  tempCol: "Temp.",
+  settings: "Ajustes",
+  forecastModel: "Modelo de pronóstico",
+  language: "Idioma",
+  location: "Ubicación",
+  search: "Busca un lugar o estación…",
+  analysis: "Análisis",
+  lastUpdate: "Última actualización",
+  next48: "Próximas 48 h",
+  axTemp: "Temp. (°C)",
+  axWind: "Viento (m/s)",
+  fullscreen: "Pantalla completa",
+  exitFullscreen: "Salir de pantalla completa",
+  scrubSlider: "Hora del pronóstico",
+  minimize: "Minimizar",
+  expand: "Ampliar",
+  resize: "Cambiar tamaño",
+  correctedDetail: (e, t) => `Corregida con observaciones en ${e}${t ? `: ${t.toLowerCase()}` : ""}`,
+  stationPlace: (e, t) => `Pronóstico para la estación meteorológica a ${t} km del centro de ${e}`,
+  noForecastForTime: "No hay pronóstico para esta hora",
+  monthsShort: [
+    "ene",
+    "feb",
+    "mar",
+    "abr",
+    "may",
+    "jun",
+    "jul",
+    "ago",
+    "sep",
+    "oct",
+    "nov",
+    "dic"
+  ],
+  metaLine: (e, t) => `Análisis: ${e} · Última actualización: ${t}`,
+  decimal: ","
+}, re = {
+  nextHours: (e) => `Próximas ${e} h`,
+  forecastSpan: (e, t) => `${e} ${e === 1 ? "dia" : "dias"} · até ${t}`,
+  swipe: "deslize para o lado →",
+  legTemp: "Temp. (°C)",
+  legPrecip: "Precip. (mm)",
+  legPmax: "Precip. máx. (mm)",
+  legWind: "Vento (m/s)",
+  legGust: "Rajadas (m/s)",
+  laneTemp: "Temp.",
+  lanePrecip: "Precip.",
+  laneWind: "Vento",
+  loading: "A carregar previsão…",
+  error: "Não foi possível carregar a previsão",
+  retry: "Tentar de novo",
+  close: "Fechar",
+  weekdays: ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"],
+  months: [
+    "janeiro",
+    "fevereiro",
+    "março",
+    "abril",
+    "maio",
+    "junho",
+    "julho",
+    "agosto",
+    "setembro",
+    "outubro",
+    "novembro",
+    "dezembro"
+  ],
+  compass: ["N", "NE", "E", "SE", "S", "SO", "O", "NO"],
+  dayLabel: (e, t, i) => `${e} ${t} ${i}`,
+  dateLabel: (e, t) => `${e} ${t}`,
+  now: "O tempo agora",
+  feels: "Sensação",
+  precip: "Precipitação",
+  wind: "Vento",
+  table: "Tabela",
+  graph: "Gráfico",
+  both: "Ambos",
+  today: "Hoje",
+  tomorrow: "Amanhã",
+  timeCol: "Hora",
+  tempCol: "Temp.",
+  settings: "Definições",
+  forecastModel: "Modelo de previsão",
+  language: "Idioma",
+  location: "Localização",
+  search: "Procurar um local ou estação…",
+  analysis: "Análise",
+  lastUpdate: "Última atualização",
+  next48: "Próximas 48 h",
+  axTemp: "Temp. (°C)",
+  axWind: "Vento (m/s)",
+  fullscreen: "Ecrã inteiro",
+  exitFullscreen: "Sair do ecrã inteiro",
+  scrubSlider: "Hora da previsão",
+  minimize: "Minimizar",
+  expand: "Expandir",
+  resize: "Redimensionar",
+  correctedDetail: (e, t) => `Corrigida com observações em ${e}${t ? `: ${t.toLowerCase()}` : ""}`,
+  stationPlace: (e, t) => `Previsão para a estação meteorológica a ${t} km do centro de ${e}`,
+  noForecastForTime: "Sem previsão para esta hora",
+  monthsShort: [
+    "jan",
+    "fev",
+    "mar",
+    "abr",
+    "mai",
+    "jun",
+    "jul",
+    "ago",
+    "set",
+    "out",
+    "nov",
+    "dez"
+  ],
+  metaLine: (e, t) => `Análise: ${e} · Última atualização: ${t}`,
+  decimal: ","
+}, ce = {
+  nextHours: (e) => `Następne ${e} godz.`,
+  forecastSpan: (e, t) => `${e} ${e === 1 ? "dzień" : "dni"} · do ${t}`,
+  swipe: "przesuń w bok →",
+  legTemp: "Temp. (°C)",
+  legPrecip: "Opad (mm)",
+  legPmax: "Maks. opad (mm)",
+  legWind: "Wiatr (m/s)",
+  legGust: "Porywy (m/s)",
+  laneTemp: "Temp.",
+  lanePrecip: "Opad",
+  laneWind: "Wiatr",
+  loading: "Ładowanie prognozy…",
+  error: "Nie udało się wczytać prognozy",
+  retry: "Ponów",
+  close: "Zamknij",
+  weekdays: ["niedz.", "pon.", "wt.", "śr.", "czw.", "pt.", "sob."],
+  months: [
+    "stycznia",
+    "lutego",
+    "marca",
+    "kwietnia",
+    "maja",
+    "czerwca",
+    "lipca",
+    "sierpnia",
+    "września",
+    "października",
+    "listopada",
+    "grudnia"
+  ],
+  compass: ["N", "NE", "E", "SE", "S", "SW", "W", "NW"],
+  dayLabel: (e, t, i) => `${e} ${t} ${i}`,
+  dateLabel: (e, t) => `${e} ${t}`,
+  now: "Pogoda teraz",
+  feels: "Odczuwalna",
+  precip: "Opady",
+  wind: "Wiatr",
+  table: "Tabela",
+  graph: "Wykres",
+  both: "Oba",
+  today: "Dziś",
+  tomorrow: "Jutro",
+  timeCol: "Godz.",
+  tempCol: "Temp.",
+  settings: "Ustawienia",
+  forecastModel: "Model prognozy",
+  language: "Język",
+  location: "Lokalizacja",
+  search: "Szukaj miejsca lub stacji…",
+  analysis: "Analiza",
+  lastUpdate: "Ostatnia aktualizacja",
+  next48: "Następne 48 godz.",
+  axTemp: "Temp. (°C)",
+  axWind: "Wiatr (m/s)",
+  fullscreen: "Pełny ekran",
+  exitFullscreen: "Zamknij pełny ekran",
+  scrubSlider: "Godzina prognozy",
+  minimize: "Zminimalizuj",
+  expand: "Powiększ",
+  resize: "Zmień rozmiar",
+  correctedDetail: (e, t) => `Skorygowana według pomiarów na stacji ${e}${t ? `: ${t.toLowerCase()}` : ""}`,
+  stationPlace: (e, t) => `${e}: prognoza dla stacji pogodowej ${t} km od centrum`,
+  noForecastForTime: "Brak prognozy na tę godzinę",
+  monthsShort: [
+    "sty",
+    "lut",
+    "mar",
+    "kwi",
+    "maj",
+    "cze",
+    "lip",
+    "sie",
+    "wrz",
+    "paź",
+    "lis",
+    "gru"
+  ],
+  metaLine: (e, t) => `Analiza: ${e} · Ostatnia aktualizacja: ${t}`,
+  decimal: ","
+}, de = {
+  nextHours: (e) => `Næstu ${e} tímar`,
+  forecastSpan: (e, t) => `${e} ${e === 1 ? "dagur" : "dagar"} · til ${t}`,
+  swipe: "strúka til viðrar →",
+  legTemp: "Hiti (°C)",
+  legPrecip: "Avfall (mm)",
+  legPmax: "Mest avfall (mm)",
+  legWind: "Vindur (m/s)",
+  legGust: "Vindhviða (m/s)",
+  laneTemp: "Hiti",
+  lanePrecip: "Avfall",
+  laneWind: "Vindur",
+  loading: "Innlesur spá…",
+  error: "Kundi ikki innlesa spáðuna",
+  retry: "Royn aftur",
+  close: "Lat aftur",
+  weekdays: ["sun.", "mán.", "týs.", "mik.", "hós.", "frí.", "ley."],
+  months: [
+    "januar",
+    "februar",
+    "mars",
+    "apríl",
+    "mai",
+    "juni",
+    "juli",
+    "august",
+    "september",
+    "oktober",
+    "november",
+    "desember"
+  ],
+  compass: ["N", "NE", "E", "SE", "S", "SV", "V", "NV"],
+  dayLabel: (e, t, i) => `${e} ${t}. ${i}`,
+  dateLabel: (e, t) => `${e}. ${t}`,
+  now: "Veðrið nú",
+  feels: "Kennist sum",
+  precip: "Avfall",
+  wind: "Vindur",
+  table: "Talva",
+  graph: "Grafur",
+  both: "Bæði",
+  today: "Í dag",
+  tomorrow: "Í morgin",
+  timeCol: "Kl.",
+  tempCol: "Hiti",
+  settings: "Stillingar",
+  forecastModel: "Spálíkan",
+  language: "Mál",
+  location: "Staður",
+  search: "Leita eftir stað ella veðurstöð…",
+  analysis: "Greiningartíð",
+  lastUpdate: "Seinast dagført",
+  next48: "Næstu 48 tímar",
+  axTemp: "Hiti (°C)",
+  axWind: "Vindur (m/s)",
+  fullscreen: "Fullur skermur",
+  exitFullscreen: "Lat fullan skerm aftur",
+  scrubSlider: "Spátíð",
+  minimize: "Minka",
+  expand: "Stækka",
+  resize: "Broyt stødd",
+  correctedDetail: (e, t) => `Rættað eftir mátingum á støðini ${e}${t ? `: ${t.toLowerCase()}` : ""}`,
+  stationPlace: (e, t) => `${e}: veðurforsøgn fyri veðurstøðina ${t} km frá miðbýnum`,
+  noForecastForTime: "Eingin spá fyri hesa tíðina",
+  monthsShort: [
+    "jan",
+    "feb",
+    "mar",
+    "apr",
+    "mai",
+    "jun",
+    "jul",
+    "aug",
+    "sep",
+    "okt",
+    "nov",
+    "des"
+  ],
+  metaLine: (e, t) => `Greiningartíð: ${e} · Seinast dagført: ${t}`,
+  decimal: ","
+}, j2 = { is: ne, en: ae, fo: de, pl: ce, es: le, pt: re }, pe = [
+  { code: "is", name: "Íslenska" },
+  { code: "en", name: "English" },
+  { code: "fo", name: "Føroyskt" },
+  { code: "pl", name: "Polski" },
+  { code: "es", name: "Español" },
+  { code: "pt", name: "Português" }
+];
+function W(e, t, i) {
+  const n = e.toFixed(t);
+  return i.decimal === "." ? n : n.replace(".", i.decimal);
 }
-const E2 = {
+function p0(e) {
+  return j2[e] ?? j2.is;
+}
+const he = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2301d__01d__a)'%3e%3cpath%20fill='url(%2301d__01d__b)'%20d='M75.6%2056.9L91%2050l-15.4-6.8%209.8-13.7-16.7%201.8%201.7-16.8-13.6%209.9L50%209l-6.8%2015.4-13.7-9.9%201.8%2016.7-16.8-1.7%209.9%2013.6L9%2050l15.4%206.8-9.9%2013.7%2016.7-1.8-1.7%2016.8%2013.6-9.9L50%2091l6.8-15.4%2013.7%209.8-1.8-16.7%2016.8%201.7-9.9-13.5z'/%3e%3cpath%20fill='%23FFD348'%20d='M28.284%2062.509c6.901%2011.908%2022.205%2016.01%2034.208%209.206C74.496%2064.91%2078.497%2049.5%2071.695%2037.491c-6.902-11.908-22.206-16.01-34.21-9.206-11.901%206.905-16.002%2022.315-9.2%2034.224z'/%3e%3cpath%20fill='url(%2301d__01d__c)'%20d='M31.8%2060.493c5.798%209.998%2018.695%2013.497%2028.693%207.699%209.998-5.799%2013.497-18.696%207.699-28.694C62.393%2029.5%2049.496%2026%2039.498%2031.799%2029.5%2037.6%2026%2050.496%2031.799%2060.493z'/%3e%3c/g%3e%3cdefs%3e%3cradialGradient%20id='01d__01d__b'%20cx='0'%20cy='0'%20r='1'%20gradientTransform='matrix(41%200%200%2041%2050%2050)'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.514'%20stop-color='%23D6B849'/%3e%3cstop%20offset='.652'%20stop-color='%23FFCE47'/%3e%3cstop%20offset='1'%20stop-color='%23FFDB73'/%3e%3c/radialGradient%3e%3clinearGradient%20id='01d__01d__c'%20x1='36.496'%20x2='63.495'%20y1='33.908'%20y2='66.084'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23FFAF22'/%3e%3cstop%20offset='.99'%20stop-color='%23F09900'/%3e%3c/linearGradient%3e%3cclipPath%20id='01d__01d__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3c/defs%3e%3c/svg%3e", ue = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cpath%20fill='url(%2301n__01n__a)'%20d='M51.4%2021c2.4%204.2%203.9%209.1%203.9%2014.3%200%2015.8-12.8%2028.6-28.6%2028.6-1.3%200-2.5-.1-3.7-.3C28%2072.2%2037.2%2078%2047.7%2078c15.8%200%2028.6-12.8%2028.6-28.6%200-14.6-10.8-26.6-24.9-28.4z'/%3e%3cdefs%3e%3clinearGradient%20id='01n__01n__a'%20x1='34.425'%20x2='71.181'%20y1='75.492'%20y2='31.689'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23686E73'/%3e%3cstop%20offset='.989'%20stop-color='%236A7075'/%3e%3c/linearGradient%3e%3c/defs%3e%3c/svg%3e", fe = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2302d__02d__a)'%3e%3cpath%20fill='url(%2302d__02d__b)'%20fill-rule='evenodd'%20d='M79.698%2037.47L85.4%2029.5l-16.7%201.8%201.7-16.8-13.6%209.9L50%209l-6.8%2015.4-13.7-9.9%201.8%2016.7-16.8-1.7%209.9%2013.6L9%2050l15.4%206.8-9.9%2013.7%2016.7-1.8-1.7%2016.8%2013.6-9.9L50%2091l6.8-15.4%2013.7%209.8-1.35-12.524H53.466c-3.222%200-6.258-1.177-8.55-3.408-2.417-2.292-3.718-5.39-3.78-8.737v-.123c0-3.16%201.24-6.135%203.47-8.365a12.25%2012.25%200%20018.117-3.718c1.673-2.417%204.461-3.842%207.497-3.842h.682C64.248%2039.974%2069.762%2037%2075.649%2037c1.384%200%202.741.163%204.05.47z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23FFD348'%20fill-rule='evenodd'%20d='M60.178%2072.876c-11.59%205.094-25.43.788-31.894-10.367-6.802-11.909-2.701-27.32%209.202-34.224%2011.991-6.798%2027.276-2.71%2034.188%209.17a18.36%2018.36%200%2000-10.772%207.228h-.682c-3.036%200-5.824%201.425-7.497%203.842a12.25%2012.25%200%2000-8.117%203.718%2011.765%2011.765%200%2000-3.47%208.365v.123c.062%203.346%201.363%206.445%203.78%208.737%202.292%202.23%205.328%203.408%208.55%203.408h6.712z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2302d__02d__c)'%20fill-rule='evenodd'%20d='M46.356%2070.665C40.454%2069.61%2035.027%2066.058%2031.8%2060.493c-5.798-9.998-2.3-22.895%207.699-28.694%209.774-5.669%2022.32-2.45%2028.294%207.038a18.394%2018.394%200%2000-6.89%205.846h-.682c-3.036%200-5.824%201.425-7.497%203.842a12.25%2012.25%200%2000-8.117%203.718%2011.766%2011.766%200%2000-3.47%208.365v.123c.062%203.346%201.363%206.445%203.78%208.737.452.44.934.84%201.44%201.197z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23DDD'%20fill-rule='evenodd'%20d='M90.272%2052.428c-1.177-7.001-7.374-12.33-14.623-12.33-5.639%200-10.72%203.16-13.198%208.117a5.715%205.715%200%2000-2.23-.434c-2.603%200-4.834%201.55-5.701%203.842-.372-.062-.682-.062-1.054-.062-2.54%200-4.895.992-6.63%202.788-1.672%201.735-2.602%203.966-2.602%206.32v.124c.062%202.54%201.053%204.833%202.85%206.506%201.673%201.673%203.966%202.603%206.382%202.603H87.98c4.895%200%208.923-3.966%208.923-8.86%200-4.09-2.788-7.622-6.63-8.614z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2302d__02d__d)'%20fill-rule='evenodd'%20d='M90.272%2052.428c-1.177-7.001-7.374-12.33-14.623-12.33-5.639%200-10.72%203.16-13.198%208.117a5.715%205.715%200%2000-2.23-.434c-2.603%200-4.834%201.55-5.701%203.842-.372-.062-.682-.062-1.054-.062-2.54%200-4.895.992-6.63%202.788-1.672%201.735-2.602%203.966-2.602%206.32v.124c.062%202.54%201.053%204.833%202.85%206.506%201.673%201.673%203.966%202.603%206.382%202.603H87.98c4.895%200%208.923-3.966%208.923-8.86%200-4.09-2.788-7.622-6.63-8.614z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2302d__02d__e)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M58.176%2065.503c1.107%200%2015.396-.789%2016.407-1.24%201.382-.616-1.481-4.32%200-4.628.669-.139%201.652-.575%201.652-.575s2.698-.992%203.163-.992c.465%200%20.232-1.837.086-2.98l-.086-.819c0-.539-1.606-1.657-1.86-3.017-.175-.947.263-2.221.172-2.459%200%200-.032-.017-.023-.02.01-.002.017.005.023.02.07.033.571.203.571.203%201.207.409%203.116%201.078%204.834%202.256%201.028.704%202.442%202.053%202.442%202.053s1.02.788%201.276%201.045c.62.62%202.478%202.478%203.718%202.478h3.098l1.394.985.31%201.99c0%204.895-4.028%208.86-8.923%208.86H51.36s2.788-3.16%206.816-3.16z'/%3e%3c/g%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='02d__02d__c'%20x1='36.496'%20x2='63.495'%20y1='33.908'%20y2='66.084'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23FFAF22'/%3e%3cstop%20offset='.99'%20stop-color='%23F09900'/%3e%3c/linearGradient%3e%3clinearGradient%20id='02d__02d__d'%20x1='69.329'%20x2='70.568'%20y1='49.702'%20y2='69.902'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cradialGradient%20id='02d__02d__b'%20cx='0'%20cy='0'%20r='1'%20gradientTransform='matrix(41%200%200%2041%2050%2050)'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.514'%20stop-color='%23D6B849'/%3e%3cstop%20offset='.652'%20stop-color='%23FFCE47'/%3e%3cstop%20offset='1'%20stop-color='%23FFDB73'/%3e%3c/radialGradient%3e%3cclipPath%20id='02d__02d__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='02d__02d__e'%20width='52.668'%20height='28.565'%20x='47.022'%20y='44.435'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1382'%20stdDeviation='2.169'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", me = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2302n__02n__a)'%3e%3cpath%20fill='url(%2302n__02n__b)'%20fill-rule='evenodd'%20d='M48.3%2032.3c0-5.2-1.5-10.1-3.9-14.3%2011.477%201.465%2020.767%209.688%2023.827%2020.57a18.396%2018.396%200%2000-7.461%206.113h-.682c-3.036%200-5.824%201.425-7.497%203.842a12.25%2012.25%200%2000-8.117%203.718A11.765%2011.765%200%200041%2060.608v.123c.062%203.346%201.363%206.445%203.78%208.737%201.917%201.866%204.355%202.995%206.986%203.314A28.525%2028.525%200%200140.7%2075C30.2%2075%2021%2069.2%2016%2060.6c1.2.2%202.4.3%203.7.3%2015.8%200%2028.6-12.8%2028.6-28.6z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23DDD'%20fill-rule='evenodd'%20d='M90.272%2052.428c-1.177-7.001-7.374-12.33-14.623-12.33-5.639%200-10.72%203.16-13.198%208.117a5.715%205.715%200%2000-2.23-.434c-2.603%200-4.834%201.55-5.701%203.842-.372-.062-.682-.062-1.053-.062-2.541%200-4.896.992-6.63%202.788-1.674%201.735-2.603%203.966-2.603%206.32v.124c.062%202.54%201.053%204.833%202.85%206.506%201.673%201.673%203.966%202.603%206.383%202.603h34.512c4.895%200%208.923-3.966%208.923-8.86%200-4.09-2.788-7.622-6.63-8.614z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2302n__02n__c)'%20fill-rule='evenodd'%20d='M90.272%2052.428c-1.177-7.001-7.374-12.33-14.623-12.33-5.639%200-10.72%203.16-13.198%208.117a5.715%205.715%200%2000-2.23-.434c-2.603%200-4.834%201.55-5.701%203.842-.372-.062-.682-.062-1.053-.062-2.541%200-4.896.992-6.63%202.788-1.674%201.735-2.603%203.966-2.603%206.32v.124c.062%202.54%201.053%204.833%202.85%206.506%201.673%201.673%203.966%202.603%206.383%202.603h34.512c4.895%200%208.923-3.966%208.923-8.86%200-4.09-2.788-7.622-6.63-8.614z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2302n__02n__d)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M58.176%2065.503c1.107%200%2015.396-.789%2016.407-1.24%201.382-.616-1.481-4.32%200-4.628.669-.139%201.652-.575%201.652-.575s2.698-.992%203.163-.992c.465%200%20.232-1.837.086-2.98l-.086-.819c0-.539-1.606-1.657-1.86-3.017-.175-.947.263-2.221.172-2.459%200%200-.032-.017-.022-.02.008-.002.016.005.022.02.07.033.571.203.571.203%201.207.409%203.116%201.078%204.834%202.256%201.028.704%202.442%202.053%202.442%202.053s1.02.788%201.276%201.045c.62.62%202.478%202.478%203.718%202.478h3.098l1.394.985.31%201.99c0%204.895-4.028%208.86-8.923%208.86H51.36s2.788-3.16%206.816-3.16z'/%3e%3c/g%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='02n__02n__b'%20x1='27.425'%20x2='64.181'%20y1='72.492'%20y2='28.689'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23686E73'/%3e%3cstop%20offset='.989'%20stop-color='%236A7075'/%3e%3c/linearGradient%3e%3clinearGradient%20id='02n__02n__c'%20x1='69.329'%20x2='70.568'%20y1='49.702'%20y2='69.902'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='02n__02n__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='02n__02n__d'%20width='52.668'%20height='28.565'%20x='47.022'%20y='44.435'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1384'%20stdDeviation='2.169'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", ge = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2303d__03d__a)'%3e%3cpath%20fill='url(%2303d__03d__b)'%20fill-rule='evenodd'%20d='M52.315%2018.517l1.757-2.457-11.356%201.224L43.872%205.86l-9.248%206.732L30%202.12l-4.624%2010.472L16.06%205.86l1.224%2011.356L5.86%2016.06l6.732%209.248L2.12%2030l10.472%204.624L5.86%2043.94l.57-.061c.369-.441.759-.868%201.17-1.279%203.5-3.6%208.1-5.7%2013.1-6%202.7-3.9%207.2-6.2%2012.1-6.2h1.1c4.363-6.14%2011.011-10.453%2018.415-11.883z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23FFD348'%20fill-rule='evenodd'%20d='M14.867%2037.83A20.01%2020.01%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.679%2029.679%200%200110.672-9.21c-4.775-7.863-15.023-10.525-23.082-5.956-7.87%204.565-10.725%2014.6-6.623%2022.597z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2303d__03d__c)'%20fill-rule='evenodd'%20d='M17.565%2037.034c1.022-.224%202.07-.37%203.135-.434%202.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.635%2029.635%200%20018.287-7.849c-4.026-6.562-12.633-8.81-19.328-4.927-6.765%203.923-9.155%2012.626-5.294%2019.41z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23DDD'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2303d__03d__d)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2303d__03d__e)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='03d__03d__c'%20x1='20.817'%20x2='39.177'%20y1='19.057'%20y2='40.937'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23FFAF22'/%3e%3cstop%20offset='.99'%20stop-color='%23F09900'/%3e%3c/linearGradient%3e%3clinearGradient%20id='03d__03d__d'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cradialGradient%20id='03d__03d__b'%20cx='0'%20cy='0'%20r='1'%20gradientTransform='translate(30%2030)%20scale(27.88)'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.514'%20stop-color='%23D6B849'/%3e%3cstop%20offset='.652'%20stop-color='%23FFCE47'/%3e%3cstop%20offset='1'%20stop-color='%23FFDB73'/%3e%3c/radialGradient%3e%3cclipPath%20id='03d__03d__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='03d__03d__e'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1385'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", xe = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2303n__03n__a)'%3e%3cpath%20fill='url(%2303n__03n__b)'%20fill-rule='evenodd'%20d='M28.443%2013.565c0-3.869-1.116-7.514-2.902-10.638%209.666%201.234%2017.247%208.91%2018.378%2018.607A29.67%2029.67%200%200033.9%2030.4h-1.1c-4.9%200-9.4%202.3-12.1%206.2-4.058.243-7.853%201.673-11.01%204.128a21.853%2021.853%200%2001-5.275-6.11c.892.148%201.785.222%202.752.222%2011.754%200%2021.276-9.522%2021.276-21.275z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23DDD'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2303n__03n__c)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2303n__03n__d)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='03n__03n__b'%20x1='12.914'%20x2='40.256'%20y1='43.464'%20y2='10.878'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23686E73'/%3e%3cstop%20offset='.989'%20stop-color='%236A7075'/%3e%3c/linearGradient%3e%3clinearGradient%20id='03n__03n__c'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='03n__03n__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='03n__03n__d'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1387'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", ve = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2304__04__a)'%3e%3cpath%20fill='%23DDD'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2304__04__b)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2304__04__c)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='04__04__b'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='04__04__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='04__04__c'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1388'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", be = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2305d__05d__a)'%3e%3cpath%20fill='url(%2305d__05d__b)'%20fill-rule='evenodd'%20d='M52.315%2018.517l1.757-2.457-11.356%201.224L43.872%205.86l-9.248%206.732L30%202.12l-4.624%2010.472L16.06%205.86l1.224%2011.356L5.86%2016.06l6.732%209.248L2.12%2030l10.472%204.624L5.86%2043.94l.57-.061c.369-.441.759-.868%201.17-1.279%203.5-3.6%208.1-5.7%2013.1-6%202.7-3.9%207.2-6.2%2012.1-6.2h1.1c4.363-6.14%2011.011-10.453%2018.415-11.883z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23FFD348'%20fill-rule='evenodd'%20d='M14.867%2037.83A20.01%2020.01%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.679%2029.679%200%200110.672-9.21c-4.775-7.863-15.023-10.525-23.082-5.956-7.87%204.565-10.725%2014.6-6.623%2022.597z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2305d__05d__c)'%20fill-rule='evenodd'%20d='M17.565%2037.034c1.022-.224%202.07-.37%203.135-.434%202.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.635%2029.635%200%20018.287-7.849c-4.026-6.562-12.633-8.81-19.328-4.927-6.765%203.923-9.155%2012.626-5.294%2019.41z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23B2B2B2'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2305d__05d__d)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2305d__05d__e)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%23006EDB'%20d='M35.5%2090c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm13%209c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm15-9c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='05d__05d__c'%20x1='20.817'%20x2='39.177'%20y1='19.057'%20y2='40.937'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23FFAF22'/%3e%3cstop%20offset='.99'%20stop-color='%23F09900'/%3e%3c/linearGradient%3e%3clinearGradient%20id='05d__05d__d'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cradialGradient%20id='05d__05d__b'%20cx='0'%20cy='0'%20r='1'%20gradientTransform='translate(30%2030)%20scale(27.88)'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.514'%20stop-color='%23D6B849'/%3e%3cstop%20offset='.652'%20stop-color='%23FFCE47'/%3e%3cstop%20offset='1'%20stop-color='%23FFDB73'/%3e%3c/radialGradient%3e%3cclipPath%20id='05d__05d__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='05d__05d__e'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1389'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", _e = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2305n__05n__a)'%3e%3cpath%20fill='url(%2305n__05n__b)'%20fill-rule='evenodd'%20d='M28.443%2013.565c0-3.869-1.116-7.514-2.902-10.638%209.666%201.234%2017.247%208.91%2018.378%2018.607A29.67%2029.67%200%200033.9%2030.4h-1.1c-4.9%200-9.4%202.3-12.1%206.2-4.058.243-7.853%201.673-11.01%204.128a21.853%2021.853%200%2001-5.275-6.11c.892.148%201.785.222%202.752.222%2011.754%200%2021.276-9.522%2021.276-21.275z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23B2B2B2'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2305n__05n__c)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2305n__05n__d)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%23006EDB'%20d='M35.5%2090c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm13%209c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm15-9c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='05n__05n__b'%20x1='12.914'%20x2='40.256'%20y1='43.464'%20y2='10.878'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23686E73'/%3e%3cstop%20offset='.989'%20stop-color='%236A7075'/%3e%3c/linearGradient%3e%3clinearGradient%20id='05n__05n__c'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='05n__05n__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='05n__05n__d'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1391'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", ye = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2307d__07d__a)'%3e%3cpath%20fill='url(%2307d__07d__b)'%20fill-rule='evenodd'%20d='M52.315%2018.517l1.757-2.457-11.356%201.224L43.872%205.86l-9.248%206.732L30%202.12l-4.624%2010.472L16.06%205.86l1.224%2011.356L5.86%2016.06l6.732%209.248L2.12%2030l10.472%204.624L5.86%2043.94l.57-.061c.369-.441.759-.868%201.17-1.279%203.5-3.6%208.1-5.7%2013.1-6%202.7-3.9%207.2-6.2%2012.1-6.2h1.1c4.363-6.14%2011.011-10.453%2018.415-11.883z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23FFD348'%20fill-rule='evenodd'%20d='M14.867%2037.83A20.01%2020.01%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.679%2029.679%200%200110.672-9.21c-4.775-7.863-15.023-10.525-23.082-5.956-7.87%204.565-10.725%2014.6-6.623%2022.597z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2307d__07d__c)'%20fill-rule='evenodd'%20d='M17.565%2037.034c1.022-.224%202.07-.37%203.135-.434%202.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.635%2029.635%200%20018.287-7.849c-4.026-6.562-12.633-8.81-19.328-4.927-6.765%203.923-9.155%2012.626-5.294%2019.41z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23B2B2B2'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2307d__07d__d)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2307d__07d__e)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M40.7%2083.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3cpath%20fill='%23006EDB'%20d='M49.5%20100c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm15-8c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='07d__07d__c'%20x1='20.817'%20x2='39.177'%20y1='19.057'%20y2='40.937'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23FFAF22'/%3e%3cstop%20offset='.99'%20stop-color='%23F09900'/%3e%3c/linearGradient%3e%3clinearGradient%20id='07d__07d__d'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cradialGradient%20id='07d__07d__b'%20cx='0'%20cy='0'%20r='1'%20gradientTransform='translate(30%2030)%20scale(27.88)'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.514'%20stop-color='%23D6B849'/%3e%3cstop%20offset='.652'%20stop-color='%23FFCE47'/%3e%3cstop%20offset='1'%20stop-color='%23FFDB73'/%3e%3c/radialGradient%3e%3cclipPath%20id='07d__07d__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='07d__07d__e'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1395'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", we = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2307n__07n__a)'%3e%3cpath%20fill='url(%2307n__07n__b)'%20fill-rule='evenodd'%20d='M28.443%2013.565c0-3.869-1.116-7.514-2.902-10.638%209.666%201.234%2017.247%208.91%2018.378%2018.607A29.67%2029.67%200%200033.9%2030.4h-1.1c-4.9%200-9.4%202.3-12.1%206.2-4.058.244-7.853%201.673-11.01%204.128a21.852%2021.852%200%2001-5.275-6.11c.892.148%201.785.222%202.752.222%2011.754%200%2021.276-9.522%2021.276-21.275z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23B2B2B2'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2307n__07n__c)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2307n__07n__d)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M40.7%2083.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3cpath%20fill='%23006EDB'%20d='M49.5%20100c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm15-8c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='07n__07n__b'%20x1='12.914'%20x2='40.256'%20y1='43.464'%20y2='10.878'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23686E73'/%3e%3cstop%20offset='.989'%20stop-color='%236A7075'/%3e%3c/linearGradient%3e%3clinearGradient%20id='07n__07n__c'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='07n__07n__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='07n__07n__d'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1397'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", $e = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2308d__08d__a)'%3e%3cpath%20fill='url(%2308d__08d__b)'%20fill-rule='evenodd'%20d='M52.315%2018.517l1.757-2.457-11.356%201.224L43.872%205.86l-9.248%206.732L30%202.12l-4.624%2010.472L16.06%205.86l1.224%2011.356L5.86%2016.06l6.732%209.248L2.12%2030l10.472%204.624L5.86%2043.94l.57-.061c.369-.441.759-.868%201.17-1.279%203.5-3.6%208.1-5.7%2013.1-6%202.7-3.9%207.2-6.2%2012.1-6.2h1.1c4.363-6.14%2011.011-10.453%2018.415-11.883z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23FFD348'%20fill-rule='evenodd'%20d='M14.867%2037.83A20.01%2020.01%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.679%2029.679%200%200110.672-9.21c-4.775-7.863-15.023-10.525-23.082-5.956-7.87%204.565-10.725%2014.6-6.623%2022.597z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2308d__08d__c)'%20fill-rule='evenodd'%20d='M17.565%2037.034c1.022-.224%202.07-.37%203.135-.434%202.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.635%2029.635%200%20018.287-7.849c-4.026-6.562-12.633-8.81-19.328-4.927-6.765%203.923-9.155%2012.626-5.294%2019.41z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23B2B2B2'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2308d__08d__d)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2308d__08d__e)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M41.7%2083.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm28%200h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm-14%209h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='08d__08d__c'%20x1='20.817'%20x2='39.177'%20y1='19.057'%20y2='40.937'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23FFAF22'/%3e%3cstop%20offset='.99'%20stop-color='%23F09900'/%3e%3c/linearGradient%3e%3clinearGradient%20id='08d__08d__d'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cradialGradient%20id='08d__08d__b'%20cx='0'%20cy='0'%20r='1'%20gradientTransform='translate(30%2030)%20scale(27.88)'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.514'%20stop-color='%23D6B849'/%3e%3cstop%20offset='.652'%20stop-color='%23FFCE47'/%3e%3cstop%20offset='1'%20stop-color='%23FFDB73'/%3e%3c/radialGradient%3e%3cclipPath%20id='08d__08d__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='08d__08d__e'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1398'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", Me = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2308n__08n__a)'%3e%3cpath%20fill='url(%2308n__08n__b)'%20fill-rule='evenodd'%20d='M28.443%2013.565c0-3.869-1.116-7.514-2.902-10.638%209.666%201.234%2017.247%208.91%2018.378%2018.607A29.67%2029.67%200%200033.9%2030.4h-1.1c-4.9%200-9.4%202.3-12.1%206.2-4.058.244-7.853%201.673-11.01%204.128a21.852%2021.852%200%2001-5.275-6.11c.892.148%201.785.222%202.752.222%2011.754%200%2021.276-9.522%2021.276-21.275z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23B2B2B2'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2308n__08n__c)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2308n__08n__d)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M41.7%2083.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm28%200h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm-14%209h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='08n__08n__b'%20x1='12.914'%20x2='40.256'%20y1='43.464'%20y2='10.878'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23686E73'/%3e%3cstop%20offset='.989'%20stop-color='%236A7075'/%3e%3c/linearGradient%3e%3clinearGradient%20id='08n__08n__c'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='08n__08n__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='08n__08n__d'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1400'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", ke = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2309__09__a)'%3e%3cpath%20fill='%23B2B2B2'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2309__09__b)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2309__09__c)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%23006EDB'%20d='M35.5%2090c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm13%209c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm15-9c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='09__09__b'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='09__09__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='09__09__c'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1401'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", Be = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2310__10__a)'%3e%3cpath%20fill='%23999'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2310__10__b)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2310__10__c)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%23006EDB'%20d='M21.5%2090c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm14%209c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm42%200c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm-14-9c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm-13%200c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='10__10__b'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='10__10__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='10__10__c'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1402'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", Se = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2312__12__a)'%3e%3cpath%20fill='%23B2B2B2'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2312__12__b)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2312__12__c)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M40.7%2083.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3cpath%20fill='%23006EDB'%20d='M49.5%20100c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm15-8c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='12__12__b'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='12__12__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='12__12__c'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1404'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", ze = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2313__13__a)'%3e%3cpath%20fill='%23B2B2B2'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2313__13__b)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2313__13__c)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M41.7%2083.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm28%200h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm-14%209h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='13__13__b'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='13__13__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='13__13__c'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1405'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", Ce = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2340d__40d__a)'%3e%3cpath%20fill='url(%2340d__40d__b)'%20fill-rule='evenodd'%20d='M52.315%2018.517l1.757-2.457-11.356%201.224L43.872%205.86l-9.248%206.732L30%202.12l-4.624%2010.472L16.06%205.86l1.224%2011.356L5.86%2016.06l6.732%209.248L2.12%2030l10.472%204.624L5.86%2043.94l.57-.061A19.46%2019.46%200%20017.6%2042.6c3.5-3.6%208.1-5.7%2013.1-6%202.7-3.9%207.2-6.2%2012.1-6.2h1.1c4.363-6.14%2011.011-10.453%2018.415-11.883z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23FFD348'%20fill-rule='evenodd'%20d='M14.867%2037.83A20.01%2020.01%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.679%2029.679%200%200110.672-9.21c-4.775-7.863-15.023-10.525-23.082-5.956-7.87%204.565-10.725%2014.6-6.623%2022.597z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2340d__40d__c)'%20fill-rule='evenodd'%20d='M17.565%2037.034A20.22%2020.22%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.632%2029.632%200%20018.287-7.85c-4.026-6.561-12.633-8.81-19.328-4.927-6.765%203.924-9.155%2012.627-5.294%2019.41z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23CCC'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2340d__40d__d)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2340d__40d__e)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%23006EDB'%20d='M35.5%2099c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm24-9c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='40d__40d__c'%20x1='20.817'%20x2='39.177'%20y1='19.057'%20y2='40.937'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23FFAF22'/%3e%3cstop%20offset='.99'%20stop-color='%23F09900'/%3e%3c/linearGradient%3e%3clinearGradient%20id='40d__40d__d'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cradialGradient%20id='40d__40d__b'%20cx='0'%20cy='0'%20r='1'%20gradientTransform='translate(30%2030)%20scale(27.88)'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.514'%20stop-color='%23D6B849'/%3e%3cstop%20offset='.652'%20stop-color='%23FFCE47'/%3e%3cstop%20offset='1'%20stop-color='%23FFDB73'/%3e%3c/radialGradient%3e%3cclipPath%20id='40d__40d__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='40d__40d__e'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1439'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", Te = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2340n__40n__a)'%3e%3cpath%20fill='url(%2340n__40n__b)'%20fill-rule='evenodd'%20d='M28.443%2013.565c0-3.869-1.116-7.514-2.902-10.638%209.666%201.234%2017.247%208.91%2018.378%2018.607A29.67%2029.67%200%200033.9%2030.4h-1.1c-4.9%200-9.4%202.3-12.1%206.2-4.058.243-7.853%201.673-11.01%204.128a21.853%2021.853%200%2001-5.275-6.111c.892.149%201.785.223%202.752.223%2011.754%200%2021.276-9.522%2021.276-21.275z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23CCC'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2340n__40n__c)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2340n__40n__d)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%23006EDB'%20d='M35.5%2099c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm24-9c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='40n__40n__b'%20x1='12.914'%20x2='40.256'%20y1='43.464'%20y2='10.878'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23686E73'/%3e%3cstop%20offset='.989'%20stop-color='%236A7075'/%3e%3c/linearGradient%3e%3clinearGradient%20id='40n__40n__c'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='40n__40n__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='40n__40n__d'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1441'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", Fe = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2341d__41d__a)'%3e%3cpath%20fill='url(%2341d__41d__b)'%20fill-rule='evenodd'%20d='M52.315%2018.517l1.757-2.457-11.356%201.224L43.872%205.86l-9.248%206.732L30%202.12l-4.624%2010.472L16.06%205.86l1.224%2011.356L5.86%2016.06l6.732%209.248L2.12%2030l10.472%204.624L5.86%2043.94l.57-.061A19.46%2019.46%200%20017.6%2042.6c3.5-3.6%208.1-5.7%2013.1-6%202.7-3.9%207.2-6.2%2012.1-6.2h1.1c4.363-6.14%2011.011-10.453%2018.415-11.883z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23FFD348'%20fill-rule='evenodd'%20d='M14.867%2037.83A20.01%2020.01%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.679%2029.679%200%200110.672-9.21c-4.775-7.863-15.023-10.525-23.082-5.956-7.87%204.565-10.725%2014.6-6.623%2022.597z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2341d__41d__c)'%20fill-rule='evenodd'%20d='M17.565%2037.034A20.22%2020.22%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.632%2029.632%200%20018.287-7.85c-4.026-6.561-12.633-8.81-19.328-4.927-6.765%203.924-9.155%2012.627-5.294%2019.41z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23999'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2341d__41d__d)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2341d__41d__e)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%23006EDB'%20d='M21.5%2090c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm14%209c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm42%200c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm-14-9c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm-13%200c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='41d__41d__c'%20x1='20.817'%20x2='39.177'%20y1='19.057'%20y2='40.937'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23FFAF22'/%3e%3cstop%20offset='.99'%20stop-color='%23F09900'/%3e%3c/linearGradient%3e%3clinearGradient%20id='41d__41d__d'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cradialGradient%20id='41d__41d__b'%20cx='0'%20cy='0'%20r='1'%20gradientTransform='translate(30%2030)%20scale(27.88)'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.514'%20stop-color='%23D6B849'/%3e%3cstop%20offset='.652'%20stop-color='%23FFCE47'/%3e%3cstop%20offset='1'%20stop-color='%23FFDB73'/%3e%3c/radialGradient%3e%3cclipPath%20id='41d__41d__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='41d__41d__e'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1442'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", Ee = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2341n__41n__a)'%3e%3cpath%20fill='url(%2341n__41n__b)'%20fill-rule='evenodd'%20d='M28.443%2013.565c0-3.869-1.116-7.514-2.902-10.638%209.666%201.234%2017.247%208.91%2018.378%2018.607A29.67%2029.67%200%200033.9%2030.4h-1.1c-4.9%200-9.4%202.3-12.1%206.2-4.058.243-7.853%201.673-11.01%204.128a21.853%2021.853%200%2001-5.275-6.111c.892.149%201.785.223%202.752.223%2011.754%200%2021.276-9.522%2021.276-21.275z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23999'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2341n__41n__c)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2341n__41n__d)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%23006EDB'%20d='M21.5%2090c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm14%209c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm42%200c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm-14-9c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm-13%200c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='41n__41n__b'%20x1='12.914'%20x2='40.256'%20y1='43.464'%20y2='10.878'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23686E73'/%3e%3cstop%20offset='.989'%20stop-color='%236A7075'/%3e%3c/linearGradient%3e%3clinearGradient%20id='41n__41n__c'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='41n__41n__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='41n__41n__d'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1444'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", Ae = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2342d__42d__a)'%3e%3cpath%20fill='url(%2342d__42d__b)'%20fill-rule='evenodd'%20d='M52.315%2018.517l1.757-2.457-11.356%201.224L43.872%205.86l-9.248%206.732L30%202.12l-4.624%2010.472L16.06%205.86l1.224%2011.356L5.86%2016.06l6.732%209.248L2.12%2030l10.472%204.624L5.86%2043.94l.57-.061A19.46%2019.46%200%20017.6%2042.6c3.5-3.6%208.1-5.7%2013.1-6%202.7-3.9%207.2-6.2%2012.1-6.2h1.1c4.363-6.14%2011.011-10.453%2018.415-11.883z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23FFD348'%20fill-rule='evenodd'%20d='M14.867%2037.83A20.01%2020.01%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.679%2029.679%200%200110.672-9.21c-4.775-7.863-15.023-10.525-23.082-5.956-7.87%204.565-10.725%2014.6-6.623%2022.597z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2342d__42d__c)'%20fill-rule='evenodd'%20d='M17.565%2037.034A20.22%2020.22%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.632%2029.632%200%20018.287-7.85c-4.026-6.561-12.633-8.81-19.328-4.927-6.765%203.924-9.155%2012.627-5.294%2019.41z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23CCC'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2342d__42d__d)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2342d__42d__e)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M40.7%2090.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3cpath%20fill='%23006EDB'%20d='M63.5%2091c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='42d__42d__c'%20x1='20.817'%20x2='39.177'%20y1='19.057'%20y2='40.937'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23FFAF22'/%3e%3cstop%20offset='.99'%20stop-color='%23F09900'/%3e%3c/linearGradient%3e%3clinearGradient%20id='42d__42d__d'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cradialGradient%20id='42d__42d__b'%20cx='0'%20cy='0'%20r='1'%20gradientTransform='translate(30%2030)%20scale(27.88)'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.514'%20stop-color='%23D6B849'/%3e%3cstop%20offset='.652'%20stop-color='%23FFCE47'/%3e%3cstop%20offset='1'%20stop-color='%23FFDB73'/%3e%3c/radialGradient%3e%3cclipPath%20id='42d__42d__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='42d__42d__e'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1445'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", Pe = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2342n__42n__a)'%3e%3cpath%20fill='url(%2342n__42n__b)'%20fill-rule='evenodd'%20d='M28.443%2013.565c0-3.869-1.116-7.514-2.902-10.638%209.666%201.234%2017.247%208.91%2018.378%2018.607A29.67%2029.67%200%200033.9%2030.4h-1.1c-4.9%200-9.4%202.3-12.1%206.2-4.058.243-7.853%201.673-11.01%204.128a21.853%2021.853%200%2001-5.275-6.111c.892.149%201.785.223%202.752.223%2011.754%200%2021.276-9.522%2021.276-21.275z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23CCC'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2342n__42n__c)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2342n__42n__d)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M40.7%2090.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3cpath%20fill='%23006EDB'%20d='M63.5%2091c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='42n__42n__b'%20x1='12.914'%20x2='40.256'%20y1='43.464'%20y2='10.878'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23686E73'/%3e%3cstop%20offset='.989'%20stop-color='%236A7075'/%3e%3c/linearGradient%3e%3clinearGradient%20id='42n__42n__c'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='42n__42n__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='42n__42n__d'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1447'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", Le = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2343d__43d__a)'%3e%3cpath%20fill='url(%2343d__43d__b)'%20fill-rule='evenodd'%20d='M52.315%2018.517l1.757-2.457-11.356%201.224L43.872%205.86l-9.248%206.732L30%202.12l-4.624%2010.472L16.06%205.86l1.224%2011.356L5.86%2016.06l6.732%209.248L2.12%2030l10.472%204.624L5.86%2043.94l.57-.061A19.46%2019.46%200%20017.6%2042.6c3.5-3.6%208.1-5.7%2013.1-6%202.7-3.9%207.2-6.2%2012.1-6.2h1.1c4.363-6.14%2011.011-10.453%2018.415-11.883z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23FFD348'%20fill-rule='evenodd'%20d='M14.867%2037.83A20.01%2020.01%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.679%2029.679%200%200110.672-9.21c-4.775-7.863-15.023-10.525-23.082-5.956-7.87%204.565-10.725%2014.6-6.623%2022.597z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2343d__43d__c)'%20fill-rule='evenodd'%20d='M17.565%2037.034A20.22%2020.22%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.632%2029.632%200%20018.287-7.85c-4.026-6.561-12.633-8.81-19.328-4.927-6.765%203.924-9.155%2012.627-5.294%2019.41z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23999'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2343d__43d__d)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2343d__43d__e)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M26.7%2081.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm43%209h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3cpath%20fill='%23006EDB'%20d='M35.5%2099c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm15-8c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm28%200c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='43d__43d__c'%20x1='20.817'%20x2='39.177'%20y1='19.057'%20y2='40.937'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23FFAF22'/%3e%3cstop%20offset='.99'%20stop-color='%23F09900'/%3e%3c/linearGradient%3e%3clinearGradient%20id='43d__43d__d'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cradialGradient%20id='43d__43d__b'%20cx='0'%20cy='0'%20r='1'%20gradientTransform='translate(30%2030)%20scale(27.88)'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.514'%20stop-color='%23D6B849'/%3e%3cstop%20offset='.652'%20stop-color='%23FFCE47'/%3e%3cstop%20offset='1'%20stop-color='%23FFDB73'/%3e%3c/radialGradient%3e%3cclipPath%20id='43d__43d__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='43d__43d__e'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1448'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", Ue = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2343n__43n__a)'%3e%3cpath%20fill='url(%2343n__43n__b)'%20fill-rule='evenodd'%20d='M28.443%2013.565c0-3.869-1.116-7.514-2.902-10.638%209.666%201.234%2017.247%208.91%2018.378%2018.607A29.67%2029.67%200%200033.9%2030.4h-1.1c-4.9%200-9.4%202.3-12.1%206.2-4.058.243-7.853%201.673-11.01%204.128a21.853%2021.853%200%2001-5.275-6.111c.892.149%201.785.223%202.752.223%2011.754%200%2021.276-9.522%2021.276-21.275z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23999'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2343n__43n__c)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2343n__43n__d)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M26.7%2081.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm43%209h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3cpath%20fill='%23006EDB'%20d='M35.5%2099c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm15-8c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm28%200c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='43n__43n__b'%20x1='12.914'%20x2='40.256'%20y1='43.464'%20y2='10.878'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23686E73'/%3e%3cstop%20offset='.989'%20stop-color='%236A7075'/%3e%3c/linearGradient%3e%3clinearGradient%20id='43n__43n__c'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='43n__43n__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='43n__43n__d'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1450'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", Ge = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2344d__44d__a)'%3e%3cpath%20fill='url(%2344d__44d__b)'%20fill-rule='evenodd'%20d='M52.315%2018.517l1.757-2.457-11.356%201.224L43.872%205.86l-9.248%206.732L30%202.12l-4.624%2010.472L16.06%205.86l1.224%2011.356L5.86%2016.06l6.732%209.248L2.12%2030l10.472%204.624L5.86%2043.94l.57-.061A19.46%2019.46%200%20017.6%2042.6c3.5-3.6%208.1-5.7%2013.1-6%202.7-3.9%207.2-6.2%2012.1-6.2h1.1c4.363-6.14%2011.011-10.453%2018.415-11.883z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23FFD348'%20fill-rule='evenodd'%20d='M14.867%2037.83A20.01%2020.01%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.679%2029.679%200%200110.672-9.21c-4.775-7.863-15.023-10.525-23.082-5.956-7.87%204.565-10.725%2014.6-6.623%2022.597z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2344d__44d__c)'%20fill-rule='evenodd'%20d='M17.565%2037.034A20.22%2020.22%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.632%2029.632%200%20018.287-7.85c-4.026-6.561-12.633-8.81-19.328-4.927-6.765%203.924-9.155%2012.627-5.294%2019.41z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23CCC'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2344d__44d__d)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2344d__44d__e)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M40.7%2092.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm29-9h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='44d__44d__c'%20x1='20.817'%20x2='39.177'%20y1='19.057'%20y2='40.937'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23FFAF22'/%3e%3cstop%20offset='.99'%20stop-color='%23F09900'/%3e%3c/linearGradient%3e%3clinearGradient%20id='44d__44d__d'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cradialGradient%20id='44d__44d__b'%20cx='0'%20cy='0'%20r='1'%20gradientTransform='translate(30%2030)%20scale(27.88)'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.514'%20stop-color='%23D6B849'/%3e%3cstop%20offset='.652'%20stop-color='%23FFCE47'/%3e%3cstop%20offset='1'%20stop-color='%23FFDB73'/%3e%3c/radialGradient%3e%3cclipPath%20id='44d__44d__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='44d__44d__e'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1451'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", De = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2344n__44n__a)'%3e%3cpath%20fill='url(%2344n__44n__b)'%20fill-rule='evenodd'%20d='M28.443%2013.565c0-3.869-1.116-7.514-2.902-10.638%209.666%201.234%2017.247%208.91%2018.378%2018.607A29.67%2029.67%200%200033.9%2030.4h-1.1c-4.9%200-9.4%202.3-12.1%206.2-4.058.243-7.853%201.673-11.01%204.128a21.853%2021.853%200%2001-5.275-6.111c.892.149%201.785.223%202.752.223%2011.754%200%2021.276-9.522%2021.276-21.275z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23CCC'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2344n__44n__c)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2344n__44n__d)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M40.7%2092.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm29-9h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='44n__44n__b'%20x1='12.914'%20x2='40.256'%20y1='43.464'%20y2='10.878'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23686E73'/%3e%3cstop%20offset='.989'%20stop-color='%236A7075'/%3e%3c/linearGradient%3e%3clinearGradient%20id='44n__44n__c'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='44n__44n__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='44n__44n__d'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1453'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", He = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2345d__45d__a)'%3e%3cpath%20fill='url(%2345d__45d__b)'%20fill-rule='evenodd'%20d='M52.315%2018.517l1.757-2.457-11.356%201.224L43.872%205.86l-9.248%206.732L30%202.12l-4.624%2010.472L16.06%205.86l1.224%2011.356L5.86%2016.06l6.732%209.248L2.12%2030l10.472%204.624L5.86%2043.94l.57-.061A19.46%2019.46%200%20017.6%2042.6c3.5-3.6%208.1-5.7%2013.1-6%202.7-3.9%207.2-6.2%2012.1-6.2h1.1c4.363-6.14%2011.011-10.453%2018.415-11.883z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23FFD348'%20fill-rule='evenodd'%20d='M14.867%2037.83A20.01%2020.01%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.679%2029.679%200%200110.672-9.21c-4.775-7.863-15.023-10.525-23.082-5.956-7.87%204.565-10.725%2014.6-6.623%2022.597z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2345d__45d__c)'%20fill-rule='evenodd'%20d='M17.565%2037.034A20.22%2020.22%200%200120.7%2036.6c2.7-3.9%207.2-6.2%2012.1-6.2h1.1a29.632%2029.632%200%20018.287-7.85c-4.026-6.561-12.633-8.81-19.328-4.927-6.765%203.924-9.155%2012.627-5.294%2019.41z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23999'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2345d__45d__d)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2345d__45d__e)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M54.7%2083.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm28%200h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm-14%209h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm-28%200h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm-14-9h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='45d__45d__c'%20x1='20.817'%20x2='39.177'%20y1='19.057'%20y2='40.937'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23FFAF22'/%3e%3cstop%20offset='.99'%20stop-color='%23F09900'/%3e%3c/linearGradient%3e%3clinearGradient%20id='45d__45d__d'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cradialGradient%20id='45d__45d__b'%20cx='0'%20cy='0'%20r='1'%20gradientTransform='translate(30%2030)%20scale(27.88)'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.514'%20stop-color='%23D6B849'/%3e%3cstop%20offset='.652'%20stop-color='%23FFCE47'/%3e%3cstop%20offset='1'%20stop-color='%23FFDB73'/%3e%3c/radialGradient%3e%3cclipPath%20id='45d__45d__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='45d__45d__e'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1454'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", Oe = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2345n__45n__a)'%3e%3cpath%20fill='url(%2345n__45n__b)'%20fill-rule='evenodd'%20d='M28.443%2013.565c0-3.869-1.116-7.514-2.902-10.638%209.666%201.234%2017.247%208.91%2018.378%2018.607A29.67%2029.67%200%200033.9%2030.4h-1.1c-4.9%200-9.4%202.3-12.1%206.2-4.058.243-7.853%201.673-11.01%204.128a21.853%2021.853%200%2001-5.275-6.111c.892.149%201.785.223%202.752.223%2011.754%200%2021.276-9.522%2021.276-21.275z'%20clip-rule='evenodd'/%3e%3cpath%20fill='%23999'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2345n__45n__c)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2345n__45n__d)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M54.7%2083.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm28%200h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm-14%209h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm-28%200h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm-14-9h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='45n__45n__b'%20x1='12.914'%20x2='40.256'%20y1='43.464'%20y2='10.878'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23686E73'/%3e%3cstop%20offset='.989'%20stop-color='%236A7075'/%3e%3c/linearGradient%3e%3clinearGradient%20id='45n__45n__c'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='45n__45n__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='45n__45n__d'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1456'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", Ie = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2346__46__a)'%3e%3cpath%20fill='%23CCC'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2346__46__b)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2346__46__c)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%23006EDB'%20d='M35.5%2099c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm24-9c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='46__46__b'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='46__46__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='46__46__c'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1457'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", Re = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2347__47__a)'%3e%3cpath%20fill='%23CCC'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2347__47__b)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2347__47__c)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M40.7%2090.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3cpath%20fill='%23006EDB'%20d='M63.5%2091c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='47__47__b'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='47__47__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='47__47__c'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1458'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", We = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2348__48__a)'%3e%3cpath%20fill='%23999'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2348__48__b)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2348__48__c)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M26.7%2081.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm43%209h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3cpath%20fill='%23006EDB'%20d='M35.5%2099c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm15-8c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5zm28%200c-.3%200-.7-.1-1-.2-1.3-.6-1.8-2-1.3-3.3l3.5-8c.6-1.3%202-1.8%203.3-1.3%201.3.6%201.8%202%201.3%203.3l-3.5%208c-.4%201-1.3%201.5-2.3%201.5z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='48__48__b'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='48__48__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='48__48__c'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1459'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", Ne = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2349__49__a)'%3e%3cpath%20fill='%23CCC'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2349__49__b)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2349__49__c)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M40.7%2092.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm29-9h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='49__49__b'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='49__49__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='49__49__c'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1460'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", je = "data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%20fill='none'%20viewBox='0%200%20100%20100'%3e%3cg%20clip-path='url(%2350__50__a)'%3e%3cpath%20fill='%23999'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'/%3e%3cpath%20fill='url(%2350__50__b)'%20fill-rule='evenodd'%20d='M81.3%2042.9C79.4%2031.6%2069.4%2023%2057.7%2023c-9.1%200-17.3%205.1-21.3%2013.1-1.2-.5-2.4-.7-3.6-.7-4.2%200-7.8%202.5-9.2%206.2-.6-.1-1.1-.1-1.7-.1-4.1%200-7.9%201.6-10.7%204.5C8.5%2048.8%207%2052.4%207%2056.2v.2c.1%204.1%201.7%207.8%204.6%2010.5%202.7%202.7%206.4%204.2%2010.3%204.2h55.7c7.9%200%2014.4-6.4%2014.4-14.3%200-6.6-4.5-12.3-10.7-13.9z'%20clip-rule='evenodd'%20opacity='.6'%20style='mix-blend-mode:multiply'/%3e%3cg%20filter='url(%2350__50__c)'%20opacity='.3'%20style='mix-blend-mode:multiply'%3e%3cpath%20fill='%23B6B6B6'%20d='M29.5%2064c1.787%200%2024.848-1.272%2026.48-2%202.23-.994-2.39-6.972%200-7.47%201.08-.224%202.667-.927%202.667-.927s4.352-1.602%205.103-1.602c.75%200%20.374-2.964.14-4.81l-.14-1.32c0-.87-2.592-2.674-3-4.87-.284-1.527.424-3.585.276-3.968%200%200-.05-.029-.036-.032.014-.004.026.007.036.032.112.053.922.327.922.327%201.948.66%205.03%201.74%207.802%203.64%201.658%201.138%203.941%203.314%203.941%203.314s1.645%201.272%202.059%201.687c1%201%204%204%206%204h5L89%2051.59l.5%203.21c0%207.9-6.5%2014.3-14.4%2014.3H18.5S23%2064%2029.5%2064z'/%3e%3c/g%3e%3cpath%20fill='%2300B8F1'%20d='M54.7%2083.5h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm28%200h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm-14%209h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm-28%200h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3zm-14-9h-2.8l1.4-2.5c.4-.6.2-1.5-.5-1.8-.7-.4-1.5-.2-1.9.5l-1.4%202.4-1.4-2.4c-.4-.7-1.2-.9-1.8-.5-.4.2-.6.5-.7.8-.1.3%200%20.7.1%201l1.4%202.4h-2.7c-.8.1-1.4.7-1.4%201.4s.6%201.4%201.4%201.4h2.8l-1.4%202.4c-.2.3-.2.7-.1%201%20.1.3.3.6.6.8.6.4%201.5.1%201.8-.5l1.4-2.4%201.4%202.5c.2.4.7.7%201.2.7.2%200%20.5-.1.7-.2.6-.4.9-1.2.5-1.8l-1.4-2.5h2.8c.7%200%201.4-.6%201.4-1.4%200-.8-.7-1.3-1.4-1.3z'/%3e%3c/g%3e%3cdefs%3e%3clinearGradient%20id='50__50__b'%20x1='47.5'%20x2='49.5'%20y1='38.5'%20y2='71.1'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20offset='.484'%20stop-color='%23fff'%20stop-opacity='0'/%3e%3cstop%20offset='1'%20stop-color='%23B3B2B2'/%3e%3c/linearGradient%3e%3cclipPath%20id='50__50__a'%3e%3cpath%20fill='%23fff'%20d='M0%200h100v100H0z'/%3e%3c/clipPath%3e%3cfilter%20id='50__50__c'%20width='85'%20height='46.101'%20x='11.5'%20y='30'%20color-interpolation-filters='sRGB'%20filterUnits='userSpaceOnUse'%3e%3cfeFlood%20flood-opacity='0'%20result='BackgroundImageFix'/%3e%3cfeBlend%20in='SourceGraphic'%20in2='BackgroundImageFix'%20result='shape'/%3e%3cfeGaussianBlur%20result='effect1_foregroundBlur_149_1461'%20stdDeviation='3.5'/%3e%3c/filter%3e%3c/defs%3e%3c/svg%3e", qe = /* @__PURE__ */ Object.assign({
+  "./assets/symbols/01d.svg": he,
+  "./assets/symbols/01n.svg": ue,
+  "./assets/symbols/02d.svg": fe,
+  "./assets/symbols/02n.svg": me,
+  "./assets/symbols/03d.svg": ge,
+  "./assets/symbols/03n.svg": xe,
+  "./assets/symbols/04.svg": ve,
+  "./assets/symbols/05d.svg": be,
+  "./assets/symbols/05n.svg": _e,
+  "./assets/symbols/07d.svg": ye,
+  "./assets/symbols/07n.svg": we,
+  "./assets/symbols/08d.svg": $e,
+  "./assets/symbols/08n.svg": Me,
+  "./assets/symbols/09.svg": ke,
+  "./assets/symbols/10.svg": Be,
+  "./assets/symbols/12.svg": Se,
+  "./assets/symbols/13.svg": ze,
+  "./assets/symbols/40d.svg": Ce,
+  "./assets/symbols/40n.svg": Te,
+  "./assets/symbols/41d.svg": Fe,
+  "./assets/symbols/41n.svg": Ee,
+  "./assets/symbols/42d.svg": Ae,
+  "./assets/symbols/42n.svg": Pe,
+  "./assets/symbols/43d.svg": Le,
+  "./assets/symbols/43n.svg": Ue,
+  "./assets/symbols/44d.svg": Ge,
+  "./assets/symbols/44n.svg": De,
+  "./assets/symbols/45d.svg": He,
+  "./assets/symbols/45n.svg": Oe,
+  "./assets/symbols/46.svg": Ie,
+  "./assets/symbols/47.svg": Re,
+  "./assets/symbols/48.svg": We,
+  "./assets/symbols/49.svg": Ne,
+  "./assets/symbols/50.svg": je
+});
+function t2(e) {
+  return e ? qe[`./assets/symbols/${e}.svg`] ?? "" : "";
+}
+const A2 = {
   colW: 34,
   // The value axes are pinned strips outside the scroller, so the plot needs no
   // left gutter of its own; `padL` is a plain leading pad and stays 0.
@@ -241,7 +736,7 @@ const E2 = {
   handleR: 5.5,
   dotTempR: 4.5,
   dotWindR: 4
-}, Le = {
+}, Ye = {
   colW: 27,
   padL: 0,
   padR: 12,
@@ -282,110 +777,111 @@ const E2 = {
   dotTempR: 4,
   dotWindR: 3.6
 };
-function x2(e) {
+function v2(e) {
   return e.some((t) => t.gustMs !== null);
 }
-const r0 = "rgba(90,112,140,0.055)";
-function Ue(e) {
+const h0 = "rgba(90,112,140,0.055)";
+function Ve(e) {
   const t = e.local.getUTCHours();
   return t < 5 || t >= 22;
 }
-function c0(e, t) {
+function u0(e, t) {
   const i = [];
   let n = null;
   for (let o = 0; o < e.length; o++) {
-    const s = Ue(e[o]);
+    const s = Ve(e[o]);
     if (s && n === null && (n = o), (!s || o === e.length - 1) && n !== null) {
-      const l = s && o === e.length - 1 ? o + 1 : o;
-      i.push({ x: n * t, w: (l - n) * t }), n = null;
+      const a = s && o === e.length - 1 ? o + 1 : o;
+      i.push({ x: n * t, w: (a - n) * t }), n = null;
     }
   }
   return i;
 }
-function o2(e) {
-  return e > 0 ? M.temp : e < 0 ? M.tempCold : M.neutral;
+function s2(e) {
+  return e > 0 ? w.temp : e < 0 ? w.tempCold : w.neutral;
 }
 function f(e) {
   return e.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
 }
-function Z(e, t, i, n, o, s, l = "start", a = !1) {
-  return `<text x="${e}" y="${t}" fill="${n}" font-size="${o}" font-weight="${s}" text-anchor="${l}" font-family="Nunito, system-ui, sans-serif"${a ? ' stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke"' : ""}>${f(i)}</text>`;
+function Q(e, t, i, n, o, s, a = "start", l = !1) {
+  return `<text x="${e}" y="${t}" fill="${n}" font-size="${o}" font-weight="${s}" text-anchor="${a}" font-family="Nunito, system-ui, sans-serif"${l ? ' stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke"' : ""}>${f(i)}</text>`;
 }
-function w2(e, t, i, n) {
+function $2(e, t, i, n) {
   let o = "", s = !1;
-  for (let l = 0; l < e.length; l++) {
-    const a = t(e[l]);
-    if (a === null) {
+  for (let a = 0; a < e.length; a++) {
+    const l = t(e[a]);
+    if (l === null) {
       s = !1;
       continue;
     }
-    o += `${s ? "L" : "M"}${i(l).toFixed(1)} ${n(a).toFixed(1)} `, s = !0;
+    o += `${s ? "L" : "M"}${i(a).toFixed(1)} ${n(l).toFixed(1)} `, s = !0;
   }
   return o.trim();
 }
-const m2 = M.none, d0 = M.precipText, p0 = 22, Pe = [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
-function h0(e, t) {
+const g2 = w.none, f0 = w.precipText, m0 = 22, Ke = [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
+function g0(e, t) {
   let i = 0;
   for (const s of e)
     Number.isFinite(s.precipMm) && (i = Math.max(i, s.precipMm)), Number.isFinite(s.precipMaxMm) && (i = Math.max(i, s.precipMaxMm));
   if (!(i > t)) return t;
-  const n = 10 ** Math.floor(Math.log10(i)), o = Pe.find((s) => s * n >= i - 1e-9) ?? 10;
+  const n = 10 ** Math.floor(Math.log10(i)), o = Ke.find((s) => s * n >= i - 1e-9) ?? 10;
   return Number((o * n).toFixed(6));
 }
-const Ge = 0.5;
-function A2(e, t) {
+const Xe = 0.5;
+function P2(e, t) {
   if (!(e > 0)) return 0;
-  const { baseMm: i, topMm: n } = t, o = Math.max(Ge, Math.min(1, i / n));
+  const { baseMm: i, topMm: n } = t, o = Math.max(Xe, Math.min(1, i / n));
   if (e <= i || !(n > i))
     return Math.min(1, e / i * o);
   const s = Math.log(e / i) / Math.log(n / i);
   return Math.min(1, o + (1 - o) * s);
 }
-const De = [2, 1, 5, 10, 20, 50];
-function u0(e, t) {
+const Je = [2, 1, 5, 10, 20, 50];
+function x0(e, t) {
   if (!(e.topMm > 0) || !(t > 0)) return [];
-  const i = Math.min(p0, t / 2) - 1e-9, n = e.topMm > e.baseMm + 1e-9, o = [];
-  for (const s of [...n ? [e.topMm] : [], ...De]) {
+  const i = Math.min(m0, t / 2) - 1e-9, n = e.topMm > e.baseMm + 1e-9, o = [];
+  for (const s of [...n ? [e.topMm] : [], ...Je]) {
     if (s > e.topMm + 1e-9) continue;
-    const l = A2(s, e) * t;
-    o.every((a) => a.mm !== s && Math.abs(a.y - l) >= i) && o.push({ mm: s, y: l });
+    const a = P2(s, e) * t;
+    o.every((l) => l.mm !== s && Math.abs(l.y - a) >= i) && o.push({ mm: s, y: a });
   }
-  return o.map((s) => s.mm).sort((s, l) => s - l);
+  return o.map((s) => s.mm).sort((s, a) => s - a);
 }
-function He(e, t = 8) {
-  return Math.max(2, Math.min(t, Math.floor(e / p0)));
+function Ze(e, t = 8) {
+  return Math.max(2, Math.min(t, Math.floor(e / m0)));
 }
-const Q = 3.5, f0 = 0.705;
-function Ie(e, t) {
-  const i = t.tempFont * f0, n = Math.max(t.tempTop, t.scrubTop + t.handleR), o = e + t.tempLabelDy;
+const e2 = 3.5, v0 = 0.705;
+function Qe(e, t) {
+  const i = t.tempFont * v0, n = Math.max(t.tempTop, t.scrubTop + t.handleR), o = e + t.tempLabelDy;
   return o - i < n ? e - t.tempLabelDy + i : o;
 }
-const Oe = 20;
-function Re(e) {
+const et = 20;
+function tt(e) {
   return Number.isInteger(e) && (e <= 2 || e % 5 === 0);
 }
-function m0(e, t) {
-  const i = Math.max(2, Math.floor(t / Oe));
+function b0(e, t) {
+  const i = Math.max(2, Math.floor(t / et));
   let n = e;
   for (let s = i; s >= 2; s--)
-    if (Re(e / s)) {
+    if (tt(e / s)) {
       n = e / s;
       break;
     }
   const o = Math.round(e / n);
-  return Array.from({ length: o }, (s, l) => (l + 1) * n);
+  return Array.from({ length: o }, (s, a) => (a + 1) * n);
 }
-function g0(e) {
+function _0(e) {
   return `${e}°`;
 }
-function x0(e) {
+function y0(e) {
   return `${e}`;
 }
-function v0(e) {
-  return `${e}`;
+function w0(e, t) {
+  const i = `${e}`;
+  return t.decimal === "." ? i : i.replace(".", t.decimal);
 }
-const F2 = 8, We = 10, Ne = 500;
-function b0(e, t) {
+const E2 = 8, it = 10, ot = 500;
+function $0(e, t) {
   let i = null;
   e.addEventListener("pointerdown", (n) => {
     const o = n;
@@ -394,54 +890,54 @@ function b0(e, t) {
     i = null;
   }), e.addEventListener("pointerup", (n) => {
     const o = n, s = i;
-    i = null, !(!s || o.pointerType === "mouse" || Math.hypot(o.clientX - s.x, o.clientY - s.y) > We || Date.now() - s.at > Ne) && t(o);
+    i = null, !(!s || o.pointerType === "mouse" || Math.hypot(o.clientX - s.x, o.clientY - s.y) > it || Date.now() - s.at > ot) && t(o);
   });
 }
-function _0(e, t = () => 1) {
+function M0(e, t = () => 1) {
   const i = Array.from(
     e.querySelectorAll("text.day-label")
   );
   if (!i.length) return;
   const n = () => {
     const o = t() || 1, s = e.scrollLeft / o;
-    for (const l of i) {
-      const a = Number(l.dataset.x0), r = Number(l.dataset.x1);
-      if (!Number.isFinite(a) || !Number.isFinite(r)) continue;
-      const d = Math.min(Math.max(a, s + F2), Math.max(a, r));
-      l.setAttribute("x", String(d));
+    for (const a of i) {
+      const l = Number(a.dataset.x0), r = Number(a.dataset.x1);
+      if (!Number.isFinite(l) || !Number.isFinite(r)) continue;
+      const c = Math.min(Math.max(l, s + E2), Math.max(l, r));
+      a.setAttribute("x", String(c));
     }
   };
   e.addEventListener("scroll", n, { passive: !0 }), n();
 }
-function y0(e) {
-  const t = e.filter((d) => Number.isFinite(d));
+function k0(e) {
+  const t = e.filter((c) => Number.isFinite(c));
   if (!t.length) return [0, 2, 4, 6, 8];
-  const i = Math.min(...t), n = Math.max(...t), o = [1, 2, 5, 10, 20, 50], s = o.find((d) => Math.ceil(n / d) * d - Math.floor(i / d) * d <= d * 5) ?? o[o.length - 1], l = Math.floor(i / s) * s;
-  let a = Math.ceil(n / s) * s;
-  a === l && (a = l + s);
+  const i = Math.min(...t), n = Math.max(...t), o = [1, 2, 5, 10, 20, 50], s = o.find((c) => Math.ceil(n / c) * c - Math.floor(i / c) * c <= c * 5) ?? o[o.length - 1], a = Math.floor(i / s) * s;
+  let l = Math.ceil(n / s) * s;
+  l === a && (l = a + s);
   const r = [];
-  for (let d = l; d <= a; d += s) r.push(d);
+  for (let c = a; c <= l; c += s) r.push(c);
   return r;
 }
-function w0(e) {
+function B0(e) {
   const t = Math.max(
     0,
     ...e.map((i) => Math.max(i.windMs ?? 0, i.gustMs ?? 0))
   );
   return Math.max(20, Math.ceil(t / 10) * 10);
 }
-function je(e, t = E2) {
+function st(e, t = A2) {
   return t.padL + e * t.colW + t.padR;
 }
-function qe(e, t) {
-  const i = e.map((d) => d.tempC).filter((d) => Number.isFinite(d)), n = y0(i), [o, s] = [n[0], n[n.length - 1]], l = w0(e), a = t.precipCap / t.precipPerMm, r = { baseMm: a, topMm: h0(e, a) };
+function nt(e, t) {
+  const i = e.map((c) => c.tempC).filter((c) => Number.isFinite(c)), n = k0(i), [o, s] = [n[0], n[n.length - 1]], a = B0(e), l = t.precipCap / t.precipPerMm, r = { baseMm: l, topMm: g0(e, l) };
   return {
     tempTicks: n,
-    windTicks: m0(l, t.windSpan),
-    precipTicks: u0(r, t.precipCap),
-    ty: (d) => t.tempTop + (s - d) / (s - o) * (t.tempBottom - t.tempTop),
-    wy: (d) => t.windBase - Math.min(d, l) / l * t.windSpan,
-    ph: (d) => t.precipCap * A2(d, r)
+    windTicks: b0(a, t.windSpan),
+    precipTicks: x0(r, t.precipCap),
+    ty: (c) => t.tempTop + (s - c) / (s - o) * (t.tempBottom - t.tempTop),
+    wy: (c) => t.windBase - Math.min(c, a) / a * t.windSpan,
+    ph: (c) => t.precipCap * P2(c, r)
   };
 }
 function L2(e, t) {
@@ -449,176 +945,176 @@ function L2(e, t) {
     (i) => `<line x1="0" x2="${t}" y1="${i}" y2="${i}" stroke="#EAEEF1" stroke-width="1.5"/>`
   ).join("");
 }
-function Ye(e, t) {
+function at(e, t) {
   const i = e.axisW - e.axisInset, n = [L2(e, e.axisW)];
   for (const o of t.tempTicks)
     n.push(
-      Z(i, t.ty(o) + Q, g0(o), m2, e.axisFont, 700, "end")
+      Q(i, t.ty(o) + e2, _0(o), g2, e.axisFont, 700, "end")
     );
   for (const o of t.windTicks)
     n.push(
-      Z(i, t.wy(o) + Q, x0(o), m2, e.axisFont, 700, "end")
+      Q(i, t.wy(o) + e2, y0(o), g2, e.axisFont, 700, "end")
     );
   return `<svg class="mg-axis" width="${e.axisW}" height="${e.height}" viewBox="0 0 ${e.axisW} ${e.height}" style="display:block;flex:none" aria-hidden="true">${n.join("")}</svg>`;
 }
-function Ke(e, t) {
-  const i = [L2(e, e.rightAxisW)];
-  for (const n of t.precipTicks)
-    i.push(
-      Z(
+function lt(e, t, i) {
+  const n = [L2(e, e.rightAxisW)];
+  for (const o of t.precipTicks)
+    n.push(
+      Q(
         e.axisInset,
-        e.precipBase - t.ph(n) + Q,
-        v0(n),
-        d0,
+        e.precipBase - t.ph(o) + e2,
+        w0(o, i),
+        f0,
         e.axisFont,
         700
       )
     );
-  return `<svg class="mg-axis-right" width="${e.rightAxisW}" height="${e.height}" viewBox="0 0 ${e.rightAxisW} ${e.height}" style="display:block;flex:none" aria-hidden="true">${i.join("")}</svg>`;
+  return `<svg class="mg-axis-right" width="${e.rightAxisW}" height="${e.height}" viewBox="0 0 ${e.rightAxisW} ${e.height}" style="display:block;flex:none" aria-hidden="true">${n.join("")}</svg>`;
 }
-function Ve(e, t, i, n = E2, o = -1) {
-  const s = n, l = e.length, a = je(l, s), r = (c) => s.padL + c * s.colW + s.colW / 2, d = x2(e), m = qe(e, s), { ty: u, wy: p, ph: x } = m, g = [];
-  for (const c of c0(e, s.colW))
-    g.push(
-      `<rect x="${s.padL + c.x}" y="${s.dayTop}" width="${c.w}" height="${s.dayBottom - s.dayTop}" fill="${r0}"/>`
+function rt(e, t, i, n = A2, o = -1) {
+  const s = n, a = e.length, l = st(a, s), r = (d) => s.padL + d * s.colW + s.colW / 2, c = v2(e), m = nt(e, s), { ty: u, wy: p, ph: x } = m, v = [];
+  for (const d of u0(e, s.colW))
+    v.push(
+      `<rect x="${s.padL + d.x}" y="${s.dayTop}" width="${d.w}" height="${s.dayBottom - s.dayTop}" fill="${h0}"/>`
     );
-  for (const c of m.tempTicks)
-    g.push(
-      `<line x1="0" x2="${a}" y1="${u(c)}" y2="${u(c)}" stroke="#EEF1F4" stroke-width="1"/>`
+  for (const d of m.tempTicks)
+    v.push(
+      `<line x1="0" x2="${l}" y1="${u(d)}" y2="${u(d)}" stroke="#EEF1F4" stroke-width="1"/>`
     );
-  for (const c of m.precipTicks) {
-    const b = s.precipBase - x(c);
-    g.push(
-      `<line x1="0" x2="${a}" y1="${b}" y2="${b}" stroke="#CFE0F1" stroke-width="1" stroke-dasharray="2 3"/>`
+  for (const d of m.precipTicks) {
+    const g = s.precipBase - x(d);
+    v.push(
+      `<line x1="0" x2="${l}" y1="${g}" y2="${g}" stroke="#CFE0F1" stroke-width="1" stroke-dasharray="2 3"/>`
     );
   }
-  for (const c of m.windTicks)
-    g.push(
-      `<line x1="0" x2="${a}" y1="${p(c)}" y2="${p(c)}" stroke="#EEF1F4" stroke-width="1"/>`
+  for (const d of m.windTicks)
+    v.push(
+      `<line x1="0" x2="${l}" y1="${p(d)}" y2="${p(d)}" stroke="#EEF1F4" stroke-width="1"/>`
     );
   const z = [0];
-  for (let c = 1; c < l; c++)
-    e[c].local.getUTCHours() === 0 && z.push(c);
-  for (let c = 0; c < z.length; c++) {
-    const b = z[c];
-    if (b > 0) {
-      const H = r(b);
-      g.push(
+  for (let d = 1; d < a; d++)
+    e[d].local.getUTCHours() === 0 && z.push(d);
+  for (let d = 0; d < z.length; d++) {
+    const g = z[d];
+    if (g > 0) {
+      const H = r(g);
+      v.push(
         `<line x1="${H}" x2="${H}" y1="${s.dayTop}" y2="${s.dayBottom}" stroke="#DCE3E8" stroke-width="1" stroke-dasharray="3 3"/>`
       );
     }
-    const F = e[b].local, P = t.weekdays[F.getUTCDay()], O = P.charAt(0).toUpperCase() + P.slice(1), D = s.dayLabelShort ? `${O} ${F.getUTCDate()}` : t.dayLabel(O, F.getUTCDate(), t.months[F.getUTCMonth()]), G = c + 1 < z.length ? z[c + 1] : l, W = (G - b) * s.colW - 8, N = D.length * s.dayFont * 0.6;
-    if (N <= W) {
-      const H = (b > 0 ? r(b) : s.padL) + 6;
-      g.push(
-        Z(H, s.dayLabelY, D, M.neutral, s.dayFont, 800).replace(
+    const F = e[g].local, A = t.weekdays[F.getUTCDay()], I = A.charAt(0).toUpperCase() + A.slice(1), D = s.dayLabelShort ? `${I} ${F.getUTCDate()}` : t.dayLabel(I, F.getUTCDate(), t.months[F.getUTCMonth()]), G = d + 1 < z.length ? z[d + 1] : a, N = (G - g) * s.colW - 8, j = D.length * s.dayFont * 0.6;
+    if (j <= N) {
+      const H = (g > 0 ? r(g) : s.padL) + 6;
+      v.push(
+        Q(H, s.dayLabelY, D, w.neutral, s.dayFont, 800).replace(
           "<text ",
-          `<text class="day-label" data-x0="${H}" data-x1="${(G < l ? r(G) : s.padL + l * s.colW) - 6 - N}" `
+          `<text class="day-label" data-x0="${H}" data-x1="${(G < a ? r(G) : s.padL + a * s.colW) - 6 - j}" `
         )
       );
     }
   }
-  g.push(L2(s, a));
-  for (let c = 0; c < l; c++) {
-    const b = e[c].precipMaxMm;
-    if (b > 0) {
-      const F = x(b);
-      g.push(
-        `<rect x="${r(c) - s.precipMaxW / 2}" y="${s.precipBase - F}" width="${s.precipMaxW}" height="${F}" rx="2" fill="${M.precipMax}"/>`
+  v.push(L2(s, l));
+  for (let d = 0; d < a; d++) {
+    const g = e[d].precipMaxMm;
+    if (g > 0) {
+      const F = x(g);
+      v.push(
+        `<rect x="${r(d) - s.precipMaxW / 2}" y="${s.precipBase - F}" width="${s.precipMaxW}" height="${F}" rx="2" fill="${w.precipMax}"/>`
       );
     }
   }
-  for (let c = 0; c < l; c++) {
-    const b = e[c].precipMm;
-    if (b > 0) {
-      const F = x(b);
-      g.push(
-        `<rect x="${r(c) - s.precipW / 2}" y="${s.precipBase - F}" width="${s.precipW}" height="${F}" rx="2" fill="${M.precip}"/>`
+  for (let d = 0; d < a; d++) {
+    const g = e[d].precipMm;
+    if (g > 0) {
+      const F = x(g);
+      v.push(
+        `<rect x="${r(d) - s.precipW / 2}" y="${s.precipBase - F}" width="${s.precipW}" height="${F}" rx="2" fill="${w.precip}"/>`
       );
     }
   }
-  g.push(
-    `<path d="${w2(e, (c) => c.tempC, r, u)}" fill="none" stroke="${M.temp}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`
+  v.push(
+    `<path d="${$2(e, (d) => d.tempC, r, u)}" fill="none" stroke="${w.temp}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`
   );
-  for (let c = 0; c < l; c += 1) {
-    const b = e2(e[c].symbol);
-    b && g.push(
-      `<image x="${r(c) - s.symbolSize / 2}" y="${s.symbolY}" width="${s.symbolSize}" height="${s.symbolSize}" href="${f(b)}"/>`
+  for (let d = 0; d < a; d += 1) {
+    const g = t2(e[d].symbol);
+    g && v.push(
+      `<image x="${r(d) - s.symbolSize / 2}" y="${s.symbolY}" width="${s.symbolSize}" height="${s.symbolSize}" href="${f(g)}"/>`
     );
   }
-  d && g.push(
-    `<path d="${w2(e, (c) => c.gustMs, r, p)}" fill="none" stroke="${M.gust}" stroke-width="1.8" stroke-dasharray="4 4" stroke-linecap="round" stroke-linejoin="round"/>`
-  ), g.push(
-    `<path d="${w2(e, (c) => c.windMs, r, p)}" fill="none" stroke="${M.wind}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`
+  c && v.push(
+    `<path d="${$2(e, (d) => d.gustMs, r, p)}" fill="none" stroke="${w.gust}" stroke-width="1.8" stroke-dasharray="4 4" stroke-linecap="round" stroke-linejoin="round"/>`
+  ), v.push(
+    `<path d="${$2(e, (d) => d.windMs, r, p)}" fill="none" stroke="${w.wind}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`
   );
-  for (let c = 0; c < l; c += 1) {
-    const b = e[c].tempC;
-    b !== null && g.push(
-      Z(r(c), Ie(u(b), s), `${Math.round(b)}°`, o2(Math.round(b)), s.tempFont, 800, "middle", !0)
+  for (let d = 0; d < a; d += 1) {
+    const g = e[d].tempC;
+    g !== null && v.push(
+      Q(r(d), Qe(u(g), s), `${Math.round(g)}°`, s2(Math.round(g)), s.tempFont, 800, "middle", !0)
     );
   }
-  const k = s.arrowHalf, v = k / 7, $ = `M${(-4 * v).toFixed(1)} ${(2 * v).toFixed(1)} L0 ${(7.5 * v).toFixed(1)} L${(4 * v).toFixed(1)} ${(2 * v).toFixed(1)}`;
-  for (let c = 0; c < l; c += 1) {
-    const b = e[c].dirDeg;
-    b !== null && g.push(
-      `<g transform="translate(${r(c)} ${s.arrowY}) rotate(${(b % 360 + 360) % 360})"><line x1="0" y1="${-k}" x2="0" y2="${k}" stroke="${M.neutral}" stroke-width="2" stroke-linecap="round"/><path d="${$}" fill="none" stroke="${M.neutral}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></g>`
+  const B = s.arrowHalf, b = B / 7, M = `M${(-4 * b).toFixed(1)} ${(2 * b).toFixed(1)} L0 ${(7.5 * b).toFixed(1)} L${(4 * b).toFixed(1)} ${(2 * b).toFixed(1)}`;
+  for (let d = 0; d < a; d += 1) {
+    const g = e[d].dirDeg;
+    g !== null && v.push(
+      `<g transform="translate(${r(d)} ${s.arrowY}) rotate(${(g % 360 + 360) % 360})"><line x1="0" y1="${-B}" x2="0" y2="${B}" stroke="${w.neutral}" stroke-width="2" stroke-linecap="round"/><path d="${M}" fill="none" stroke="${w.neutral}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></g>`
     );
   }
-  for (let c = 0; c < l; c += 3) {
-    const b = String(e[c].local.getUTCHours()).padStart(2, "0");
-    g.push(Z(r(c), s.hourLabelY, b, M.neutral, s.hourFont, 700, "middle"));
+  for (let d = 0; d < a; d += 3) {
+    const g = String(e[d].local.getUTCHours()).padStart(2, "0");
+    v.push(Q(r(d), s.hourLabelY, g, w.neutral, s.hourFont, 700, "middle"));
   }
-  if (o >= 0 && o < l) {
-    const c = r(o), b = e[o].tempC;
-    g.push(
-      `<line class="chart-now" x1="${c}" x2="${c}" y1="${s.scrubTop}" y2="${s.scrubBottom}" stroke="${M.now}" stroke-width="2"/>`
-    ), b !== null && g.push(
-      `<circle class="chart-now-dot" cx="${c}" cy="${u(b)}" r="${s.dotTempR}" fill="${M.temp}" stroke="#ffffff" stroke-width="1.5"/>`
+  if (o >= 0 && o < a) {
+    const d = r(o), g = e[o].tempC;
+    v.push(
+      `<line class="chart-now" x1="${d}" x2="${d}" y1="${s.scrubTop}" y2="${s.scrubBottom}" stroke="${w.now}" stroke-width="2"/>`
+    ), g !== null && v.push(
+      `<circle class="chart-now-dot" cx="${d}" cy="${u(g)}" r="${s.dotTempR}" fill="${w.temp}" stroke="#ffffff" stroke-width="1.5"/>`
     );
   }
-  const B = Math.max(0, Math.min(l - 1, i)), w = r(B), T = e[B]?.tempC ?? null, C = e[B]?.windMs ?? null;
-  s.hasTrack && g.push(
-    `<line class="scrub-track" x1="${r(0)}" x2="${r(l - 1)}" y1="${s.scrubTop}" y2="${s.scrubTop}" stroke="#DCE3E8" stroke-width="4" stroke-linecap="round"/>`
-  ), g.push(
-    `<line class="scrub-cursor" x1="${w}" x2="${w}" y1="${s.scrubTop}" y2="${s.scrubBottom}" stroke="#14202B" stroke-width="1.2" stroke-dasharray="2 3" opacity="0.55"/>`,
-    `<circle class="scrub-dot-temp" cx="${w}" cy="${T === null ? 0 : u(T)}" r="${s.dotTempR}" fill="${M.temp}" stroke="#ffffff" stroke-width="1.5"${T === null ? ' visibility="hidden"' : ""}/>`,
-    `<circle class="scrub-dot-wind" cx="${w}" cy="${C === null ? 0 : p(C)}" r="${s.dotWindR}" fill="${M.wind}" stroke="#ffffff" stroke-width="1.5"${C === null ? ' visibility="hidden"' : ""}/>`,
-    `<circle class="scrub-handle" cx="${w}" cy="${s.scrubTop}" r="${s.handleR}" fill="#14202B" stroke="#ffffff" stroke-width="2"/>`,
+  const k = Math.max(0, Math.min(a - 1, i)), $ = r(k), C = e[k]?.tempC ?? null, T = e[k]?.windMs ?? null;
+  s.hasTrack && v.push(
+    `<line class="scrub-track" x1="${r(0)}" x2="${r(a - 1)}" y1="${s.scrubTop}" y2="${s.scrubTop}" stroke="#DCE3E8" stroke-width="4" stroke-linecap="round"/>`
+  ), v.push(
+    `<line class="scrub-cursor" x1="${$}" x2="${$}" y1="${s.scrubTop}" y2="${s.scrubBottom}" stroke="#14202B" stroke-width="1.2" stroke-dasharray="2 3" opacity="0.55"/>`,
+    `<circle class="scrub-dot-temp" cx="${$}" cy="${C === null ? 0 : u(C)}" r="${s.dotTempR}" fill="${w.temp}" stroke="#ffffff" stroke-width="1.5"${C === null ? ' visibility="hidden"' : ""}/>`,
+    `<circle class="scrub-dot-wind" cx="${$}" cy="${T === null ? 0 : p(T)}" r="${s.dotWindR}" fill="${w.wind}" stroke="#ffffff" stroke-width="1.5"${T === null ? ' visibility="hidden"' : ""}/>`,
+    `<circle class="scrub-handle" cx="${$}" cy="${s.scrubTop}" r="${s.handleR}" fill="#14202B" stroke="#ffffff" stroke-width="2"/>`,
     // Invisible touch strip around the track: drags here scrub; touches
     // elsewhere on the chart scroll it horizontally as normal.
-    `<rect class="scrub-hit" x="0" y="${s.hitY}" width="${a}" height="${s.hitH}" fill="transparent" style="touch-action:none;cursor:ew-resize"/>`
+    `<rect class="scrub-hit" x="0" y="${s.hitY}" width="${l}" height="${s.hitH}" fill="transparent" style="touch-action:none;cursor:ew-resize"/>`
   );
-  const E = `<svg class="mg-plot" width="${a}" height="${s.height}" viewBox="0 0 ${a} ${s.height}" style="display:block" aria-hidden="true">${g.join("")}</svg>`, h = {
-    width: a,
-    count: l,
+  const E = `<svg class="mg-plot" width="${l}" height="${s.height}" viewBox="0 0 ${l} ${s.height}" style="display:block" aria-hidden="true">${v.join("")}</svg>`, h = {
+    width: l,
+    count: a,
     cx: r,
     tempY: u,
     windY: p,
-    indexAt: (c) => Math.max(0, Math.min(l - 1, Math.round((c - s.padL - s.colW / 2) / s.colW)))
+    indexAt: (d) => Math.max(0, Math.min(a - 1, Math.round((d - s.padL - s.colW / 2) / s.colW)))
   };
   return {
     svg: E,
-    axisSvg: Ye(s, m),
-    rightAxisSvg: Ke(s, m),
+    axisSvg: at(s, m),
+    rightAxisSvg: lt(s, m, t),
     geo: h
   };
 }
-function s2(e, t, i) {
+function n2(e, t, i) {
   return e === null ? "" : `<svg width="${t}" height="${t}" viewBox="0 0 20 20" style="flex:none;transform:rotate(${(e % 360 + 360) % 360}deg)"><g stroke="${i}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"><line x1="10" y1="3.5" x2="10" y2="15"/><path d="M5.5 11 L10 16 L14.5 11"/></g></svg>`;
 }
-function v2(e, t) {
+function b2(e, t) {
   return e === null ? "" : t.compass[Math.round((e % 360 + 360) % 360 / 45) % 8];
 }
-function t2(e) {
+function i2(e) {
   if (e.windMs === null) return "–";
   const t = Math.round(e.windMs);
   return e.gustMs === null ? `${t}` : `${t} (${Math.round(e.gustMs)})`;
 }
-function M0(e, t) {
-  const i = e.tempC === null ? "–" : `${Math.round(e.tempC)}°`, n = e.windMs === null ? "–" : `${t2(e)} m/s ${v2(e.dirDeg, t)}`.trim();
-  return `${b2(e, t)}, ${i}, ${e.precipMm.toFixed(1)} mm, ${n}`;
+function S0(e, t) {
+  const i = e.tempC === null ? "–" : `${Math.round(e.tempC)}°`, n = e.windMs === null ? "–" : `${i2(e)} m/s ${b2(e.dirDeg, t)}`.trim();
+  return `${_2(e, t)}, ${i}, ${W(e.precipMm, 1, t)} mm, ${n}`;
 }
-function $0(e, t, i) {
+function z0(e, t, i) {
   const n = {
     ArrowLeft: -1,
     ArrowDown: -1,
@@ -629,28 +1125,28 @@ function $0(e, t, i) {
   }, o = e === "Home" ? 0 : e === "End" ? i - 1 : e in n ? t + n[e] : null;
   return o === null ? null : Math.max(0, Math.min(i - 1, o));
 }
-function b2(e, t) {
+function _2(e, t) {
   const i = e.local, n = t.weekdays[i.getUTCDay()], o = t.dateLabel(i.getUTCDate(), t.months[i.getUTCMonth()]), s = String(i.getUTCHours()).padStart(2, "0");
   return `${n.charAt(0).toUpperCase()}${n.slice(1)} ${o} · ${s}:00`;
 }
 function U2(e) {
   return e.length < 2 ? 1 : Math.max(1, Math.round((e[1].utcMs - e[0].utcMs) / 36e5));
 }
-function B0(e, t) {
+function C0(e, t) {
   if (e.length < 2) return "";
-  const i = e[e.length - 1], n = (i.utcMs - e[0].utcMs) / 36e5, o = Math.max(1, Math.round(n / 24)), s = i.local, l = t.weekdays[s.getUTCDay()], a = l.charAt(0).toUpperCase() + l.slice(1);
+  const i = e[e.length - 1], n = (i.utcMs - e[0].utcMs) / 36e5, o = Math.max(1, Math.round(n / 24)), s = i.local, a = t.weekdays[s.getUTCDay()], l = a.charAt(0).toUpperCase() + a.slice(1);
   return t.forecastSpan(
     o,
-    t.dayLabel(a, s.getUTCDate(), t.months[s.getUTCMonth()])
+    t.dayLabel(l, s.getUTCDate(), t.months[s.getUTCMonth()])
   );
 }
-const N2 = 1.5, Xe = 10, Je = 4;
-function j2(e, t = Date.now()) {
+const q2 = 1.5, ct = 10, dt = 4;
+function Y2(e, t = Date.now()) {
   let i = 0;
   for (let n = 0; n < e.length && e[n].utcMs <= t; n++) i = n;
   return i;
 }
-function f2(e, t = Date.now()) {
+function m2(e, t = Date.now()) {
   let i = 0, n = 1 / 0;
   for (let o = 0; o < e.length; o++) {
     const s = Math.abs(e[o].utcMs - t);
@@ -658,33 +1154,33 @@ function f2(e, t = Date.now()) {
   }
   return i;
 }
-function k0(e, t = Date.now()) {
+function T0(e, t = Date.now()) {
   if (!e.length) return -1;
   const i = U2(e) * 36e5, n = e[0].utcMs - i / 2, o = e[e.length - 1].utcMs + i / 2;
-  return t < n || t >= o ? -1 : f2(e, t);
+  return t < n || t >= o ? -1 : m2(e, t);
 }
-function Ze(e, t, i = Date.now()) {
+function pt(e, t, i = Date.now()) {
   if (!e.length) return -1;
   const n = U2(e) * 36e5;
   if (t + n <= i) return -1;
   let o = -1, s = 1 / 0;
-  for (let l = 0; l < e.length; l++) {
-    const a = Math.abs(e[l].utcMs - t);
-    a < s && (s = a, o = l);
+  for (let a = 0; a < e.length; a++) {
+    const l = Math.abs(e[a].utcMs - t);
+    l < s && (s = l, o = a);
   }
   return s <= n / 2 ? o : -1;
 }
-function Qe(e, t) {
+function ht(e, t) {
   if (!e.length || !Number.isFinite(t)) return -1;
   let i = 0, n = 1 / 0;
   for (let r = 0; r < e.length; r++) {
-    const d = Math.abs(e[r].utcMs - t);
-    d < n && (n = d, i = r);
+    const c = Math.abs(e[r].utcMs - t);
+    c < n && (n = c, i = r);
   }
-  const o = e[i].utcMs, l = (t >= o ? e[i + 1] : e[i - 1]) ?? e[i - 1] ?? e[i + 1], a = l ? Math.abs(l.utcMs - o) : 36e5;
-  return n <= a / 2 ? i : -1;
+  const o = e[i].utcMs, a = (t >= o ? e[i + 1] : e[i - 1]) ?? e[i - 1] ?? e[i + 1], l = a ? Math.abs(a.utcMs - o) : 36e5;
+  return n <= l / 2 ? i : -1;
 }
-function et(e, t, i) {
+function ut(e, t, i) {
   const n = t >= 0 ? e[t] : void 0;
   if (!n) return { time: null, tempC: null, source: i };
   const o = n.tempC === null ? null : Math.round(n.tempC) + 0;
@@ -693,22 +1189,22 @@ function et(e, t, i) {
 function M2(e, t, i) {
   return `<div class="lane-chip-wrap" style="transform:translateY(${e}px)"><div class="lane-chip"><span class="chip-swatch-${t}"></span>${f(i)}</div></div>`;
 }
-function q2(e, t, i, n, o, s = {}) {
-  let l = n < 0 ? -1 : Math.min(t.length - 1, n), a = l;
-  const r = s.compact ? Le : E2, { svg: d, axisSvg: m, rightAxisSvg: u, geo: p } = Ve(
+function V2(e, t, i, n, o, s = {}) {
+  let a = n < 0 ? -1 : Math.min(t.length - 1, n), l = a;
+  const r = s.compact ? Ye : A2, { svg: c, axisSvg: m, rightAxisSvg: u, geo: p } = rt(
     t,
     i,
-    l,
+    a,
     r,
-    k0(t)
-  ), x = s.compact ? 34 : 38, g = s.bare || s.compact ? "" : `<div class="head">
-        <div class="title">${f(B0(t, i) || i.nextHours(t.length * U2(t)))}</div>
+    T0(t)
+  ), x = s.compact ? 34 : 38, v = s.bare || s.compact ? "" : `<div class="head">
+        <div class="title">${f(C0(t, i) || i.nextHours(t.length * U2(t)))}</div>
         <div class="hint">${f(i.swipe)}</div>
-      </div>`, z = s.compact ? "graph-bare graph-compact" : s.bare ? "graph-bare" : "card", k = s.bare || s.compact ? `<div class="${z}">` : `<div class="card">${g}`, v = s.compact ? "" : `${M2(46, "temp", i.laneTemp)}
+      </div>`, z = s.compact ? "graph-bare graph-compact" : s.bare ? "graph-bare" : "card", B = s.bare || s.compact ? `<div class="${z}">` : `<div class="card">${v}`, b = s.compact ? "" : `${M2(46, "temp", i.laneTemp)}
         ${M2(158, "precip", i.lanePrecip)}
-        ${M2(244, "wind", i.laneWind)}`, $ = s.compact ? "" : `<span><span class="swatch-pmax"></span>${f(i.legPmax)}</span>`, B = x2(t) ? `<span><span class="swatch-gust"></span>${f(i.legGust)}</span>` : "";
+        ${M2(244, "wind", i.laneWind)}`, M = s.compact ? "" : `<span><span class="swatch-pmax"></span>${f(i.legPmax)}</span>`, k = v2(t) ? `<span><span class="swatch-gust"></span>${f(i.legGust)}</span>` : "";
   e.innerHTML = `
-    ${k}
+    ${B}
       <div class="readout">
         <div>
           <div class="ro-time"></div>
@@ -724,635 +1220,156 @@ function q2(e, t, i, n, o, s = {}) {
         ${m}
         <div class="scroll" role="slider" tabindex="0" aria-label="${f(i.scrubSlider)}"
              aria-orientation="horizontal" aria-valuemin="0" aria-valuemax="${t.length - 1}">
-          ${v}
-          ${d}
+          ${b}
+          ${c}
         </div>
         ${u}
       </div>
       <div class="legend">
         <span><span class="swatch-temp"></span>${f(i.legTemp)}</span>
         <span><span class="swatch-precip"></span>${f(i.legPrecip)}</span>
-        ${$}
+        ${M}
         <span><span class="swatch-wind"></span>${f(i.legWind)}</span>
-        ${B}
+        ${k}
       </div>
     </div>`;
-  const w = e.querySelector(".mg-plot"), T = (y) => e.querySelector(y), C = T(".scroll"), E = T(".scrub-cursor"), h = T(".scrub-handle"), c = T(".scrub-dot-temp"), b = T(".scrub-dot-wind"), F = T(".ro-time"), P = T(".ro-temp"), O = T(".ro-precip"), D = T(".ro-wind-text"), G = T(".ro-arrow"), W = T(".ro-compass"), N = T(".ro-icon");
-  let H, j;
-  const X = T(".readout"), _ = e.querySelector(".chart-now-dot"), S = () => {
-    const y = t[l], U = !y;
-    X.classList.toggle("is-outside", U);
-    for (const R of [E, h, c, b])
+  const $ = e.querySelector(".mg-plot"), C = (y) => e.querySelector(y), T = C(".scroll"), E = C(".scrub-cursor"), h = C(".scrub-handle"), d = C(".scrub-dot-temp"), g = C(".scrub-dot-wind"), F = C(".ro-time"), A = C(".ro-temp"), I = C(".ro-precip"), D = C(".ro-wind-text"), G = C(".ro-arrow"), N = C(".ro-compass"), j = C(".ro-icon");
+  let H, q;
+  const J = C(".readout"), _ = e.querySelector(".chart-now-dot"), S = () => {
+    const y = t[a], U = !y;
+    J.classList.toggle("is-outside", U);
+    for (const R of [E, h, d, g])
       U ? R.setAttribute("visibility", "hidden") : R.removeAttribute("visibility");
     if (U ? _?.setAttribute("visibility", "hidden") : _?.removeAttribute("visibility"), U) {
-      F.textContent = i.noForecastForTime, C.removeAttribute("aria-valuenow"), C.setAttribute("aria-valuetext", i.noForecastForTime);
+      F.textContent = i.noForecastForTime, T.removeAttribute("aria-valuenow"), T.setAttribute("aria-valuetext", i.noForecastForTime);
       return;
     }
-    const q = p.cx(l);
-    if (E.setAttribute("x1", `${q}`), E.setAttribute("x2", `${q}`), h.setAttribute("cx", `${q}`), c.setAttribute("cx", `${q}`), c.setAttribute("visibility", y.tempC === null ? "hidden" : "visible"), y.tempC !== null && c.setAttribute("cy", `${p.tempY(y.tempC)}`), b.setAttribute("cx", `${q}`), b.setAttribute("visibility", y.windMs === null ? "hidden" : "visible"), y.windMs !== null && b.setAttribute("cy", `${p.windY(y.windMs)}`), C.setAttribute("aria-valuenow", String(l)), C.setAttribute("aria-valuetext", M0(y, i)), F.textContent = b2(y, i), P.textContent = y.tempC === null ? "–" : `${Math.round(y.tempC)}°`, P.style.color = y.tempC === null ? M.neutral : o2(Math.round(y.tempC)), O.textContent = `${y.precipMm.toFixed(1)} mm`, D.textContent = t2(y), y.dirDeg !== H && (G.innerHTML = s2(y.dirDeg, 14, "#14202B"), H = y.dirDeg), W.textContent = v2(y.dirDeg, i), y.symbol !== j) {
-      const R = e2(y.symbol);
-      N.innerHTML = R ? `<img src="${f(R)}" width="${x}" height="${x}" alt="">` : "", j = y.symbol;
+    const Y = p.cx(a);
+    if (E.setAttribute("x1", `${Y}`), E.setAttribute("x2", `${Y}`), h.setAttribute("cx", `${Y}`), d.setAttribute("cx", `${Y}`), d.setAttribute("visibility", y.tempC === null ? "hidden" : "visible"), y.tempC !== null && d.setAttribute("cy", `${p.tempY(y.tempC)}`), g.setAttribute("cx", `${Y}`), g.setAttribute("visibility", y.windMs === null ? "hidden" : "visible"), y.windMs !== null && g.setAttribute("cy", `${p.windY(y.windMs)}`), T.setAttribute("aria-valuenow", String(a)), T.setAttribute("aria-valuetext", S0(y, i)), F.textContent = _2(y, i), A.textContent = y.tempC === null ? "–" : `${Math.round(y.tempC)}°`, A.style.color = y.tempC === null ? w.neutral : s2(Math.round(y.tempC)), I.textContent = `${W(y.precipMm, 1, i)} mm`, D.textContent = i2(y), y.dirDeg !== H && (G.innerHTML = n2(y.dirDeg, 14, "#14202B"), H = y.dirDeg), N.textContent = b2(y.dirDeg, i), y.symbol !== q) {
+      const R = t2(y.symbol);
+      j.innerHTML = R ? `<img src="${f(R)}" width="${x}" height="${x}" alt="">` : "", q = y.symbol;
     }
   };
-  S(), _0(C);
+  S(), M0(T);
   let L = !1;
-  const A = () => {
-    if (L || !C.clientWidth) return;
+  const P = () => {
+    if (L || !T.clientWidth) return;
     let U = 0;
     e.querySelectorAll(".lane-chip").forEach((R) => {
       U = Math.max(U, R.getBoundingClientRect().width);
     });
-    const q = Math.max(
-      N2 * r.colW,
-      U ? Je + U + Xe : 0
+    const Y = Math.max(
+      q2 * r.colW,
+      U ? dt + U + ct : 0
     );
-    C.scrollLeft = Math.max(0, p.cx(l) - q), L = !0;
+    T.scrollLeft = Math.max(0, p.cx(a) - Y), L = !0;
   };
-  if (A(), !L && typeof requestAnimationFrame == "function" && (requestAnimationFrame(A), typeof ResizeObserver < "u")) {
+  if (P(), !L && typeof requestAnimationFrame == "function" && (requestAnimationFrame(P), typeof ResizeObserver < "u")) {
     const y = new ResizeObserver(() => {
-      A(), (L || !C.isConnected) && y.disconnect();
+      P(), (L || !T.isConnected) && y.disconnect();
     });
-    y.observe(C);
+    y.observe(T);
   }
-  const I = (y, U = !1) => {
-    const q = w.getBoundingClientRect(), R = p.indexAt(y.clientX - q.left);
-    R !== l && (l = R, S(), o?.(R, !1)), U && J();
-  }, J = () => {
-    a = l, o?.(l, !0);
+  const O = (y, U = !1) => {
+    const Y = $.getBoundingClientRect(), R = p.indexAt(y.clientX - Y.left);
+    R !== a && (a = R, S(), o?.(R, !1)), U && Z();
+  }, Z = () => {
+    l = a, o?.(a, !0);
   };
-  w.addEventListener("pointermove", (y) => {
-    y.pointerType === "mouse" && I(y);
-  }), w.addEventListener("pointerdown", (y) => {
-    y.pointerType === "mouse" && I(y, !0);
-  }), w.addEventListener("pointerleave", (y) => {
-    !s.previewHover?.() || y.pointerType !== "mouse" || y.buttons || l !== a && (l = a, S(), o?.(l, !1));
-  }), b0(w, (y) => I(y, !0)), C.addEventListener("keydown", (y) => {
-    const U = $0(y.key, l, t.length);
-    U !== null && (y.preventDefault(), y.stopPropagation(), U !== l && (l = U, S(), o?.(l, !1), J(), n2()));
+  $.addEventListener("pointermove", (y) => {
+    y.pointerType === "mouse" && O(y);
+  }), $.addEventListener("pointerdown", (y) => {
+    y.pointerType === "mouse" && O(y, !0);
+  }), $.addEventListener("pointerleave", (y) => {
+    !s.previewHover?.() || y.pointerType !== "mouse" || y.buttons || a !== l && (a = l, S(), o?.(a, !1));
+  }), $0($, (y) => O(y, !0)), T.addEventListener("keydown", (y) => {
+    const U = z0(y.key, a, t.length);
+    U !== null && (y.preventDefault(), y.stopPropagation(), U !== a && (a = U, S(), o?.(a, !1), Z(), a2()));
   });
-  const n2 = () => {
-    if (l < 0) return;
-    const y = p.cx(l), U = N2 * r.colW;
-    y < C.scrollLeft + U ? C.scrollLeft = y - U : y > C.scrollLeft + C.clientWidth - U && (C.scrollLeft = y - C.clientWidth + U);
+  const a2 = () => {
+    if (a < 0) return;
+    const y = p.cx(a), U = q2 * r.colW;
+    y < T.scrollLeft + U ? T.scrollLeft = y - U : y > T.scrollLeft + T.clientWidth - U && (T.scrollLeft = y - T.clientWidth + U);
   }, K = e.querySelector(".scrub-hit");
-  let i2 = !1;
+  let o2 = !1;
   K.addEventListener("pointerdown", (y) => {
     try {
       K.setPointerCapture(y.pointerId);
     } catch {
     }
-    i2 = !0, I(y);
+    o2 = !0, O(y);
   }), K.addEventListener("pointermove", (y) => {
-    y.buttons > 0 && I(y);
+    y.buttons > 0 && O(y);
   });
   const l2 = () => {
-    i2 && (i2 = !1, J());
+    o2 && (o2 = !1, Z());
   };
   return K.addEventListener("pointerup", l2), K.addEventListener("pointercancel", l2), {
     // Host-driven: moves the cursor without reporting back (-1 = outside).
     setScrubIdx: (y) => {
-      l = y < 0 ? -1 : Math.min(t.length - 1, y), a = l, S(), n2();
+      a = y < 0 ? -1 : Math.min(t.length - 1, y), l = a, S(), a2();
     }
   };
 }
-const tt = {
-  nextHours: (e) => `Næstu ${e} klst.`,
-  forecastSpan: (e, t) => `${e} ${e === 1 ? "dagur" : "dagar"} · til ${t}`,
-  swipe: "strjúktu til hliðar →",
-  legTemp: "Hiti (°C)",
-  legPrecip: "Úrkoma (mm)",
-  legPmax: "Hámarksúrkoma (mm)",
-  legWind: "Vindur (m/s)",
-  legGust: "Vindhviða (m/s)",
-  laneTemp: "Hiti",
-  lanePrecip: "Úrkoma",
-  laneWind: "Vindur",
-  loading: "Sæki spá…",
-  error: "Ekki tókst að sækja spá",
-  retry: "Reyna aftur",
-  close: "Loka",
-  weekdays: ["sun.", "mán.", "þri.", "mið.", "fim.", "fös.", "lau."],
-  months: [
-    "janúar",
-    "febrúar",
-    "mars",
-    "apríl",
-    "maí",
-    "júní",
-    "júlí",
-    "ágúst",
-    "september",
-    "október",
-    "nóvember",
-    "desember"
-  ],
-  compass: ["N", "NA", "A", "SA", "S", "SV", "V", "NV"],
-  dayLabel: (e, t, i) => `${e} ${t}. ${i}`,
-  dateLabel: (e, t) => `${e}. ${t}`,
-  now: "Veðrið núna",
-  feels: "Líðan",
-  precip: "Úrkoma",
-  wind: "Vindur",
-  table: "Tafla",
-  graph: "Graf",
-  today: "Í dag",
-  tomorrow: "Á morgun",
-  timeCol: "Kl.",
-  tempCol: "Hiti",
-  settings: "Stillingar",
-  forecastModel: "Spálíkan",
-  language: "Tungumál",
-  location: "Staðsetning",
-  search: "Leita að stað eða veðurstöð…",
-  analysis: "Greiningartími",
-  lastUpdate: "Síðast uppfært",
-  next48: "Næstu 48 klst.",
-  axTemp: "Hiti (°C)",
-  axWind: "Vindur (m/s)",
-  fullscreen: "Fullskjár",
-  exitFullscreen: "Loka fullskjá",
-  scrubSlider: "Tími spár",
-  minimize: "Minnka",
-  expand: "Stækka",
-  resize: "Breyta stærð",
-  correctedDetail: (e, t) => `Leiðrétt m.v. mælingar á stöðinni ${e}${t ? `: ${t.toLowerCase()}` : ""}`,
-  stationPlace: (e, t) => `${e}: spá fyrir veðurstöð ${t} km frá miðbænum`,
-  noForecastForTime: "Engin spá fyrir þennan tíma",
-  monthsShort: [
-    "jan",
-    "feb",
-    "mar",
-    "apr",
-    "maí",
-    "jún",
-    "júl",
-    "ágú",
-    "sep",
-    "okt",
-    "nóv",
-    "des"
-  ],
-  metaLine: (e, t) => `Greiningartími: ${e} · Síðast uppfært: ${t}`
-}, it = {
-  nextHours: (e) => `Next ${e} hours`,
-  forecastSpan: (e, t) => `${e} ${e === 1 ? "day" : "days"} · to ${t}`,
-  swipe: "swipe sideways →",
-  legTemp: "Temp (°C)",
-  legPrecip: "Precip (mm)",
-  legPmax: "Max precip (mm)",
-  legWind: "Wind (m/s)",
-  legGust: "Gusts (m/s)",
-  laneTemp: "Temp",
-  lanePrecip: "Precip",
-  laneWind: "Wind",
-  loading: "Loading forecast…",
-  error: "Could not load the forecast",
-  retry: "Retry",
-  close: "Close",
-  weekdays: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-  months: [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December"
-  ],
-  compass: ["N", "NE", "E", "SE", "S", "SW", "W", "NW"],
-  dayLabel: (e, t, i) => `${e} ${t} ${i}`,
-  dateLabel: (e, t) => `${e} ${t}`,
-  now: "The weather now",
-  feels: "Feels like",
-  precip: "Precipitation",
-  wind: "Wind",
-  table: "Table",
-  graph: "Graph",
-  today: "Today",
-  tomorrow: "Tomorrow",
-  timeCol: "Time",
-  tempCol: "Temp",
-  settings: "Settings",
-  forecastModel: "Forecast model",
-  language: "Language",
-  location: "Location",
-  search: "Search for a place or station…",
-  analysis: "Analysis",
-  lastUpdate: "Last update",
-  next48: "Next 48 hours",
-  axTemp: "Temp (°C)",
-  axWind: "Wind (m/s)",
-  fullscreen: "Fullscreen",
-  exitFullscreen: "Exit fullscreen",
-  scrubSlider: "Forecast time",
-  minimize: "Minimize",
-  expand: "Expand",
-  resize: "Resize",
-  correctedDetail: (e, t) => `Corrected against observations at ${e}${t ? `: ${t.toLowerCase()}` : ""}`,
-  stationPlace: (e, t) => `Forecast for the weather station ${t} km from ${e} centre`,
-  noForecastForTime: "No forecast for this time",
-  monthsShort: [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec"
-  ],
-  metaLine: (e, t) => `Analysis: ${e} · Last update: ${t}`
-}, ot = {
-  nextHours: (e) => `Próximas ${e} h`,
-  forecastSpan: (e, t) => `${e} ${e === 1 ? "día" : "días"} · hasta ${t}`,
-  swipe: "desliza de lado →",
-  legTemp: "Temp. (°C)",
-  legPrecip: "Precip. (mm)",
-  legPmax: "Precip. máx. (mm)",
-  legWind: "Viento (m/s)",
-  legGust: "Rachas (m/s)",
-  laneTemp: "Temp.",
-  lanePrecip: "Precip.",
-  laneWind: "Viento",
-  loading: "Cargando pronóstico…",
-  error: "No se pudo cargar el pronóstico",
-  retry: "Reintentar",
-  close: "Cerrar",
-  weekdays: ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"],
-  months: [
-    "enero",
-    "febrero",
-    "marzo",
-    "abril",
-    "mayo",
-    "junio",
-    "julio",
-    "agosto",
-    "septiembre",
-    "octubre",
-    "noviembre",
-    "diciembre"
-  ],
-  compass: ["N", "NE", "E", "SE", "S", "SO", "O", "NO"],
-  dayLabel: (e, t, i) => `${e} ${t} ${i}`,
-  dateLabel: (e, t) => `${e} ${t}`,
-  now: "El tiempo ahora",
-  feels: "Sensación",
-  precip: "Precipitación",
-  wind: "Viento",
-  table: "Tabla",
-  graph: "Gráfico",
-  today: "Hoy",
-  tomorrow: "Mañana",
-  timeCol: "Hora",
-  tempCol: "Temp.",
-  settings: "Ajustes",
-  forecastModel: "Modelo de pronóstico",
-  language: "Idioma",
-  location: "Ubicación",
-  search: "Busca un lugar o estación…",
-  analysis: "Análisis",
-  lastUpdate: "Última actualización",
-  next48: "Próximas 48 h",
-  axTemp: "Temp. (°C)",
-  axWind: "Viento (m/s)",
-  fullscreen: "Pantalla completa",
-  exitFullscreen: "Salir de pantalla completa",
-  scrubSlider: "Hora del pronóstico",
-  minimize: "Minimizar",
-  expand: "Ampliar",
-  resize: "Cambiar tamaño",
-  correctedDetail: (e, t) => `Corregida con observaciones en ${e}${t ? `: ${t.toLowerCase()}` : ""}`,
-  stationPlace: (e, t) => `Pronóstico para la estación meteorológica a ${t} km del centro de ${e}`,
-  noForecastForTime: "No hay pronóstico para esta hora",
-  monthsShort: [
-    "ene",
-    "feb",
-    "mar",
-    "abr",
-    "may",
-    "jun",
-    "jul",
-    "ago",
-    "sep",
-    "oct",
-    "nov",
-    "dic"
-  ],
-  metaLine: (e, t) => `Análisis: ${e} · Última actualización: ${t}`
-}, st = {
-  nextHours: (e) => `Próximas ${e} h`,
-  forecastSpan: (e, t) => `${e} ${e === 1 ? "dia" : "dias"} · até ${t}`,
-  swipe: "deslize para o lado →",
-  legTemp: "Temp. (°C)",
-  legPrecip: "Precip. (mm)",
-  legPmax: "Precip. máx. (mm)",
-  legWind: "Vento (m/s)",
-  legGust: "Rajadas (m/s)",
-  laneTemp: "Temp.",
-  lanePrecip: "Precip.",
-  laneWind: "Vento",
-  loading: "A carregar previsão…",
-  error: "Não foi possível carregar a previsão",
-  retry: "Tentar de novo",
-  close: "Fechar",
-  weekdays: ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"],
-  months: [
-    "janeiro",
-    "fevereiro",
-    "março",
-    "abril",
-    "maio",
-    "junho",
-    "julho",
-    "agosto",
-    "setembro",
-    "outubro",
-    "novembro",
-    "dezembro"
-  ],
-  compass: ["N", "NE", "E", "SE", "S", "SO", "O", "NO"],
-  dayLabel: (e, t, i) => `${e} ${t} ${i}`,
-  dateLabel: (e, t) => `${e} ${t}`,
-  now: "O tempo agora",
-  feels: "Sensação",
-  precip: "Precipitação",
-  wind: "Vento",
-  table: "Tabela",
-  graph: "Gráfico",
-  today: "Hoje",
-  tomorrow: "Amanhã",
-  timeCol: "Hora",
-  tempCol: "Temp.",
-  settings: "Definições",
-  forecastModel: "Modelo de previsão",
-  language: "Idioma",
-  location: "Localização",
-  search: "Procurar um local ou estação…",
-  analysis: "Análise",
-  lastUpdate: "Última atualização",
-  next48: "Próximas 48 h",
-  axTemp: "Temp. (°C)",
-  axWind: "Vento (m/s)",
-  fullscreen: "Ecrã inteiro",
-  exitFullscreen: "Sair do ecrã inteiro",
-  scrubSlider: "Hora da previsão",
-  minimize: "Minimizar",
-  expand: "Expandir",
-  resize: "Redimensionar",
-  correctedDetail: (e, t) => `Corrigida com observações em ${e}${t ? `: ${t.toLowerCase()}` : ""}`,
-  stationPlace: (e, t) => `Previsão para a estação meteorológica a ${t} km do centro de ${e}`,
-  noForecastForTime: "Sem previsão para esta hora",
-  monthsShort: [
-    "jan",
-    "fev",
-    "mar",
-    "abr",
-    "mai",
-    "jun",
-    "jul",
-    "ago",
-    "set",
-    "out",
-    "nov",
-    "dez"
-  ],
-  metaLine: (e, t) => `Análise: ${e} · Última atualização: ${t}`
-}, nt = {
-  nextHours: (e) => `Następne ${e} godz.`,
-  forecastSpan: (e, t) => `${e} ${e === 1 ? "dzień" : "dni"} · do ${t}`,
-  swipe: "przesuń w bok →",
-  legTemp: "Temp. (°C)",
-  legPrecip: "Opad (mm)",
-  legPmax: "Maks. opad (mm)",
-  legWind: "Wiatr (m/s)",
-  legGust: "Porywy (m/s)",
-  laneTemp: "Temp.",
-  lanePrecip: "Opad",
-  laneWind: "Wiatr",
-  loading: "Ładowanie prognozy…",
-  error: "Nie udało się wczytać prognozy",
-  retry: "Ponów",
-  close: "Zamknij",
-  weekdays: ["niedz.", "pon.", "wt.", "śr.", "czw.", "pt.", "sob."],
-  months: [
-    "stycznia",
-    "lutego",
-    "marca",
-    "kwietnia",
-    "maja",
-    "czerwca",
-    "lipca",
-    "sierpnia",
-    "września",
-    "października",
-    "listopada",
-    "grudnia"
-  ],
-  compass: ["N", "NE", "E", "SE", "S", "SW", "W", "NW"],
-  dayLabel: (e, t, i) => `${e} ${t} ${i}`,
-  dateLabel: (e, t) => `${e} ${t}`,
-  now: "Pogoda teraz",
-  feels: "Odczuwalna",
-  precip: "Opady",
-  wind: "Wiatr",
-  table: "Tabela",
-  graph: "Wykres",
-  today: "Dziś",
-  tomorrow: "Jutro",
-  timeCol: "Godz.",
-  tempCol: "Temp.",
-  settings: "Ustawienia",
-  forecastModel: "Model prognozy",
-  language: "Język",
-  location: "Lokalizacja",
-  search: "Szukaj miejsca lub stacji…",
-  analysis: "Analiza",
-  lastUpdate: "Ostatnia aktualizacja",
-  next48: "Następne 48 godz.",
-  axTemp: "Temp. (°C)",
-  axWind: "Wiatr (m/s)",
-  fullscreen: "Pełny ekran",
-  exitFullscreen: "Zamknij pełny ekran",
-  scrubSlider: "Godzina prognozy",
-  minimize: "Zminimalizuj",
-  expand: "Powiększ",
-  resize: "Zmień rozmiar",
-  correctedDetail: (e, t) => `Skorygowana według pomiarów na stacji ${e}${t ? `: ${t.toLowerCase()}` : ""}`,
-  stationPlace: (e, t) => `${e}: prognoza dla stacji pogodowej ${t} km od centrum`,
-  noForecastForTime: "Brak prognozy na tę godzinę",
-  monthsShort: [
-    "sty",
-    "lut",
-    "mar",
-    "kwi",
-    "maj",
-    "cze",
-    "lip",
-    "sie",
-    "wrz",
-    "paź",
-    "lis",
-    "gru"
-  ],
-  metaLine: (e, t) => `Analiza: ${e} · Ostatnia aktualizacja: ${t}`
-}, lt = {
-  nextHours: (e) => `Næstu ${e} tímar`,
-  forecastSpan: (e, t) => `${e} ${e === 1 ? "dagur" : "dagar"} · til ${t}`,
-  swipe: "strúka til viðrar →",
-  legTemp: "Hiti (°C)",
-  legPrecip: "Avfall (mm)",
-  legPmax: "Mest avfall (mm)",
-  legWind: "Vindur (m/s)",
-  legGust: "Vindhviða (m/s)",
-  laneTemp: "Hiti",
-  lanePrecip: "Avfall",
-  laneWind: "Vindur",
-  loading: "Innlesur spá…",
-  error: "Kundi ikki innlesa spáðuna",
-  retry: "Royn aftur",
-  close: "Lat aftur",
-  weekdays: ["sun.", "mán.", "týs.", "mik.", "hós.", "frí.", "ley."],
-  months: [
-    "januar",
-    "februar",
-    "mars",
-    "apríl",
-    "mai",
-    "juni",
-    "juli",
-    "august",
-    "september",
-    "oktober",
-    "november",
-    "desember"
-  ],
-  compass: ["N", "NE", "E", "SE", "S", "SV", "V", "NV"],
-  dayLabel: (e, t, i) => `${e} ${t}. ${i}`,
-  dateLabel: (e, t) => `${e}. ${t}`,
-  now: "Veðrið nú",
-  feels: "Kennist sum",
-  precip: "Avfall",
-  wind: "Vindur",
-  table: "Talva",
-  graph: "Grafur",
-  today: "Í dag",
-  tomorrow: "Í morgin",
-  timeCol: "Kl.",
-  tempCol: "Hiti",
-  settings: "Stillingar",
-  forecastModel: "Spálíkan",
-  language: "Mál",
-  location: "Staður",
-  search: "Leita eftir stað ella veðurstöð…",
-  analysis: "Greiningartíð",
-  lastUpdate: "Seinast dagført",
-  next48: "Næstu 48 tímar",
-  axTemp: "Hiti (°C)",
-  axWind: "Vindur (m/s)",
-  fullscreen: "Fullur skermur",
-  exitFullscreen: "Lat fullan skerm aftur",
-  scrubSlider: "Spátíð",
-  minimize: "Minka",
-  expand: "Stækka",
-  resize: "Broyt stødd",
-  correctedDetail: (e, t) => `Rættað eftir mátingum á støðini ${e}${t ? `: ${t.toLowerCase()}` : ""}`,
-  stationPlace: (e, t) => `${e}: veðurforsøgn fyri veðurstøðina ${t} km frá miðbýnum`,
-  noForecastForTime: "Eingin spá fyri hesa tíðina",
-  monthsShort: [
-    "jan",
-    "feb",
-    "mar",
-    "apr",
-    "mai",
-    "jun",
-    "jul",
-    "aug",
-    "sep",
-    "okt",
-    "nov",
-    "des"
-  ],
-  metaLine: (e, t) => `Greiningartíð: ${e} · Seinast dagført: ${t}`
-}, Y2 = { is: tt, en: it, fo: lt, pl: nt, es: ot, pt: st }, at = [
-  { code: "is", name: "Íslenska" },
-  { code: "en", name: "English" },
-  { code: "fo", name: "Føroyskt" },
-  { code: "pl", name: "Polski" },
-  { code: "es", name: "Español" },
-  { code: "pt", name: "Português" }
-];
-function S0(e) {
-  return Y2[e] ?? Y2.is;
+function ft(e, t) {
+  return Number.isFinite(e) ? e < 10 ? `${W(e, 1, t)} km` : `${Math.round(e)} km` : "";
 }
-function rt(e) {
-  return Number.isFinite(e) ? e < 10 ? `${e.toFixed(1)} km` : `${Math.round(e)} km` : "";
-}
-function g2(e, t, i) {
+function x2(e, t, i) {
   const n = e < 0 ? "S" : "N", o = i.compass[t < 0 ? 6 : 2];
-  return `${Math.abs(e).toFixed(2)}°${n} ${Math.abs(t).toFixed(2)}°${o}`;
+  return `${W(Math.abs(e), 2, i)}°${n} ${W(Math.abs(t), 2, i)}°${o}`;
 }
-function ct(e) {
+function mt(e) {
   const { places: t, lat: i, lon: n, t: o } = e;
   if (e.locationName) return { name: e.locationName, source: "attribute" };
   if (e.pickedName) return { name: e.pickedName, source: "picked" };
   if (isNaN(i) || isNaN(n)) return { name: t[0]?.name ?? "", source: "station" };
-  if (e.preferCoordinates) return { name: g2(i, n, o), source: "coordinates" };
-  let s = null, l = 1 / 0;
-  for (const a of t) {
-    const r = (a.lat - i) ** 2 + (a.lon - n) ** 2 * 0.2;
-    r < l && (l = r, s = a);
+  if (e.preferCoordinates) return { name: x2(i, n, o), source: "coordinates" };
+  let s = null, a = 1 / 0;
+  for (const l of t) {
+    const r = (l.lat - i) ** 2 + (l.lon - n) ** 2 * 0.2;
+    r < a && (a = r, s = l);
   }
-  return s ? { name: s.name, source: "station" } : { name: g2(i, n, o), source: "coordinates" };
+  return s ? { name: s.name, source: "station" } : { name: x2(i, n, o), source: "coordinates" };
 }
-function dt(e, t, i, n, o) {
-  return (i !== "coordinates" && !isNaN(e) && !isNaN(t) ? f(g2(e, t, o)) : "") + n;
+function gt(e, t, i, n, o) {
+  return (i !== "coordinates" && !isNaN(e) && !isNaN(t) ? f(x2(e, t, o)) : "") + n;
 }
 function K2(e, t, i, n = 7) {
   if (!e.length) return [];
-  const o = (r) => Date.UTC(r.local.getUTCFullYear(), r.local.getUTCMonth(), r.local.getUTCDate()), s = o(e[Math.max(0, Math.min(e.length - 1, i))]), l = /* @__PURE__ */ new Map();
+  const o = (r) => Date.UTC(r.local.getUTCFullYear(), r.local.getUTCMonth(), r.local.getUTCDate()), s = o(e[Math.max(0, Math.min(e.length - 1, i))]), a = /* @__PURE__ */ new Map();
   for (const r of e) {
-    const d = o(r);
-    if (d < s) continue;
-    let m = l.get(d);
-    m || l.set(d, m = []), m.push(r);
+    const c = o(r);
+    if (c < s) continue;
+    let m = a.get(c);
+    m || a.set(c, m = []), m.push(r);
   }
-  const a = [];
-  for (const [r, d] of [...l.entries()].sort((m, u) => m[0] - u[0])) {
-    if (a.length >= n) break;
-    const m = d[0].local, u = Math.round((r - s) / 864e5), p = t.weekdays[m.getUTCDay()], x = u === 0 ? t.today : u === 1 ? t.tomorrow : p.charAt(0).toUpperCase() + p.slice(1), g = d.map((k) => k.tempC).filter((k) => Number.isFinite(k)), z = d.map((k) => k.windMs).filter((k) => Number.isFinite(k));
-    a.push({
+  const l = [];
+  for (const [r, c] of [...a.entries()].sort((m, u) => m[0] - u[0])) {
+    if (l.length >= n) break;
+    const m = c[0].local, u = Math.round((r - s) / 864e5), p = t.weekdays[m.getUTCDay()], x = u === 0 ? t.today : u === 1 ? t.tomorrow : p.charAt(0).toUpperCase() + p.slice(1), v = c.map((B) => B.tempC).filter((B) => Number.isFinite(B)), z = c.map((B) => B.windMs).filter((B) => Number.isFinite(B));
+    l.push({
       name: x,
       date: t.dateLabel(m.getUTCDate(), t.months[m.getUTCMonth()]),
       dateShort: t.dateLabel(m.getUTCDate(), t.monthsShort[m.getUTCMonth()]),
-      maxC: g.length ? Math.round(Math.max(...g)) : null,
-      minC: g.length ? Math.round(Math.min(...g)) : null,
-      windMean: z.length ? Math.round(z.reduce((k, v) => k + v, 0) / z.length) : null,
-      precipMm: d.reduce(
-        (k, v) => k + (Number.isFinite(v.precipMm) ? v.precipMm : 0),
+      maxC: v.length ? Math.round(Math.max(...v)) : null,
+      minC: v.length ? Math.round(Math.min(...v)) : null,
+      windMean: z.length ? Math.round(z.reduce((B, b) => B + b, 0) / z.length) : null,
+      precipMm: c.reduce(
+        (B, b) => B + (Number.isFinite(b.precipMm) ? b.precipMm : 0),
         0
       ),
-      icons: [3, 9, 15, 21].map((k) => d.find((v) => v.local.getUTCHours() === k)?.symbol ?? "").filter(Boolean),
-      noonSymbol: pt(d),
-      hours: d
+      icons: [3, 9, 15, 21].map((B) => c.find((b) => b.local.getUTCHours() === B)?.symbol ?? "").filter(Boolean),
+      noonSymbol: xt(c),
+      hours: c
     });
   }
-  return a;
+  return l;
 }
-function P2(e, t) {
-  const i = e2(e);
+function G2(e, t) {
+  const i = t2(e);
   return i ? `<img src="${f(i)}" width="${t}" height="${t}" alt="">` : `<span style="width:${t}px;height:${t}px;display:inline-block"></span>`;
 }
-function pt(e) {
+function xt(e) {
   let t = "", i = 1 / 0;
   for (const n of e) {
     const o = Math.abs(n.local.getUTCHours() - 15);
@@ -1360,110 +1377,131 @@ function pt(e) {
   }
   return t;
 }
-function r2(e, t, i = 66, n = 76) {
+function c2(e, t, i = 66, n = 76) {
   const o = e.tempC === null ? null : Math.round(e.tempC), s = e.tempC === null || e.windMs === null ? null : Math.round(e.tempC - 0.35 * e.windMs);
   return `
     <div class="now">
       <div class="now-eyebrow">${f(t.now)}</div>
       <div class="now-main">
-        <div class="now-temp" style="font-size:${i}px;color:${o === null ? M.none : "#14202B"}">${o === null ? "–" : `${o}°`}</div>
-        <div class="now-icon">${P2(e.symbol, n)}</div>
+        <div class="now-temp" style="font-size:${i}px;color:${o === null ? w.none : "#14202B"}">${o === null ? "–" : `${o}°`}</div>
+        <div class="now-icon">${G2(e.symbol, n)}</div>
       </div>
       <div class="now-stats">
         <div class="stat">
           <div class="stat-label">${f(t.feels)}</div>
-          <div class="stat-value" style="color:${s === null ? M.none : "#14202B"}">${s === null ? "–" : `${s}°`}</div>
+          <div class="stat-value" style="color:${s === null ? w.none : "#14202B"}">${s === null ? "–" : `${s}°`}</div>
         </div>
         <div class="stat">
           <div class="stat-label">${f(t.precip)}</div>
-          <div class="stat-value" style="color:${M.precipText}">${e.precipMm.toFixed(1)} mm</div>
+          <div class="stat-value" style="color:${w.precipText}">${W(e.precipMm, 1, t)} mm</div>
         </div>
         <div class="stat stat--wind-card">
           <div class="stat-label">${f(t.wind)}</div>
-          <div class="stat-value stat-wind"><span>${f(t2(e))}</span>${s2(e.dirDeg, 17, "#1E8E6B")}</div>
+          <div class="stat-value stat-wind"><span>${f(i2(e))}</span>${n2(e.dirDeg, 17, "#1E8E6B")}</div>
         </div>
       </div>
     </div>`;
 }
-const ht = (e = "") => `<svg class="${e}" width="14" height="14" viewBox="0 0 14 14" style="flex:none"><path d="M3 5l4 4 4-4" fill="none" stroke="${M.neutral}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-function ut(e) {
-  return `<button class="pill" type="button"><span>${f(e)}</span>${ht()}</button>`;
+const vt = (e = "") => `<svg class="${e}" width="14" height="14" viewBox="0 0 14 14" style="flex:none"><path d="M3 5l4 4 4-4" fill="none" stroke="${w.neutral}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+function bt(e) {
+  return `<button class="pill" type="button"><span>${f(e)}</span>${vt()}</button>`;
 }
-function z0(e, t, i = " / ") {
-  return e === null || t === null ? "–" : `<span style="color:${o2(e)}">${e}°</span><span class="temp-sep">${i}</span><span style="color:${o2(t)}">${t}°</span>`;
+function F0(e, t, i = " / ") {
+  return e === null || t === null ? "–" : `<span style="color:${s2(e)}">${e}°</span><span class="temp-sep">${i}</span><span style="color:${s2(t)}">${t}°</span>`;
 }
-function C0(e, t) {
-  return `<span class="h-time">${String(e.local.getUTCHours()).padStart(2, "0")}</span><span class="h-icon">${P2(e.symbol, t)}</span><span class="h-temp" style="color:${e.tempC === null ? M.none : o2(Math.round(e.tempC))}">${e.tempC === null ? "–" : `${Math.round(e.tempC)}°`}</span><span class="h-precip">${e.precipMm > 0.05 ? e.precipMm.toFixed(1) : "–"}</span><span class="h-wind">${f(t2(e))} ${s2(e.dirDeg, 14, M.neutral)}</span>`;
+function E0(e, t, i) {
+  return `<span class="h-time">${String(e.local.getUTCHours()).padStart(2, "0")}</span><span class="h-icon">${G2(e.symbol, t)}</span><span class="h-temp" style="color:${e.tempC === null ? w.none : s2(Math.round(e.tempC))}">${e.tempC === null ? "–" : `${Math.round(e.tempC)}°`}</span><span class="h-precip">${e.precipMm > 0.05 ? W(e.precipMm, 1, i) : "–"}</span><span class="h-wind">${f(i2(e))} ${n2(e.dirDeg, 14, w.neutral)}</span>`;
 }
-function T0(e) {
+function A0(e) {
   const t = Date.now(), i = e.length > 1 ? e[1].utcMs - e[0].utcMs : 36e5;
   return (n) => t >= n.utcMs && t < n.utcMs + i ? " hrow-now" : "";
 }
-function F0(e, t) {
+function P0(e, t) {
   return `<div class="${e} hrow-head"><span>${f(t.timeCol)}</span><span></span><span class="h-temp">${f(t.tempCol)}</span><span class="h-precip">mm</span><span class="h-wind-h">m/s</span></div>`;
 }
-const ft = '<svg width="11" height="11" viewBox="0 0 14 14" style="flex:none"><path d="M3 5l4 4 4-4" fill="none" stroke="#8CA3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>', mt = '<svg width="15" height="15" viewBox="0 0 16 16"><line x1="3" y1="3" x2="13" y2="13" stroke="#16324A" stroke-width="2.2" stroke-linecap="round"/><line x1="13" y1="3" x2="3" y2="13" stroke="#16324A" stroke-width="2.2" stroke-linecap="round"/></svg>', gt = '<svg width="9" height="15" viewBox="0 0 9 15" style="flex:none"><g fill="#B4C6D6"><circle cx="2.5" cy="2.5" r="1.4"/><circle cx="6.5" cy="2.5" r="1.4"/><circle cx="2.5" cy="7.5" r="1.4"/><circle cx="6.5" cy="7.5" r="1.4"/><circle cx="2.5" cy="12.5" r="1.4"/><circle cx="6.5" cy="12.5" r="1.4"/></g></svg>';
-function xt(e, t) {
+const _t = '<svg width="11" height="11" viewBox="0 0 14 14" style="flex:none"><path d="M3 5l4 4 4-4" fill="none" stroke="#8CA3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>', yt = '<svg width="15" height="15" viewBox="0 0 16 16"><line x1="3" y1="3" x2="13" y2="13" stroke="#16324A" stroke-width="2.2" stroke-linecap="round"/><line x1="13" y1="3" x2="3" y2="13" stroke="#16324A" stroke-width="2.2" stroke-linecap="round"/></svg>', wt = '<svg width="9" height="15" viewBox="0 0 9 15" style="flex:none"><g fill="#B4C6D6"><circle cx="2.5" cy="2.5" r="1.4"/><circle cx="6.5" cy="2.5" r="1.4"/><circle cx="2.5" cy="7.5" r="1.4"/><circle cx="6.5" cy="7.5" r="1.4"/><circle cx="2.5" cy="12.5" r="1.4"/><circle cx="6.5" cy="12.5" r="1.4"/></g></svg>';
+function $t(e, t) {
   const i = String(e.getUTCDate()).padStart(2, "0"), n = t.monthsShort[e.getUTCMonth()], o = String(e.getUTCHours()).padStart(2, "0"), s = String(e.getUTCMinutes()).padStart(2, "0");
   return `${i} ${n} ${o}:${s} UTC`;
 }
-function vt(e) {
+function Mt(e) {
   if (e == null || !Number.isFinite(e)) return null;
   if (e === 0) return "UTC";
   const t = e < 0 ? "-" : "+", i = Math.abs(e), n = Math.floor(i / 60), o = i % 60;
   return o === 0 ? `UTC${t}${n}` : `UTC${t}${n}:${String(o).padStart(2, "0")}`;
 }
-function bt(e) {
+function X2(e) {
+  return e === "table" || e === "graph" ? e : "both";
+}
+function kt(e, t, i, n, o) {
+  const s = (a, l) => `<button class="tab${e === a ? " on" : ""}" type="button" data-exp-view="${a}" aria-pressed="${e === a}">${f(l)}</button>`;
+  return `
+      <div class="exp-bar">
+        <div class="tabs exp-tabs">${s("table", o.table)}${s("graph", o.graph)}${s("both", o.both)}</div>
+        ${e === "table" ? n : ""}
+      </div>
+      <div class="exp-body exp-${e}">
+        ${e === "graph" ? "" : `<div class="exp-left">${t}</div>`}
+        ${e === "table" ? "" : `<div class="exp-right">${i}</div>`}
+      </div>`;
+}
+function Bt(e) {
+  return e ? ".station-search" : ".overlay";
+}
+function St(e, t) {
+  return t && e.source === "coordinates" ? "" : e.name;
+}
+function zt(e) {
   return [
     e.modelName,
     e.place,
     e.lang,
-    vt(e.tzOffsetMin)
+    Mt(e.tzOffsetMin)
   ].filter((t) => !!t).join(" · ");
 }
-function _t(e, t, i) {
-  const n = t ? `<button class="header-close" type="button" aria-label="${f(i.close)}">${mt}</button>` : "";
+function Ct(e, t, i) {
+  const n = t ? `<button class="header-close" type="button" aria-label="${f(i.close)}">${yt}</button>` : "";
   return `
     <div class="panel-header panel-drag" data-drag-handle>
-      ${gt}
-      <button class="pill panel-pill" type="button"><span>${f(e)}</span>${ft}</button>
+      ${wt}
+      <button class="pill panel-pill" type="button"><span>${f(e)}</span>${_t}</button>
       ${n}
     </div>`;
 }
-const yt = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg>';
-function wt(e, t) {
+const Tt = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg>';
+function Ft(e, t) {
   return e.startsWith("air_temperature") ? t.laneTemp : e.startsWith("wind_") ? t.laneWind : e.startsWith("lwe_precipitation") ? t.lanePrecip : null;
 }
-function Mt(e, t, i) {
+function Et(e, t, i) {
   if (!e.length) return "";
   const n = [
     ...new Set(
-      e.map((s) => wt(s, i)).filter((s) => !!s)
+      e.map((s) => Ft(s, i)).filter((s) => !!s)
     )
   ].join(", "), o = i.correctedDetail(t, n);
-  return `<span class="corrected" title="${f(o)}" aria-label="${f(o)}" role="img">${yt}</span>`;
+  return `<span class="corrected" title="${f(o)}" aria-label="${f(o)}" role="img">${Tt}</span>`;
 }
-function $t(e, t, i) {
+function At(e, t, i) {
   const n = e?.trim();
-  return !n || !Number.isFinite(t) || t < 0 ? "" : `<div class="loc-note">${f(i.stationPlace(n, t.toFixed(1)))}</div>`;
+  return !n || !Number.isFinite(t) || t < 0 ? "" : `<div class="loc-note">${f(i.stationPlace(n, W(t, 1, i)))}</div>`;
 }
-function Bt(e) {
+function Pt(e) {
   return `<div class="meta-footer">${f(e)}</div>`;
 }
-function c2(e, t, i = !0) {
+function d2(e, t, i = !0) {
   return `<div class="day-chips"><div class="dc-track">${e.map((o, s) => {
-    const l = s === t, a = i ? `<div class="dc-date">${f(o.dateShort)}</div>` : "";
+    const a = s === t, l = i ? `<div class="dc-date">${f(o.dateShort)}</div>` : "";
     return `
-      <button class="day-chip${l ? " sel" : ""}" type="button" data-day="${s}" aria-pressed="${l}">
+      <button class="day-chip${a ? " sel" : ""}" type="button" data-day="${s}" aria-pressed="${a}">
         <div class="dc-name">${f(o.name)}</div>
-        ${a}
-        <div class="dc-icon">${P2(o.noonSymbol, i ? 30 : 26)}</div>
-        <div class="dc-temps">${z0(o.maxC, o.minC, "/")}</div>
+        ${l}
+        <div class="dc-icon">${G2(o.noonSymbol, i ? 30 : 26)}</div>
+        <div class="dc-temps">${F0(o.maxC, o.minC, "/")}</div>
       </button>`;
   }).join("")}</div></div>`;
 }
-function E0(e, t) {
-  const i = (l, a) => `<div class="sel-stat"><span class="sel-stat-label">${f(l)}</span><span class="sel-stat-value">${a}</span></div>`, n = z0(e.maxC, e.minC, " / "), o = e.precipMm > 0.05 ? `${e.precipMm.toFixed(1)} mm` : "–", s = e.windMean === null ? "–" : `${e.windMean} m/s`;
+function L0(e, t) {
+  const i = (a, l) => `<div class="sel-stat"><span class="sel-stat-label">${f(a)}</span><span class="sel-stat-value">${l}</span></div>`, n = F0(e.maxC, e.minC, " / "), o = e.precipMm > 0.05 ? `${W(e.precipMm, 1, t)} mm` : "–", s = e.windMean === null ? "–" : `${e.windMean} m/s`;
   return `
         <div class="sel-stats">
           ${i(t.tempCol, n)}
@@ -1471,129 +1509,129 @@ function E0(e, t) {
           ${i(t.wind, s)}
         </div>`;
 }
-function kt(e, t) {
-  const i = T0(e.hours), n = e.hours.map((o) => `<div class="hrow${i(o)}">${C0(o, 24)}</div>`).join("");
+function Lt(e, t) {
+  const i = A0(e.hours), n = e.hours.map((o) => `<div class="hrow${i(o)}">${E0(o, 24, t)}</div>`).join("");
   return `
     <div class="sel-card">
       <div class="sel-head">
         <div class="sel-title">${f(e.name)} <span class="sel-date">${f(e.date)}</span></div>
-      </div>${E0(e, t)}
-      ${F0("hrow", t)}
+      </div>${L0(e, t)}
+      ${P0("hrow", t)}
       ${n}
     </div>`;
 }
-function $2(e, t) {
-  const i = T0(e.hours), n = e.hours.map((o) => `<div class="hrow-p${i(o)}">${C0(o, 22)}</div>`).join("");
+function k2(e, t) {
+  const i = A0(e.hours), n = e.hours.map((o) => `<div class="hrow-p${i(o)}">${E0(o, 22, t)}</div>`).join("");
   return `
     <div class="panel-table">
-      ${E0(e, t)}
-      ${F0("hrow-p hrow-sticky", t)}
+      ${L0(e, t)}
+      ${P0("hrow-p hrow-sticky", t)}
       ${n}
     </div>`;
 }
-const St = 200;
-function V2(e) {
+const Ut = 200;
+function J2(e) {
   return e.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ł/g, "l").replace(/đ/g, "d").replace(/ð/g, "d").replace(/þ/g, "th").replace(/æ/g, "ae").replace(/œ/g, "oe").replace(/ø/g, "o").replace(/ß/g, "ss").trim();
 }
-function A0(e, t, i, n) {
-  const o = '<svg width="14" height="14" viewBox="0 0 16 16" style="flex:none"><path d="M3 8.5l3.5 3.5L13 5" fill="none" stroke="#1E8E6B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>', s = V2(i);
-  return e.map((l, a) => ({ p: l, i: a })).filter(({ p: l }) => !s || V2(l.name).includes(s)).slice(0, St).map(({ p: l, i: a }) => {
-    const r = l === t, d = l.distanceKm === void 0 ? "" : `<span class="station-dist">${f(rt(l.distanceKm))}</span>`;
+function U0(e, t, i, n) {
+  const o = '<svg width="14" height="14" viewBox="0 0 16 16" style="flex:none"><path d="M3 8.5l3.5 3.5L13 5" fill="none" stroke="#1E8E6B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>', s = J2(i);
+  return e.map((a, l) => ({ p: a, i: l })).filter(({ p: a }) => !s || J2(a.name).includes(s)).slice(0, Ut).map(({ p: a, i: l }) => {
+    const r = a === t, c = a.distanceKm === void 0 ? "" : `<span class="station-dist">${f(ft(a.distanceKm, n))}</span>`;
     return `
-      <button class="station${r ? " sel" : ""}" type="button" data-station="${a}">
-        <span class="station-name">${f(l.name)}${r ? ` ${o}` : ""}</span>
-        <span class="station-sub">${d}<span class="station-coord">${f(g2(l.lat, l.lon, n))}</span></span>
+      <button class="station${r ? " sel" : ""}" type="button" data-station="${l}">
+        <span class="station-name">${f(a.name)}${r ? ` ${o}` : ""}</span>
+        <span class="station-sub">${c}<span class="station-coord">${f(x2(a.lat, a.lon, n))}</span></span>
       </button>`;
   }).join("");
 }
-function zt(e, t) {
+function Gt(e, t) {
   return `
             <div class="section-label">${f(t.language)}</div>
             <div class="chips chips-langs">
-              ${at.map(
+              ${pe.map(
     (i) => `<button class="chip${e === i.code ? " on" : ""}" type="button" data-lang="${i.code}" aria-pressed="${e === i.code}">${f(i.name)}</button>`
   ).join("")}
             </div>`;
 }
-function Ct(e, t, i, n, o, s, l, a = !0, r = !0) {
-  const d = e.map(
-    (x, g) => `<button class="chip${x.id === t ? " on" : ""}" type="button" data-model="${g}" aria-pressed="${x.id === t}">${f(x.name)}</button>`
+function Dt(e, t, i, n, o, s, a, l = !0, r = !0) {
+  const c = e.map(
+    (x, v) => `<button class="chip${x.id === t ? " on" : ""}" type="button" data-model="${v}" aria-pressed="${x.id === t}">${f(x.name)}</button>`
   ).join(""), m = r ? `
-            <div class="section-label">${f(l.forecastModel)}</div>
-            <div class="chips chips-models">${d}</div>` : "", u = a ? zt(i, l) : "", p = m || u ? `
+            <div class="section-label">${f(a.forecastModel)}</div>
+            <div class="chips chips-models">${c}</div>` : "", u = l ? Gt(i, a) : "", p = m || u ? `
           <div class="ov-col">${m}
             ${u}
           </div>` : "";
   return `
     <div class="backdrop">
-      <div class="overlay" role="dialog" aria-modal="true" aria-label="${f(l.settings)}" tabindex="-1">
+      <div class="overlay" role="dialog" aria-modal="true" aria-label="${f(a.settings)}" tabindex="-1">
         <div class="overlay-head">
-          <div class="overlay-title">${f(l.settings)}</div>
-          <button class="overlay-close" type="button" aria-label="${f(l.close)}">
+          <div class="overlay-title">${f(a.settings)}</div>
+          <button class="overlay-close" type="button" aria-label="${f(a.close)}">
             <svg width="16" height="16" viewBox="0 0 16 16"><line x1="3" y1="3" x2="13" y2="13" stroke="#16324A" stroke-width="2.2" stroke-linecap="round"/><line x1="13" y1="3" x2="3" y2="13" stroke="#16324A" stroke-width="2.2" stroke-linecap="round"/></svg>
           </button>
         </div>
         <div class="ov-cols${p ? "" : " ov-cols--single"}">${p}
           <div class="ov-col ov-col--station">
-            <div class="section-label">${f(l.location)}</div>
-            <input class="station-search" type="text" enterkeyhint="search" value="${f(s)}" placeholder="${f(l.search)}" aria-label="${f(l.search)}" autocomplete="off">
-            <div class="station-list">${A0(n, o, s, l)}</div>
+            <div class="section-label">${f(a.location)}</div>
+            <input class="station-search" type="text" enterkeyhint="search" value="${f(s)}" placeholder="${f(a.search)}" aria-label="${f(a.search)}" autocomplete="off">
+            <div class="station-list">${U0(n, o, s, a)}</div>
           </div>
         </div>
       </div>
     </div>`;
 }
-const Tt = 22, d2 = 60;
-function Ft(e, t) {
+const Ht = 22, p2 = 60;
+function Ot(e, t) {
   const { temp: i, gap: n, wind: o } = e, s = i + n + o;
-  let l = e.headerPx, a = e.symbolsPx, r = e.arrowsPx;
-  const d = l + r;
-  t - d - a < d2 && (a = Math.max(
+  let a = e.headerPx, l = e.symbolsPx, r = e.arrowsPx;
+  const c = a + r;
+  t - c - l < p2 && (l = Math.max(
     0,
-    Math.min(a, t - d - d2)
+    Math.min(l, t - c - p2)
   ));
-  const m = l + a + r;
-  if (t - m < d2 && m > 0) {
-    const B = Math.max(0, t - d2) / m;
-    l = Math.floor(l * B), a = Math.floor(a * B), r = Math.floor(r * B);
+  const m = a + l + r;
+  if (t - m < p2 && m > 0) {
+    const k = Math.max(0, t - p2) / m;
+    a = Math.floor(a * k), l = Math.floor(l * k), r = Math.floor(r * k);
   }
-  const p = l + a, x = Math.max(0, t - p - r), g = (B) => p + (s > 0 ? Math.round(B / s * x) : 0), z = p, k = g(i), v = g(i + n), $ = g(i + n + o);
+  const p = a + l, x = Math.max(0, t - p - r), v = (k) => p + (s > 0 ? Math.round(k / s * x) : 0), z = p, B = v(i), b = v(i + n), M = v(i + n + o);
   return {
     height: t,
     // The symbol row sits under the header and above the plot; a spec with
     // symbolsPx 0 collapses it to a zero-height band at the plot's ceiling,
     // which is what the pre-band geometry was.
-    symbolTop: l,
-    symbolsPx: a,
+    symbolTop: a,
+    symbolsPx: l,
     plotTop: z,
     // The temperature lane starts at the plot's ceiling; the same edge, named
     // twice because the renderer reads it in two different contexts.
     tempTop: z,
-    tempBase: k,
-    windTop: v,
-    windBase: $,
-    plotBottom: $
+    tempBase: B,
+    windTop: b,
+    windBase: M,
+    plotBottom: M
   };
 }
-function Et(e) {
-  return e.height - e.plotBottom >= Tt;
+function It(e) {
+  return e.height - e.plotBottom >= Ht;
 }
-const At = 60, Lt = [
+const Rt = 60, Wt = [
   ".chart-axis",
   ".chart-plot",
   ".chart-axis-right"
 ];
-function L0(e, t, i = At) {
+function G0(e, t, i = Rt) {
   return !(e > 0) || !(t >= i) ? null : { scale: t / e, heightPx: t };
 }
-function Ut(e, t) {
+function Nt(e, t) {
   return e * t.scale;
 }
-function Pt(e, t) {
+function jt(e, t) {
   return e * t.scale;
 }
-const Gt = 8;
-function Dt(e, t) {
+const qt = 8;
+function Yt(e, t) {
   return {
     dayLabelY: Math.round(t * 1.15),
     // The hour row sits above the SYMBOL row, not above the plot: those are the
@@ -1601,67 +1639,67 @@ function Dt(e, t) {
     // the hours on top of the glyphs.
     hourLabelY: Math.max(
       Math.round(t * 1.15) + 2,
-      e.symbolTop - Gt
+      e.symbolTop - qt
     )
   };
 }
-function Ht(e, t) {
+function Vt(e, t) {
   return [
     e.plotTop + 8,
     Math.max(e.plotTop + 8, e.tempBase - t - 2),
     e.windTop + 8
   ];
 }
-const It = {
+const Kt = {
   headerPx: 44,
   symbolsPx: 26,
   arrowsPx: 26,
   temp: 126,
   gap: 16,
   wind: 68
-}, Ot = 6;
-function G2(e) {
-  return { ...It, symbolsPx: e + Ot };
+}, Xt = 6;
+function D2(e) {
+  return { ...Kt, symbolsPx: e + Xt };
 }
-function Rt(e, t) {
+function Jt(e, t) {
   return e.symbolTop + Math.max(0, Math.round((e.symbolsPx - t) / 2));
 }
-function D2(e) {
-  return e > 0 ? M.temp : e < 0 ? M.tempCold : M.neutral;
+function H2(e) {
+  return e > 0 ? w.temp : e < 0 ? w.tempCold : w.neutral;
 }
-function H2(e, t, i) {
-  const n = Ft(e, t);
+function O2(e, t, i) {
+  const n = Ot(e, t);
   return {
     ...n,
     precipBase: n.tempBase,
-    ...Dt(n, i.dayLabelSize),
-    laneChipY: Ht(n, i.precipCap)
+    ...Yt(n, i.dayLabelSize),
+    laneChipY: Vt(n, i.precipCap)
   };
 }
-function Wt(e, t) {
+function Zt(e, t) {
   return t === e.height ? e : {
     ...e,
-    ...H2(G2(e.symbolSize), t, {
+    ...O2(D2(e.symbolSize), t, {
       dayLabelSize: e.dayLabelSize,
       precipCap: e.precipCap
     })
   };
 }
-const Nt = 240;
-function U0(e, t) {
+const Qt = 240;
+function D0(e, t) {
   const i = t ? Math.max(0, t.offsetHeight - t.clientHeight) : 0;
   return e - i;
 }
-function X2(e, t, i) {
-  const n = U0(e, t);
-  return n < Nt ? !1 : n < i || n - i > 2;
+function Z2(e, t, i) {
+  const n = D0(e, t);
+  return n < Qt ? !1 : n < i || n - i > 2;
 }
-const jt = {
+const ei = {
   colW: 26,
   axisW: 46,
   rightAxisW: 24,
   axisFont: 9.5,
-  ...H2(G2(20), 262, { dayLabelSize: 13, precipCap: 44 }),
+  ...O2(D2(20), 262, { dayLabelSize: 13, precipCap: 44 }),
   tempLo: 0,
   tempHi: 10,
   tempTicks: [0, 5, 10],
@@ -1692,12 +1730,12 @@ const jt = {
   gridEvery: 2,
   tempStroke: 2.4,
   windStroke: 2.1
-}, qt = {
+}, ti = {
   colW: 42,
   axisW: 52,
   rightAxisW: 28,
   axisFont: 11,
-  ...H2(G2(26), 560, { dayLabelSize: 16, precipCap: 84 }),
+  ...O2(D2(26), 560, { dayLabelSize: 16, precipCap: 84 }),
   tempLo: 0,
   tempHi: 10,
   tempTicks: [0, 5, 10],
@@ -1727,141 +1765,141 @@ const jt = {
   tempStroke: 2.8,
   windStroke: 2.4
 };
-function V(e, t, i, n, o, s, l = "start", a = !1) {
-  return `<text x="${e}" y="${t}" fill="${n}" font-size="${o}" font-weight="${s}" text-anchor="${l}" font-family="Nunito, system-ui, sans-serif"${a ? ' stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke"' : ""}>${f(i)}</text>`;
+function X(e, t, i, n, o, s, a = "start", l = !1) {
+  return `<text x="${e}" y="${t}" fill="${n}" font-size="${o}" font-weight="${s}" text-anchor="${a}" font-family="Nunito, system-ui, sans-serif"${l ? ' stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke"' : ""}>${f(i)}</text>`;
 }
 function B2(e, t, i, n) {
   let o = "", s = !1;
-  for (let l = 0; l < e.length; l++) {
-    const a = t(e[l]);
-    if (a === null) {
+  for (let a = 0; a < e.length; a++) {
+    const l = t(e[a]);
+    if (l === null) {
       s = !1;
       continue;
     }
-    o += `${s ? "L" : "M"}${i(l).toFixed(1)} ${n(a).toFixed(1)} `, s = !0;
+    o += `${s ? "L" : "M"}${i(a).toFixed(1)} ${n(l).toFixed(1)} `, s = !0;
   }
   return o.trim();
 }
-function Yt(e, t) {
-  const i = e.local, n = t.weekdays[i.getUTCDay()], o = n.charAt(0).toUpperCase() + n.slice(1), s = t.monthsShort[i.getUTCMonth()], l = String(i.getUTCDate()).padStart(2, "0");
-  return `${o} ${l} ${s}`;
+function ii(e, t) {
+  const i = e.local, n = t.weekdays[i.getUTCDay()], o = n.charAt(0).toUpperCase() + n.slice(1), s = t.monthsShort[i.getUTCMonth()], a = String(i.getUTCDate()).padStart(2, "0");
+  return `${o} ${a} ${s}`;
 }
-function Kt(e, t) {
-  const i = e.map((d) => d.tempC).filter((d) => d !== null), n = y0(i), o = n[0], s = n[n.length - 1];
+function oi(e, t) {
+  const i = e.map((c) => c.tempC).filter((c) => c !== null), n = k0(i), o = n[0], s = n[n.length - 1];
   if (n.length <= t)
     return { lo: o, hi: s, ticks: n };
-  const l = Math.ceil((n.length - 1) / (t - 1)), a = /* @__PURE__ */ new Set();
-  for (let d = 0; d < n.length; d += l) a.add(n[d]);
-  a.add(s), o < 0 && s > 0 && n.includes(0) && a.add(0);
-  const r = [...a].sort((d, m) => d - m);
+  const a = Math.ceil((n.length - 1) / (t - 1)), l = /* @__PURE__ */ new Set();
+  for (let c = 0; c < n.length; c += a) l.add(n[c]);
+  l.add(s), o < 0 && s > 0 && n.includes(0) && l.add(0);
+  const r = [...l].sort((c, m) => c - m);
   return { lo: o, hi: s, ticks: r };
 }
-function J2(e, t, i = 1) {
-  const n = i > 0 ? i : 1, o = (e.tempBase - e.tempTop) * n, s = (e.windBase - e.windTop) * n, { lo: l, hi: a, ticks: r } = Kt(t, He(o)), d = Math.max(e.windMax, w0(t)), m = e.precipCap / e.precipPerMm, u = {
+function Q2(e, t, i = 1) {
+  const n = i > 0 ? i : 1, o = (e.tempBase - e.tempTop) * n, s = (e.windBase - e.windTop) * n, { lo: a, hi: l, ticks: r } = oi(t, Ze(o)), c = Math.max(e.windMax, B0(t)), m = e.precipCap / e.precipPerMm, u = {
     baseMm: m,
-    topMm: h0(t, m)
+    topMm: g0(t, m)
   };
   return {
     ...e,
-    tempLo: l,
-    tempHi: a,
+    tempLo: a,
+    tempHi: l,
     tempTicks: r,
-    windMax: d,
+    windMax: c,
     // Derived from the shared tick rule rather than hardcoded per layout, so the
     // wind scale reads the same here as on the mobile chart.
-    windTicks: m0(d, s),
+    windTicks: b0(c, s),
     precipTopMm: u.topMm,
-    precipTicks: u0(u, e.precipCap * n)
+    precipTicks: x0(u, e.precipCap * n)
   };
 }
-function Vt(e, t) {
-  const i = (n, o) => n.length === o.length && n.every((s, l) => s === o[l]);
+function si(e, t) {
+  const i = (n, o) => n.length === o.length && n.every((s, a) => s === o[a]);
   return i(e.tempTicks, t.tempTicks) && i(e.windTicks, t.windTicks) && i(e.precipTicks, t.precipTicks);
 }
-function P0(e) {
+function H0(e) {
   const t = {
     baseMm: e.precipCap / e.precipPerMm,
     topMm: e.precipTopMm
   };
-  return (i) => e.precipCap * A2(i, t);
+  return (i) => e.precipCap * P2(i, t);
 }
-function G0(e) {
+function O0(e) {
   const t = e.tempHi - e.tempLo;
   return t > 0 ? t : 1;
 }
-function Xt(e) {
+function ni(e) {
   const t = e.height - e.plotBottom;
-  return Et(e) ? e.plotBottom + t / 2 : e.windBase - 14;
+  return It(e) ? e.plotBottom + t / 2 : e.windBase - 14;
 }
-function Jt(e) {
-  const t = (s) => e.tempBase - (s - e.tempLo) / G0(e) * (e.tempBase - e.tempTop), i = (s) => e.windBase - Math.min(s, e.windMax) / e.windMax * (e.windBase - e.windTop), n = [
+function ai(e) {
+  const t = (s) => e.tempBase - (s - e.tempLo) / O0(e) * (e.tempBase - e.tempTop), i = (s) => e.windBase - Math.min(s, e.windMax) / e.windMax * (e.windBase - e.windTop), n = [
     `<rect x="0" y="0" width="${e.axisW}" height="${e.height}" fill="#fff"/>`
   ], o = e.axisW - 5;
   for (const s of e.tempTicks)
     n.push(
-      V(o, t(s) + Q, g0(s), m2, e.axisFont, 700, "end")
+      X(o, t(s) + e2, _0(s), g2, e.axisFont, 700, "end")
     );
   for (const s of e.windTicks)
     n.push(
-      V(o, i(s) + Q, x0(s), m2, e.axisFont, 700, "end")
+      X(o, i(s) + e2, y0(s), g2, e.axisFont, 700, "end")
     );
   return `<svg class="chart-axis" width="${e.axisW}" height="${e.height}" viewBox="0 0 ${e.axisW} ${e.height}" style="display:block;flex:none">${n.join("")}</svg>`;
 }
-function Zt(e) {
-  const t = e.rightAxisW, i = P0(e), n = e.axisFont, o = [
-    `<rect x="0" y="0" width="${t}" height="${e.height}" fill="#fff"/>`
+function li(e, t) {
+  const i = e.rightAxisW, n = H0(e), o = e.axisFont, s = [
+    `<rect x="0" y="0" width="${i}" height="${e.height}" fill="#fff"/>`
   ];
-  for (const s of e.precipTicks)
-    o.push(
-      V(
+  for (const a of e.precipTicks)
+    s.push(
+      X(
         5,
-        e.precipBase - i(s) + Q,
-        v0(s),
-        d0,
-        n,
+        e.precipBase - n(a) + e2,
+        w0(a, t),
+        f0,
+        o,
         700,
         "start"
       )
     );
-  return `<svg class="chart-axis-right" width="${t}" height="${e.height}" viewBox="0 0 ${t} ${e.height}" style="display:block;flex:none">${o.join("")}</svg>`;
+  return `<svg class="chart-axis-right" width="${i}" height="${e.height}" viewBox="0 0 ${i} ${e.height}" style="display:block;flex:none">${s.join("")}</svg>`;
 }
-function D0(e, t, i, n, o) {
-  const s = e.length, l = s * o.colW + o.plotPad, a = (h) => h * o.colW + o.colW / 2, r = (h) => o.tempBase - (h - o.tempLo) / G0(o) * (o.tempBase - o.tempTop), d = (h) => o.windBase - Math.min(h, o.windMax) / o.windMax * (o.windBase - o.windTop), m = P0(o), u = [
-    `<rect x="0" y="${o.plotTop}" width="${l}" height="${o.plotBottom - o.plotTop}" fill="#FCFDFE"/>`
+function I0(e, t, i, n, o) {
+  const s = e.length, a = s * o.colW + o.plotPad, l = (h) => h * o.colW + o.colW / 2, r = (h) => o.tempBase - (h - o.tempLo) / O0(o) * (o.tempBase - o.tempTop), c = (h) => o.windBase - Math.min(h, o.windMax) / o.windMax * (o.windBase - o.windTop), m = H0(o), u = [
+    `<rect x="0" y="${o.plotTop}" width="${a}" height="${o.plotBottom - o.plotTop}" fill="#FCFDFE"/>`
   ];
-  for (const h of c0(e, o.colW))
+  for (const h of u0(e, o.colW))
     u.push(
-      `<rect x="${h.x}" y="${o.plotTop}" width="${h.w}" height="${o.plotBottom - o.plotTop}" fill="${r0}"/>`
+      `<rect x="${h.x}" y="${o.plotTop}" width="${h.w}" height="${o.plotBottom - o.plotTop}" fill="${h0}"/>`
     );
   for (let h = 0; h < s; h += o.gridEvery)
     u.push(
-      `<line x1="${a(h)}" x2="${a(h)}" y1="${o.plotTop}" y2="${o.plotBottom}" stroke="#EEF1F4" stroke-width="1"/>`
+      `<line x1="${l(h)}" x2="${l(h)}" y1="${o.plotTop}" y2="${o.plotBottom}" stroke="#EEF1F4" stroke-width="1"/>`
     );
   for (const h of o.tempTicks)
     u.push(
-      `<line x1="0" x2="${l}" y1="${r(h)}" y2="${r(h)}" stroke="#E7EBEE" stroke-width="1"/>`
+      `<line x1="0" x2="${a}" y1="${r(h)}" y2="${r(h)}" stroke="#E7EBEE" stroke-width="1"/>`
     );
   for (const h of o.windTicks)
     u.push(
-      `<line x1="0" x2="${l}" y1="${d(h)}" y2="${d(h)}" stroke="#DCE3E8" stroke-width="1"/>`
+      `<line x1="0" x2="${a}" y1="${c(h)}" y2="${c(h)}" stroke="#DCE3E8" stroke-width="1"/>`
     );
   for (const h of o.precipTicks) {
-    const c = o.precipBase - m(h);
+    const d = o.precipBase - m(h);
     u.push(
-      `<line x1="0" x2="${l}" y1="${c}" y2="${c}" stroke="#CFE0F1" stroke-width="1" stroke-dasharray="2 3"/>`
+      `<line x1="0" x2="${a}" y1="${d}" y2="${d}" stroke="#CFE0F1" stroke-width="1" stroke-dasharray="2 3"/>`
     );
   }
   const p = [0];
   for (let h = 1; h < s; h++)
     e[h].local.getUTCHours() === 0 && p.push(h);
   for (let h = 0; h < p.length; h++) {
-    const c = p[h], b = a(c);
-    c > 0 && u.push(
-      `<line x1="${b}" x2="${b}" y1="${o.dayLabelY - 8}" y2="${o.plotBottom}" stroke="#C2CBD2" stroke-width="1"/>`
+    const d = p[h], g = l(d);
+    d > 0 && u.push(
+      `<line x1="${g}" x2="${g}" y1="${o.dayLabelY - 8}" y2="${o.plotBottom}" stroke="#C2CBD2" stroke-width="1"/>`
     );
-    const F = Yt(e[c], t), P = h + 1 < p.length ? p[h + 1] : s, O = (P - c) * o.colW - 10, D = F.length * o.dayLabelSize * 0.6, G = (c > 0 ? b : 0) + F2, W = P < s ? a(P) : s * o.colW;
-    D <= O && u.push(
-      V(
+    const F = ii(e[d], t), A = h + 1 < p.length ? p[h + 1] : s, I = (A - d) * o.colW - 10, D = F.length * o.dayLabelSize * 0.6, G = (d > 0 ? g : 0) + E2, N = A < s ? l(A) : s * o.colW;
+    D <= I && u.push(
+      X(
         G,
         o.dayLabelY,
         F,
@@ -1871,66 +1909,66 @@ function D0(e, t, i, n, o) {
         "start"
       ).replace(
         "<text ",
-        `<text class="day-label" data-x0="${G}" data-x1="${W - F2 - D}" `
+        `<text class="day-label" data-x0="${G}" data-x1="${N - E2 - D}" `
       )
     );
   }
   for (const h of [o.plotTop, o.tempBase, o.windTop, o.plotBottom])
-    u.push(`<line x1="0" x2="${l}" y1="${h}" y2="${h}" stroke="#C2CBD2" stroke-width="1"/>`);
+    u.push(`<line x1="0" x2="${a}" y1="${h}" y2="${h}" stroke="#C2CBD2" stroke-width="1"/>`);
   for (let h = 0; h < s; h++) {
-    const c = e[h].precipMaxMm;
-    if (c > 0) {
-      const b = m(c);
+    const d = e[h].precipMaxMm;
+    if (d > 0) {
+      const g = m(d);
       u.push(
-        `<rect x="${a(h) - o.precipMaxW / 2}" y="${o.precipBase - b}" width="${o.precipMaxW}" height="${b}" rx="1.5" fill="${M.precipMax}"/>`
+        `<rect x="${l(h) - o.precipMaxW / 2}" y="${o.precipBase - g}" width="${o.precipMaxW}" height="${g}" rx="1.5" fill="${w.precipMax}"/>`
       );
     }
   }
   for (let h = 0; h < s; h++) {
-    const c = e[h].precipMm;
-    if (c > 0) {
-      const b = m(c);
+    const d = e[h].precipMm;
+    if (d > 0) {
+      const g = m(d);
       u.push(
-        `<rect x="${a(h) - o.precipW / 2}" y="${o.precipBase - b}" width="${o.precipW}" height="${b}" rx="1.5" fill="${M.precip}"/>`
+        `<rect x="${l(h) - o.precipW / 2}" y="${o.precipBase - g}" width="${o.precipW}" height="${g}" rx="1.5" fill="${w.precip}"/>`
       );
     }
   }
-  const x = Rt(o, o.symbolSize);
+  const x = Jt(o, o.symbolSize);
   for (let h = 0; h < s; h += o.symbolEvery) {
-    const c = e2(e[h].symbol);
-    if (c) {
-      const b = o.symbolSize;
+    const d = t2(e[h].symbol);
+    if (d) {
+      const g = o.symbolSize;
       u.push(
-        `<image x="${a(h) - b / 2}" y="${x}" width="${b}" height="${b}" href="${f(c)}"/>`
+        `<image x="${l(h) - g / 2}" y="${x}" width="${g}" height="${g}" href="${f(d)}"/>`
       );
     }
   }
   u.push(
-    `<path d="${B2(e, (h) => h.tempC, a, r)}" fill="none" stroke="${M.temp}" stroke-width="${o.tempStroke}" stroke-linecap="round" stroke-linejoin="round"/>`
-  ), x2(e) && u.push(
-    `<path d="${B2(e, (h) => h.gustMs, a, d)}" fill="none" stroke="${M.gust}" stroke-width="1.6" stroke-dasharray="4 4" stroke-linecap="round" stroke-linejoin="round"/>`
+    `<path d="${B2(e, (h) => h.tempC, l, r)}" fill="none" stroke="${w.temp}" stroke-width="${o.tempStroke}" stroke-linecap="round" stroke-linejoin="round"/>`
+  ), v2(e) && u.push(
+    `<path d="${B2(e, (h) => h.gustMs, l, c)}" fill="none" stroke="${w.gust}" stroke-width="1.6" stroke-dasharray="4 4" stroke-linecap="round" stroke-linejoin="round"/>`
   ), u.push(
-    `<path d="${B2(e, (h) => h.windMs, a, d)}" fill="none" stroke="${M.wind}" stroke-width="${o.windStroke}" stroke-linecap="round" stroke-linejoin="round"/>`
+    `<path d="${B2(e, (h) => h.windMs, l, c)}" fill="none" stroke="${w.wind}" stroke-width="${o.windStroke}" stroke-linecap="round" stroke-linejoin="round"/>`
   );
-  const g = o.colW >= 40 ? 7 : 6, z = o.colW >= 40 ? "M-4 2 L0 7.5 L4 2" : "M-3.5 1.8 L0 6.5 L3.5 1.8", k = Xt(o);
+  const v = o.colW >= 40 ? 7 : 6, z = o.colW >= 40 ? "M-4 2 L0 7.5 L4 2" : "M-3.5 1.8 L0 6.5 L3.5 1.8", B = ni(o);
   for (let h = 0; h < s; h += o.arrowEvery) {
-    const c = e[h].dirDeg;
-    c !== null && u.push(
-      `<g transform="translate(${a(h)} ${k}) rotate(${(c % 360 + 360) % 360})"><line x1="0" y1="-${g}" x2="0" y2="${g}" stroke="${M.neutral}" stroke-width="2" stroke-linecap="round"/><path d="${z}" fill="none" stroke="${M.neutral}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></g>`
+    const d = e[h].dirDeg;
+    d !== null && u.push(
+      `<g transform="translate(${l(h)} ${B}) rotate(${(d % 360 + 360) % 360})"><line x1="0" y1="-${v}" x2="0" y2="${v}" stroke="${w.neutral}" stroke-width="2" stroke-linecap="round"/><path d="${z}" fill="none" stroke="${w.neutral}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></g>`
     );
   }
   if (o.tempLabelEvery > 0) {
-    const h = o.tempLabelFont * f0, c = Math.round(o.tempLabelFont * 0.8);
-    for (let b = 0; b < s; b += o.tempLabelEvery) {
-      const F = e[b].tempC;
+    const h = o.tempLabelFont * v0, d = Math.round(o.tempLabelFont * 0.8);
+    for (let g = 0; g < s; g += o.tempLabelEvery) {
+      const F = e[g].tempC;
       if (F === null) continue;
-      const P = r(F) - c, O = P - h < o.tempTop ? r(F) + c + h : P;
+      const A = r(F) - d, I = A - h < o.tempTop ? r(F) + d + h : A;
       u.push(
-        V(
-          a(b),
-          O,
+        X(
+          l(g),
+          I,
           `${Math.round(F)}°`,
-          D2(Math.round(F)),
+          H2(Math.round(F)),
           o.tempLabelFont,
           800,
           "middle",
@@ -1941,92 +1979,92 @@ function D0(e, t, i, n, o) {
   }
   if (o.windLabelEvery > 0)
     for (let h = 1; h < s; h += o.windLabelEvery) {
-      const c = e[h].windMs;
-      c !== null && u.push(V(a(h), d(c) - 9, `${Math.round(c)}`, M.windText, 10.5, 800, "middle"));
+      const d = e[h].windMs;
+      d !== null && u.push(X(l(h), c(d) - 9, `${Math.round(d)}`, w.windText, 10.5, 800, "middle"));
     }
-  const v = o.gridEvery === 1 ? 1 : 2;
-  for (let h = 0; h < s; h += v) {
-    const c = String(e[h].local.getUTCHours()).padStart(2, "0");
-    u.push(V(a(h), o.hourLabelY, c, M.neutral, o.hourLabelSize, 700, "middle"));
+  const b = o.gridEvery === 1 ? 1 : 2;
+  for (let h = 0; h < s; h += b) {
+    const d = String(e[h].local.getUTCHours()).padStart(2, "0");
+    u.push(X(l(h), o.hourLabelY, d, w.neutral, o.hourLabelSize, 700, "middle"));
   }
   if (n >= 0 && n < s) {
-    const h = a(n), c = e[n].tempC;
+    const h = l(n), d = e[n].tempC;
     u.push(
-      `<line class="chart-now" x1="${h}" x2="${h}" y1="${o.plotTop}" y2="${o.plotBottom}" stroke="${M.now}" stroke-width="2"/>`
-    ), c !== null && u.push(
-      `<circle class="chart-now-dot" cx="${h}" cy="${r(c)}" r="4.5" fill="${M.temp}" stroke="#fff" stroke-width="1.5"/>`
+      `<line class="chart-now" x1="${h}" x2="${h}" y1="${o.plotTop}" y2="${o.plotBottom}" stroke="${w.now}" stroke-width="2"/>`
+    ), d !== null && u.push(
+      `<circle class="chart-now-dot" cx="${h}" cy="${r(d)}" r="4.5" fill="${w.temp}" stroke="#fff" stroke-width="1.5"/>`
     );
   }
-  const $ = Math.max(0, Math.min(s - 1, i)), B = a($), w = e[$]?.tempC ?? null, T = e[$]?.windMs ?? null;
+  const M = Math.max(0, Math.min(s - 1, i)), k = l(M), $ = e[M]?.tempC ?? null, C = e[M]?.windMs ?? null;
   return u.push(
-    `<line class="scrub-cursor" x1="${B}" x2="${B}" y1="${o.plotTop}" y2="${o.plotBottom}" stroke="#14202B" stroke-width="1.2" stroke-dasharray="2 3" opacity="0.55"/>`,
-    `<circle class="scrub-dot-temp" cx="${B}" cy="${w === null ? 0 : r(w)}" r="4" fill="${M.temp}" stroke="#fff" stroke-width="1.5"${w === null ? ' visibility="hidden"' : ""}/>`,
-    `<circle class="scrub-dot-wind" cx="${B}" cy="${T === null ? 0 : d(T)}" r="4" fill="${M.wind}" stroke="#fff" stroke-width="1.5"${T === null ? ' visibility="hidden"' : ""}/>`
-  ), { svg: `<svg class="chart-plot" width="${l}" height="${o.height}" viewBox="0 0 ${l} ${o.height}" style="display:block;touch-action:none;cursor:crosshair" aria-hidden="true">${u.join("")}</svg>`, geo: {
-    width: l,
+    `<line class="scrub-cursor" x1="${k}" x2="${k}" y1="${o.plotTop}" y2="${o.plotBottom}" stroke="#14202B" stroke-width="1.2" stroke-dasharray="2 3" opacity="0.55"/>`,
+    `<circle class="scrub-dot-temp" cx="${k}" cy="${$ === null ? 0 : r($)}" r="4" fill="${w.temp}" stroke="#fff" stroke-width="1.5"${$ === null ? ' visibility="hidden"' : ""}/>`,
+    `<circle class="scrub-dot-wind" cx="${k}" cy="${C === null ? 0 : c(C)}" r="4" fill="${w.wind}" stroke="#fff" stroke-width="1.5"${C === null ? ' visibility="hidden"' : ""}/>`
+  ), { svg: `<svg class="chart-plot" width="${a}" height="${o.height}" viewBox="0 0 ${a} ${o.height}" style="display:block;touch-action:none;cursor:crosshair" aria-hidden="true">${u.join("")}</svg>`, geo: {
+    width: a,
     count: s,
-    cx: a,
+    cx: l,
     tempY: r,
-    windY: d,
+    windY: c,
     indexAt: (h) => Math.max(0, Math.min(s - 1, Math.round((h - o.colW / 2) / o.colW)))
   } };
 }
-function k2(e, t, i) {
+function S2(e, t, i) {
   return `<div class="lane-chip-wrap chart-lane" style="transform:translateY(${e}px)"><div class="lane-chip chart-chip"><span class="chip-swatch-${t} chart-swatch-${t}"></span>${f(i)}</div></div>`;
 }
-const Qt = '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M6 2H2v4M10 2h4v4M2 10v4h4M14 10v4h-4" fill="none" stroke="#14202B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>', e1 = '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M2 6h4V2M14 6h-4V2M6 14v-4H2M10 14v-4h4" fill="none" stroke="#14202B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-function Z2(e, t, i, n, o, s, l = () => 1, a = () => {
+const ri = '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M6 2H2v4M10 2h4v4M2 10v4h4M14 10v4h-4" fill="none" stroke="#14202B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>', R0 = '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M2 6h4V2M14 6h-4V2M6 14v-4H2M10 14v-4h4" fill="none" stroke="#14202B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+function e0(e, t, i, n, o, s, a = () => 1, l = () => {
 }) {
   const r = (u) => {
-    const p = e.getBoundingClientRect(), x = l() || 1, g = t.indexAt((u.clientX - p.left) / x);
-    g !== i() && (n(g), s(), o(g, !1));
+    const p = e.getBoundingClientRect(), x = a() || 1, v = t.indexAt((u.clientX - p.left) / x);
+    v !== i() && (n(v), s(), o(v, !1));
   };
-  let d = !1;
+  let c = !1;
   e.addEventListener("pointerdown", (u) => {
     try {
       e.setPointerCapture(u.pointerId);
     } catch {
     }
-    d = !0, r(u);
+    c = !0, r(u);
   }), e.addEventListener("pointermove", (u) => {
     const p = u;
     (p.pointerType === "mouse" || p.buttons > 0) && r(p);
   });
   const m = () => {
-    d && (d = !1, a());
+    c && (c = !1, l());
   };
   e.addEventListener("pointerup", m), e.addEventListener("pointercancel", m);
 }
-function p2(e, t, i, n, o = () => 1) {
-  const s = o() || 1, l = (i * n + n / 2) * s;
-  e.scrollLeft = Math.max(0, l - e.clientWidth / 2);
+function h2(e, t, i, n, o = () => 1) {
+  const s = o() || 1, a = (i * n + n / 2) * s;
+  e.scrollLeft = Math.max(0, a - e.clientWidth / 2);
 }
-function t1(e, t, i) {
-  const n = L0(t, i);
+function ci(e, t, i) {
+  const n = G0(t, i);
   if (!n || !e.querySelector(".chart-plot"))
-    return H0(e)();
+    return W0(e)();
   e.dataset.chartScale = String(n.scale);
-  for (const o of Lt) {
+  for (const o of Wt) {
     const s = e.querySelector(o);
     if (!s) continue;
-    const l = parseFloat(s.getAttribute("width") || "0");
-    s.style.height = `${n.heightPx}px`, s.style.width = `${Ut(l, n).toFixed(2)}px`;
+    const a = parseFloat(s.getAttribute("width") || "0");
+    s.style.height = `${n.heightPx}px`, s.style.width = `${Nt(a, n).toFixed(2)}px`;
   }
   return e.querySelectorAll(".chart-lane").forEach((o) => {
     const s = /translateY\(([\d.]+)px\)/.exec(o.style.transform);
     s && !o.dataset.laneY && (o.dataset.laneY = s[1]);
-    const l = Number(o.dataset.laneY ?? s?.[1] ?? 0);
-    o.style.transform = `translateY(${Pt(l, n).toFixed(2)}px)`;
+    const a = Number(o.dataset.laneY ?? s?.[1] ?? 0);
+    o.style.transform = `translateY(${jt(a, n).toFixed(2)}px)`;
   }), n.scale;
 }
-function H0(e) {
+function W0(e) {
   return () => {
     const t = e.dataset.chartScale, i = t ? parseFloat(t) : 1;
     return Number.isFinite(i) && i > 0 ? i : 1;
   };
 }
-function i1(e, t, i, n, o, s, l = !1) {
-  const a = Jt(o), r = Zt(o), { svg: d, geo: m } = D0(e, t, i, n, o), u = k2(o.laneChipY[0], "temp", t.laneTemp) + k2(o.laneChipY[1], "precip", t.lanePrecip) + k2(o.laneChipY[2], "wind", t.laneWind), p = Math.max(0, Math.min(e.length - 1, i)), x = l ? `<div class="scrub-rail" role="slider" tabindex="0" aria-label="${f(t.scrubSlider)}"
+function di(e, t, i, n, o, s, a = !1) {
+  const l = ai(o), r = li(o, t), { svg: c, geo: m } = I0(e, t, i, n, o), u = S2(o.laneChipY[0], "temp", t.laneTemp) + S2(o.laneChipY[1], "precip", t.lanePrecip) + S2(o.laneChipY[2], "wind", t.laneWind), p = Math.max(0, Math.min(e.length - 1, i)), x = a ? `<div class="scrub-rail" role="slider" tabindex="0" aria-label="${f(t.scrubSlider)}"
          aria-orientation="horizontal" aria-valuemin="0" aria-valuemax="${e.length - 1}"
          aria-valuenow="${p}" style="width:${m.width}px">
          <div class="scrub-grab" style="left:${(m.cx(p) / m.width * 100).toFixed(2)}%"></div>
@@ -2034,16 +2072,16 @@ function i1(e, t, i, n, o, s, l = !1) {
        <div class="scrub-cursor"></div>` : "";
   return `
     <div class="chart${s ? " chart-fs" : ""}">
-      ${a}
-      <div class="chart-scroll"${l ? "" : ` role="slider" tabindex="0" aria-label="${f(t.scrubSlider)}" aria-orientation="horizontal" aria-valuemin="0" aria-valuemax="${e.length - 1}" aria-valuenow="${p}"`}>
+      ${l}
+      <div class="chart-scroll"${a ? "" : ` role="slider" tabindex="0" aria-label="${f(t.scrubSlider)}" aria-orientation="horizontal" aria-valuemin="0" aria-valuemax="${e.length - 1}" aria-valuenow="${p}"`}>
         ${x}
         ${u}
-        ${d}
+        ${c}
       </div>
       ${r}
     </div>`;
 }
-function o1(e, t, i = !0) {
+function pi(e, t, i = !0) {
   const n = t ? `<span class="legend-meta">${f(t)}</span>` : "", o = i ? `<span><span class="swatch-gust"></span>${f(e.legGust)}</span>` : "";
   return `
     <div class="legend chart-legend">
@@ -2055,22 +2093,22 @@ function o1(e, t, i = !0) {
       ${n}
     </div>`;
 }
-function s1(e, t, i, n, o = !1, s = !1) {
-  const l = e[t], a = l.tempC === null ? "–" : `${Math.round(l.tempC)}°`, r = l.tempC === null ? M.neutral : D2(Math.round(l.tempC)), d = e2(l.symbol), m = d ? `<img src="${f(d)}" width="34" height="34" alt="">` : "", u = f(o ? i.exitFullscreen : i.fullscreen), p = `<button class="chart-fs-btn" type="button" aria-label="${u}" title="${u}">${o ? e1 : Qt}</button>`, x = s ? `<button class="ro-min" type="button" aria-label="${f(i.minimize)}"></button>
+function hi(e, t, i, n, o = !1, s = !1) {
+  const a = e[t], l = a.tempC === null ? "–" : `${Math.round(a.tempC)}°`, r = a.tempC === null ? w.neutral : H2(Math.round(a.tempC)), c = t2(a.symbol), m = c ? `<img src="${f(c)}" width="34" height="34" alt="">` : "", u = f(o ? i.exitFullscreen : i.fullscreen), p = `<button class="chart-fs-btn" type="button" aria-label="${u}" title="${u}">${o ? R0 : ri}</button>`, x = s ? `<button class="ro-min" type="button" aria-label="${f(i.minimize)}"></button>
        <button class="ro-close" type="button" aria-label="${f(i.close)}"></button>` : "";
   return `
     <div class="readout readout-2a${s ? " readout-pop" : ""}">
       <div class="readout-main">
         <span class="ro-icon">${m}</span>
         <div class="readout-text">
-          <div class="ro-time">${f(b2(l, i))}</div>
+          <div class="ro-time">${f(_2(a, i))}</div>
           <div class="ro-vals">
-            <span class="ro-temp" style="color:${r}">${a}</span>
-            <span class="ro-precip">${l.precipMm.toFixed(1)} mm</span>
+            <span class="ro-temp" style="color:${r}">${l}</span>
+            <span class="ro-precip">${W(a.precipMm, 1, i)} mm</span>
             <span class="ro-wind">
-              <span class="ro-wind-text">${f(t2(l))}</span>
-              <span class="ro-arrow">${s2(l.dirDeg, 13, "#14202B")}</span>
-              <span class="ro-compass">${f(v2(l.dirDeg, i))}</span>
+              <span class="ro-wind-text">${f(i2(a))}</span>
+              <span class="ro-arrow">${n2(a.dirDeg, 13, "#14202B")}</span>
+              <span class="ro-compass">${f(b2(a.dirDeg, i))}</span>
             </span>
           </div>
         </div>
@@ -2081,138 +2119,138 @@ function s1(e, t, i, n, o = !1, s = !1) {
       </div>
     </div>`;
 }
-function n1(e, t, i) {
-  const n = i.expanded ?? !1, o = n ? qt : jt, s = (_, S = o) => {
-    const L = J2(S, t, _);
+function ui(e, t, i) {
+  const n = i.expanded ?? !1, o = n ? ti : ei, s = (_, S = o) => {
+    const L = Q2(S, t, _);
     return e.innerHTML = `
     <div class="graph-bare graph-panel">
-      ${s1(t, Math.max(0, Math.min(t.length - 1, i.scrubIdx)), i.t, !0, n, i.fit ?? !1)}
+      ${hi(t, Math.max(0, Math.min(t.length - 1, i.scrubIdx)), i.t, !0, n, i.fit ?? !1)}
       <div class="chart-fit">
-        ${i1(t, i.t, i.scrubIdx, i.nowIdx, L, n, i.fit ?? !1)}
+        ${di(t, i.t, i.scrubIdx, i.nowIdx, L, n, i.fit ?? !1)}
       </div>
-      ${o1(i.t, i.metaLine, x2(t))}
+      ${pi(i.t, i.metaLine, v2(t))}
     </div>`, L;
   };
-  let l = s(1);
+  let a = s(1);
   if (i.fit) {
-    const _ = e.querySelector(".chart-fit"), S = _ ? L0(l.height, _.clientHeight) : null;
+    const _ = e.querySelector(".chart-fit"), S = _ ? G0(a.height, _.clientHeight) : null;
     if (S) {
-      const L = J2(o, t, S.scale);
-      Vt(L, l) || (l = s(S.scale));
+      const L = Q2(o, t, S.scale);
+      si(L, a) || (a = s(S.scale));
     }
   } else if (n) {
     const _ = e.querySelector(".chart-fit"), S = e.querySelector(".chart-scroll");
-    _ && X2(_.clientHeight, S, l.height) && (l = s(1, Wt(o, U0(_.clientHeight, S))));
+    _ && Z2(_.clientHeight, S, a.height) && (a = s(1, Zt(o, D0(_.clientHeight, S))));
   }
-  let a = i.scrubIdx < 0 ? -1 : Math.min(t.length - 1, i.scrubIdx), r = a;
-  const d = e.querySelector(".chart-plot"), m = e.querySelector(".chart-scroll"), u = e.querySelector(".chart-fit"), p = i.fit ? H0(e) : () => 1, x = e.querySelector(".scrub-rail"), g = x ?? m, z = e.querySelector(".scrub-grab"), k = e.querySelector(".chart-scroll > .scrub-cursor"), v = e.querySelector(".readout-pop"), $ = () => {
-    if (!(!i.fit || !u) && (t1(e, l.height, u.clientHeight), x && d.style.width)) {
+  let l = i.scrubIdx < 0 ? -1 : Math.min(t.length - 1, i.scrubIdx), r = l;
+  const c = e.querySelector(".chart-plot"), m = e.querySelector(".chart-scroll"), u = e.querySelector(".chart-fit"), p = i.fit ? W0(e) : () => 1, x = e.querySelector(".scrub-rail"), v = x ?? m, z = e.querySelector(".scrub-grab"), B = e.querySelector(".chart-scroll > .scrub-cursor"), b = e.querySelector(".readout-pop"), M = () => {
+    if (!(!i.fit || !u) && (ci(e, a.height, u.clientHeight), x && c.style.width)) {
       const _ = p();
-      x.style.width = d.style.width, x.style.height = `${Math.round(l.plotTop * _)}px`, z && (z.style.top = `${Math.round(l.plotTop * _ - 5.5)}px`), k && a >= 0 && (k.style.left = `${B.cx(a) * _}px`);
+      x.style.width = c.style.width, x.style.height = `${Math.round(a.plotTop * _)}px`, z && (z.style.top = `${Math.round(a.plotTop * _ - 5.5)}px`), B && l >= 0 && (B.style.left = `${k.cx(l) * _}px`);
     }
-  }, { geo: B } = D0(
+  }, { geo: k } = I0(
     t,
     i.t,
-    a,
+    l,
     i.nowIdx,
-    l
-  ), w = (_) => e.querySelector(_), T = w(".chart-plot .scrub-cursor"), C = w(".scrub-dot-temp"), E = w(".scrub-dot-wind"), h = w(".ro-time"), c = w(".ro-temp"), b = w(".ro-precip"), F = w(".ro-wind-text"), P = w(".ro-arrow"), O = w(".ro-compass"), D = w(".ro-icon"), G = w(".readout"), W = e.querySelector(".chart-plot .chart-now-dot");
-  let N, H;
-  const j = () => {
-    const _ = t[a], S = !_;
+    a
+  ), $ = (_) => e.querySelector(_), C = $(".chart-plot .scrub-cursor"), T = $(".scrub-dot-temp"), E = $(".scrub-dot-wind"), h = $(".ro-time"), d = $(".ro-temp"), g = $(".ro-precip"), F = $(".ro-wind-text"), A = $(".ro-arrow"), I = $(".ro-compass"), D = $(".ro-icon"), G = $(".readout"), N = e.querySelector(".chart-plot .chart-now-dot");
+  let j, H;
+  const q = () => {
+    const _ = t[l], S = !_;
     G.classList.toggle("is-outside", S);
-    for (const A of [T, C, E])
-      S ? A.setAttribute("visibility", "hidden") : A.removeAttribute("visibility");
-    S ? W?.setAttribute("visibility", "hidden") : W?.removeAttribute("visibility");
-    for (const A of [z, k])
-      A && (A.style.visibility = S ? "hidden" : "");
+    for (const P of [C, T, E])
+      S ? P.setAttribute("visibility", "hidden") : P.removeAttribute("visibility");
+    S ? N?.setAttribute("visibility", "hidden") : N?.removeAttribute("visibility");
+    for (const P of [z, B])
+      P && (P.style.visibility = S ? "hidden" : "");
     if (S) {
-      h.textContent = i.t.noForecastForTime, g.removeAttribute("aria-valuenow"), g.setAttribute("aria-valuetext", i.t.noForecastForTime);
+      h.textContent = i.t.noForecastForTime, v.removeAttribute("aria-valuenow"), v.setAttribute("aria-valuetext", i.t.noForecastForTime);
       return;
     }
-    const L = B.cx(a);
-    if (T.setAttribute("x1", `${L}`), T.setAttribute("x2", `${L}`), C.setAttribute("cx", `${L}`), C.setAttribute("visibility", _.tempC === null ? "hidden" : "visible"), _.tempC !== null && C.setAttribute("cy", `${B.tempY(_.tempC)}`), E.setAttribute("cx", `${L}`), E.setAttribute("visibility", _.windMs === null ? "hidden" : "visible"), _.windMs !== null && E.setAttribute("cy", `${B.windY(_.windMs)}`), h.textContent = b2(_, i.t), c.textContent = _.tempC === null ? "–" : `${Math.round(_.tempC)}°`, c.style.color = _.tempC === null ? M.neutral : D2(Math.round(_.tempC)), b.textContent = `${_.precipMm.toFixed(1)} mm`, F.textContent = t2(_), _.dirDeg !== N && (P.innerHTML = s2(_.dirDeg, 13, "#14202B"), N = _.dirDeg), O.textContent = v2(_.dirDeg, i.t), _.symbol !== H) {
-      const A = e2(_.symbol);
-      D.innerHTML = A ? `<img src="${f(A)}" width="34" height="34" alt="">` : "", H = _.symbol;
+    const L = k.cx(l);
+    if (C.setAttribute("x1", `${L}`), C.setAttribute("x2", `${L}`), T.setAttribute("cx", `${L}`), T.setAttribute("visibility", _.tempC === null ? "hidden" : "visible"), _.tempC !== null && T.setAttribute("cy", `${k.tempY(_.tempC)}`), E.setAttribute("cx", `${L}`), E.setAttribute("visibility", _.windMs === null ? "hidden" : "visible"), _.windMs !== null && E.setAttribute("cy", `${k.windY(_.windMs)}`), h.textContent = _2(_, i.t), d.textContent = _.tempC === null ? "–" : `${Math.round(_.tempC)}°`, d.style.color = _.tempC === null ? w.neutral : H2(Math.round(_.tempC)), g.textContent = `${W(_.precipMm, 1, i.t)} mm`, F.textContent = i2(_), _.dirDeg !== j && (A.innerHTML = n2(_.dirDeg, 13, "#14202B"), j = _.dirDeg), I.textContent = b2(_.dirDeg, i.t), _.symbol !== H) {
+      const P = t2(_.symbol);
+      D.innerHTML = P ? `<img src="${f(P)}" width="34" height="34" alt="">` : "", H = _.symbol;
     }
-    z && (z.style.left = `${(L / B.width * 100).toFixed(2)}%`), k && (k.style.left = `${L * p()}px`), g.setAttribute("aria-valuenow", String(a)), g.setAttribute("aria-valuetext", M0(_, i.t)), v?.classList.remove("is-closed");
+    z && (z.style.left = `${(L / k.width * 100).toFixed(2)}%`), B && (B.style.left = `${L * p()}px`), v.setAttribute("aria-valuenow", String(l)), v.setAttribute("aria-valuetext", S0(_, i.t)), b?.classList.remove("is-closed");
   };
-  if (v) {
+  if (b) {
     const _ = e.querySelector(".ro-min");
     _?.addEventListener("click", () => {
-      const A = v.classList.toggle("is-min");
-      _.setAttribute("aria-label", A ? i.t.expand : i.t.minimize);
-    }), e.querySelector(".ro-close")?.addEventListener("click", () => v.classList.add("is-closed"));
+      const P = b.classList.toggle("is-min");
+      _.setAttribute("aria-label", P ? i.t.expand : i.t.minimize);
+    }), e.querySelector(".ro-close")?.addEventListener("click", () => b.classList.add("is-closed"));
     let S = null;
-    v.addEventListener("pointerdown", (A) => {
-      const I = A;
-      if (!I.target.closest(".ro-min, .ro-close")) {
+    b.addEventListener("pointerdown", (P) => {
+      const O = P;
+      if (!O.target.closest(".ro-min, .ro-close")) {
         S = {
-          sx: I.clientX,
-          sy: I.clientY,
-          ox: v.offsetLeft,
-          oy: v.offsetTop
-        }, v.style.left = `${v.offsetLeft}px`, v.style.top = `${v.offsetTop}px`, v.style.right = "auto", v.classList.add("is-dragging");
+          sx: O.clientX,
+          sy: O.clientY,
+          ox: b.offsetLeft,
+          oy: b.offsetTop
+        }, b.style.left = `${b.offsetLeft}px`, b.style.top = `${b.offsetTop}px`, b.style.right = "auto", b.classList.add("is-dragging");
         try {
-          v.setPointerCapture(I.pointerId);
+          b.setPointerCapture(O.pointerId);
         } catch {
         }
-        I.preventDefault();
+        O.preventDefault();
       }
-    }), v.addEventListener("pointermove", (A) => {
+    }), b.addEventListener("pointermove", (P) => {
       if (!S) return;
-      const I = A, J = v.offsetParent, n2 = (J?.clientWidth ?? 0) - v.offsetWidth, K = (J?.clientHeight ?? 0) - v.offsetHeight, i2 = Math.max(0, Math.min(n2, S.ox + (I.clientX - S.sx))), l2 = Math.max(0, Math.min(K, S.oy + (I.clientY - S.sy)));
-      v.style.left = `${i2}px`, v.style.top = `${l2}px`;
+      const O = P, Z = b.offsetParent, a2 = (Z?.clientWidth ?? 0) - b.offsetWidth, K = (Z?.clientHeight ?? 0) - b.offsetHeight, o2 = Math.max(0, Math.min(a2, S.ox + (O.clientX - S.sx))), l2 = Math.max(0, Math.min(K, S.oy + (O.clientY - S.sy)));
+      b.style.left = `${o2}px`, b.style.top = `${l2}px`;
     });
     const L = () => {
-      S = null, v.classList.remove("is-dragging");
+      S = null, b.classList.remove("is-dragging");
     };
-    v.addEventListener("pointerup", L), v.addEventListener("pointercancel", L);
+    b.addEventListener("pointerup", L), b.addEventListener("pointercancel", L);
   }
-  const X = () => {
-    r = a, i.onScrub(a, !0);
+  const J = () => {
+    r = l, i.onScrub(l, !0);
   };
   if (i.previewHover) {
     const _ = i.previewHover;
-    d.addEventListener("pointerleave", (S) => {
-      !_() || S.pointerType !== "mouse" || S.buttons || a !== r && (a = r, j(), i.onScrub(a, !1));
+    c.addEventListener("pointerleave", (S) => {
+      !_() || S.pointerType !== "mouse" || S.buttons || l !== r && (l = r, q(), i.onScrub(l, !1));
     });
   }
-  if (i.fit ? (d.style.touchAction = "pan-x", b0(d, (_) => {
-    const S = d.getBoundingClientRect(), L = p() || 1, A = B.indexAt((_.clientX - S.left) / L);
-    A !== a && (a = A, j(), i.onScrub(A, !1)), X();
-  })) : Z2(
-    d,
-    B,
-    () => a,
+  if (i.fit ? (c.style.touchAction = "pan-x", $0(c, (_) => {
+    const S = c.getBoundingClientRect(), L = p() || 1, P = k.indexAt((_.clientX - S.left) / L);
+    P !== l && (l = P, q(), i.onScrub(P, !1)), J();
+  })) : e0(
+    c,
+    k,
+    () => l,
     (_) => {
-      a = _;
+      l = _;
     },
     i.onScrub,
-    j,
+    q,
     p,
-    X
-  ), x && Z2(
+    J
+  ), x && e0(
     x,
-    B,
-    () => a,
+    k,
+    () => l,
     (_) => {
-      a = _;
+      l = _;
     },
     i.onScrub,
-    j,
+    q,
     p,
-    X
-  ), g.addEventListener("keydown", (_) => {
-    const S = $0(_.key, a, t.length);
-    S !== null && (_.preventDefault(), _.stopPropagation(), S !== a && (a = S, j(), p2(m, B, a, l.colW, p), i.onScrub(a, !1), X()));
-  }), $(), _0(m, p), p2(m, B, a, l.colW, p), j(), e.querySelector(".chart-fs-btn")?.addEventListener("click", () => i.onFullscreen?.()), i.fit && u && typeof ResizeObserver < "u") {
+    J
+  ), v.addEventListener("keydown", (_) => {
+    const S = z0(_.key, l, t.length);
+    S !== null && (_.preventDefault(), _.stopPropagation(), S !== l && (l = S, q(), h2(m, k, l, a.colW, p), i.onScrub(l, !1), J()));
+  }), M(), M0(m, p), h2(m, k, l, a.colW, p), q(), e.querySelector(".chart-fs-btn")?.addEventListener("click", () => i.onFullscreen?.()), i.fit && u && typeof ResizeObserver < "u") {
     const _ = new ResizeObserver(() => {
       if (!u.isConnected) {
         _.disconnect();
         return;
       }
-      $(), p2(m, B, a, l.colW, p);
+      M(), h2(m, k, l, a.colW, p);
     });
     _.observe(u);
   }
@@ -2222,18 +2260,18 @@ function n1(e, t, i) {
         S.disconnect();
         return;
       }
-      X2(u.clientHeight, m, l.height) && (S.disconnect(), _());
+      Z2(u.clientHeight, m, a.height) && (S.disconnect(), _());
     });
     S.observe(u);
   }
   return {
     // Moves the cursor without reporting back (-1 = outside the forecast).
     setScrubIdx: (_) => {
-      a = _ < 0 ? -1 : Math.min(t.length - 1, _), r = a, j(), a >= 0 && p2(m, B, a, l.colW, p);
+      l = _ < 0 ? -1 : Math.min(t.length - 1, _), r = l, q(), l >= 0 && h2(m, k, l, a.colW, p);
     }
   };
 }
-const l1 = `
+const fi = `
 :host {
   --ink: #14202B;
   --haze: #4F5C66;
@@ -2348,7 +2386,7 @@ input:focus-visible,
   font-variant-numeric: tabular-nums;
 }
 .ro-temp { font-size: 19px; font-weight: 900; }
-.ro-precip { font-size: 13px; font-weight: 800; color: ${M.precipText}; }
+.ro-precip { font-size: 13px; font-weight: 800; color: ${w.precipText}; }
 .ro-wind {
   display: flex;
   align-items: center;
@@ -2381,9 +2419,9 @@ input:focus-visible,
   font-weight: 800;
   color: var(--haze);
 }
-.chip-swatch-temp { width: 10px; height: 2.5px; background: ${M.temp}; border-radius: 2px; }
-.chip-swatch-precip { width: 7px; height: 9px; background: ${M.precip}; border-radius: 2px; }
-.chip-swatch-wind { width: 10px; height: 2.5px; background: ${M.wind}; border-radius: 2px; }
+.chip-swatch-temp { width: 10px; height: 2.5px; background: ${w.temp}; border-radius: 2px; }
+.chip-swatch-precip { width: 7px; height: 9px; background: ${w.precip}; border-radius: 2px; }
+.chip-swatch-wind { width: 10px; height: 2.5px; background: ${w.wind}; border-radius: 2px; }
 
 .legend {
   display: flex;
@@ -2395,11 +2433,11 @@ input:focus-visible,
   color: var(--haze);
 }
 .legend span { display: flex; align-items: center; gap: 5px; }
-.swatch-temp { width: 14px; height: 2.5px; background: ${M.temp}; border-radius: 2px; }
-.swatch-precip { width: 8px; height: 10px; background: ${M.precip}; border-radius: 2px; }
-.swatch-pmax { width: 8px; height: 10px; background: ${M.precipMax}; border-radius: 2px; }
-.swatch-wind { width: 14px; height: 2.5px; background: ${M.wind}; border-radius: 2px; }
-.swatch-gust { width: 14px; height: 0; border-top: 2.5px dashed ${M.gust}; }
+.swatch-temp { width: 14px; height: 2.5px; background: ${w.temp}; border-radius: 2px; }
+.swatch-precip { width: 8px; height: 10px; background: ${w.precip}; border-radius: 2px; }
+.swatch-pmax { width: 8px; height: 10px; background: ${w.precipMax}; border-radius: 2px; }
+.swatch-wind { width: 14px; height: 2.5px; background: ${w.wind}; border-radius: 2px; }
+.swatch-gust { width: 14px; height: 0; border-top: 2.5px dashed ${w.gust}; }
 
 /* Loading skeleton (graph-only mode) */
 .skeleton {
@@ -2909,7 +2947,17 @@ input:focus-visible,
   animation: bel-resize-hint 1s ease-in-out 2;
 }
 
+/* Table / Graph / Both: the docked panel's segmented control, at the width of
+   the left column so it doesn't stretch across a wide panel. */
+.exp-bar { flex: none; display: flex; align-items: center; justify-content: space-between; padding-right: 14px; }
+.wide .exp-tabs { flex: none; width: 272px; margin: 4px 14px 6px; }
+.wide .exp-tabs .tab { padding: 6px 0; font-size: 12.5px; }
 .exp-body { flex: 1; min-height: 0; display: flex; }
+/* One view on its own takes the whole width. */
+.exp-table .exp-left { flex: 1; width: auto; }
+.exp-table .exp-left .now-stats { grid-template-columns: 1fr 1fr 1.3fr; }
+.exp-table .exp-left .stat--wind-card { grid-column: auto; }
+.exp-graph .exp-right { margin-left: 0; border-radius: 14px 14px 0 0; box-shadow: none; }
 .exp-left {
   flex: none;
   width: 300px;
@@ -3096,23 +3144,25 @@ input:focus-visible,
    scroll, so on a desktop there was nothing at all to say that ~89% of the
    forecast lay to the right — it only appeared when the panel was resized.
    Styling the scrollbar opts out of the overlay behaviour. Touch devices keep
-   the native overlay: a swipe is its own affordance there, and a permanent 8px
-   rail would cost real height on a short phone in landscape. */
+   the native overlay: a swipe is its own affordance there, and a permanent
+   rail would cost real height on a short phone in landscape.
+
+   12px with a thumb at 4.1 : 1 against the panel, so the bar can be seen and
+   grabbed: until the chart has an overview scrubber, it is the only way along
+   the chart with a mouse. No scrollbar-width / scrollbar-color here: a browser
+   that supports those ignores the ::-webkit-scrollbar sizes, and drew its own
+   thin, faint bar instead. */
 @media (hover: hover) and (pointer: fine) {
-  .chart-scroll {
-    scrollbar-width: thin;
-    scrollbar-color: #C6D4E0 transparent;
-  }
-  .chart-scroll::-webkit-scrollbar { height: 8px; }
+  .chart-scroll::-webkit-scrollbar { height: 12px; }
   .chart-scroll::-webkit-scrollbar-track {
     background: transparent;
     margin: 0 2px;
   }
   .chart-scroll::-webkit-scrollbar-thumb {
-    background: #C6D4E0;
-    border-radius: 4px;
+    background: #6E7E8A;
+    border-radius: 6px;
   }
-  .chart-scroll::-webkit-scrollbar-thumb:hover { background: #A8BCCC; }
+  .chart-scroll::-webkit-scrollbar-thumb:hover { background: #4F5C66; }
 }
 .chart-scroll svg text { pointer-events: none; }
 .chart-lane .chart-chip { font-size: 10px; padding: 2px 7px; border-radius: 7px; }
@@ -3255,7 +3305,7 @@ input:focus-visible,
   color: var(--ink);
   white-space: nowrap;
 }
-.sel-stat-precip { color: ${M.precipText}; }
+.sel-stat-precip { color: ${w.precipText}; }
 .panel-table .sel-stats { padding: 0 0 9px; }
 
 /* Hourly rows shared by the mobile selected-day card (46/34 grid). The side
@@ -3295,7 +3345,7 @@ input:focus-visible,
 .h-time { font-weight: 800; color: var(--ink); }
 .h-icon { display: flex; }
 .h-temp { text-align: right; font-weight: 900; }
-.h-precip { text-align: right; font-weight: 700; color: ${M.precipText}; }
+.h-precip { text-align: right; font-weight: 700; color: ${w.precipText}; }
 .h-wind {
   display: flex;
   align-items: center;
@@ -3526,7 +3576,7 @@ input:focus-visible,
   .overlay .station-name { font-size: 15px; }
   .overlay .chips { margin-bottom: 14px; }
 }
-`, a1 = `
+`, mi = `
 :host {
   --ink: #14202B;
   --frost: #E9EEF1;
@@ -3590,7 +3640,7 @@ input:focus-visible,
 @media (prefers-reduced-motion: reduce) {
   .sheet { transition: none; }
 }
-`, r1 = {
+`, gi = {
   clear_no_rain: "01",
   fair_no_rain: "02",
   scattered_no_rain: "03",
@@ -3614,21 +3664,21 @@ input:focus-visible,
   overcast_some_snow: "13",
   overcast_much_snow: "50"
 };
-function I0(e, t, i, n, o = 1) {
+function N0(e, t, i, n, o = 1) {
   if (t === null || n === null || !e && e !== 0)
     return "";
   let s;
   e < 0.1 * o ? s = "no" : e < 0.3 * o ? s = "little" : e < 3 * o ? s = "some" : s = "much";
-  let l;
-  t < 0.25 ? l = s === "no" ? "clear" : "scattered" : t < 0.5 ? l = s === "no" ? "fair" : "scattered" : t < 0.75 ? l = "scattered" : l = "overcast";
   let a;
-  !i && i !== 0 || i < 0.33 || s === "no" ? a = "rain" : i < 0.66 ? a = "sleet" : a = "snow";
-  const r = r1[`${l}_${s}_${a}`];
+  t < 0.25 ? a = s === "no" ? "clear" : "scattered" : t < 0.5 ? a = s === "no" ? "fair" : "scattered" : t < 0.75 ? a = "scattered" : a = "overcast";
+  let l;
+  !i && i !== 0 || i < 0.33 || s === "no" ? l = "rain" : i < 0.66 ? l = "sleet" : l = "snow";
+  const r = gi[`${a}_${s}_${l}`];
   if (!r) return "";
-  let d = "";
-  return l !== "overcast" && (d = n < 0.75 ? "n" : "d"), `${r}${d}`;
+  let c = "";
+  return a !== "overcast" && (c = n < 0.75 ? "n" : "d"), `${r}${c}`;
 }
-const Q2 = [
+const t0 = [
   { max: 12, min: 8, rain: [12, 19, 0.9], wind: 6, dir: 220, cloud: 0.85 },
   { max: 13, min: 9, rain: null, wind: 4, dir: 180, cloud: 0.4 },
   { max: 11, min: 8, rain: [6, 16, 1.4], wind: 8, dir: 160, cloud: 0.9 },
@@ -3636,26 +3686,26 @@ const Q2 = [
   { max: 12, min: 8, rain: [14, 20, 0.4], wind: 5, dir: 200, cloud: 0.5 },
   { max: 10, min: 7, rain: [3, 21, 1.8], wind: 10, dir: 150, cloud: 0.95 },
   { max: 13, min: 8, rain: null, wind: 5, dir: 250, cloud: 0.45 }
-], c1 = 3;
-function d1(e) {
+], xi = 3;
+function vi(e) {
   const t = /* @__PURE__ */ new Date();
-  t.setUTCMinutes(0, 0, 0), t.setTime(t.getTime() - c1 * 36e5);
+  t.setUTCMinutes(0, 0, 0), t.setTime(t.getTime() - xi * 36e5);
   const i = Date.UTC(
     t.getUTCFullYear(),
     t.getUTCMonth(),
     t.getUTCDate()
   ), n = [];
   for (let o = 0; o < e; o++) {
-    const s = t.getTime() + o * 36e5, l = new Date(s), a = l.getUTCHours(), r = Math.round(
-      (Date.UTC(l.getUTCFullYear(), l.getUTCMonth(), l.getUTCDate()) - i) / 864e5
-    ), d = Q2[r % Q2.length], m = Math.round(
-      d.min + (d.max - d.min) * (0.5 - 0.5 * Math.cos((a - 4) / 24 * 2 * Math.PI))
+    const s = t.getTime() + o * 36e5, a = new Date(s), l = a.getUTCHours(), r = Math.round(
+      (Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), a.getUTCDate()) - i) / 864e5
+    ), c = t0[r % t0.length], m = Math.round(
+      c.min + (c.max - c.min) * (0.5 - 0.5 * Math.cos((l - 4) / 24 * 2 * Math.PI))
     );
     let u = 0;
-    d.rain && a >= d.rain[0] && a < d.rain[1] && (u = Math.round(
-      d.rain[2] * (0.4 + 0.6 * Math.sin(Math.PI * (a - d.rain[0]) / (d.rain[1] - d.rain[0]))) * 10
+    c.rain && l >= c.rain[0] && l < c.rain[1] && (u = Math.round(
+      c.rain[2] * (0.4 + 0.6 * Math.sin(Math.PI * (l - c.rain[0]) / (c.rain[1] - c.rain[0]))) * 10
     ) / 10);
-    const p = Math.max(1, d.wind + Math.round(1.5 * Math.sin((a - 15) / 24 * 2 * Math.PI))), x = a >= 4 && a <= 23 ? 1 : 0;
+    const p = Math.max(1, c.wind + Math.round(1.5 * Math.sin((l - 15) / 24 * 2 * Math.PI))), x = l >= 4 && l <= 23 ? 1 : 0;
     n.push({
       local: new Date(s),
       utcMs: s,
@@ -3664,13 +3714,13 @@ function d1(e) {
       precipMaxMm: u > 0 ? Math.round(u * 1.6 * 10) / 10 : 0,
       windMs: p,
       gustMs: Math.round(p * 1.8),
-      dirDeg: (d.dir + Math.round(20 * Math.sin(a / 8)) + 360) % 360,
-      symbol: I0(u, u > 0 ? 0.9 : d.cloud, 0, x)
+      dirDeg: (c.dir + Math.round(20 * Math.sin(l / 8)) + 360) % 360,
+      symbol: N0(u, u > 0 ? 0.9 : c.cloud, 0, x)
     });
   }
   return n;
 }
-const p1 = [
+const bi = [
   { name: "Reykjavík", lat: 64.146, lon: -21.942 },
   { name: "Kópavogur", lat: 64.11, lon: -21.91 },
   { name: "Akranes", lat: 64.32, lon: -22.07 },
@@ -3682,24 +3732,24 @@ const p1 = [
   { name: "Egilsstaðir", lat: 65.26, lon: -14.39 },
   { name: "Höfn í Hornafirði", lat: 64.25, lon: -15.21 },
   { name: "Hveravellir", lat: 64.87, lon: -19.56 }
-], e0 = [
+], i0 = [
   { id: "sample/harmonie", name: "HARMONIE 2.5 km" },
   { id: "sample/wrf9", name: "WRF 9 km" },
   { id: "sample/ecmwf", name: "ECMWF 0.1°" }
-], h1 = 36e5;
-function Y(e, t, i) {
+], _i = 36e5;
+function V(e, t, i) {
   let n;
   try {
     n = e.data?.[t];
   } catch {
   }
   const o = Array.isArray(n) ? n : [];
-  return Array.from({ length: i }, (s, l) => {
-    const a = o[l];
-    return typeof a == "number" && Number.isFinite(a) ? a : null;
+  return Array.from({ length: i }, (s, a) => {
+    const l = o[a];
+    return typeof l == "number" && Number.isFinite(l) ? l : null;
   });
 }
-function u1(e) {
+function yi(e) {
   let t = [];
   try {
     t = Object.values(e.data ?? {}).filter((i) => Array.isArray(i) && i.length > 0).map((i) => i.length);
@@ -3707,41 +3757,86 @@ function u1(e) {
   }
   return t.length ? Math.min(...t) : Number.POSITIVE_INFINITY;
 }
-function f1(e) {
+function wi(e) {
   return e.some((t) => t !== null);
 }
-function m1(e, t) {
+function $i(e, t) {
   const i = e.time;
   if (!i || i.length < 2) return [];
-  const n = (new Date(i[1]).getTime() - new Date(i[0]).getTime()) / h1, o = e.meta?.location_timezone_offset ?? 0, s = Math.min(
+  const n = (new Date(i[1]).getTime() - new Date(i[0]).getTime()) / _i, o = e.meta?.location_timezone_offset ?? 0, s = Math.min(
     i.length,
-    u1(e),
+    yi(e),
     Math.ceil(t / n)
   );
   if (!(s > 0)) return [];
-  const l = Y(e, "air_temperature_at_2m_agl", s), a = Y(e, "lwe_precipitation_rate", s), r = Y(e, "lwe_precipitation_rate_max", s), d = Y(e, "wind_speed_at_10m_agl", s), m = Y(e, "wind_speed_of_gust_at_10m_agl", s), u = Y(e, "wind_from_direction_at_10m_agl", s), p = Y(e, "cloud_area_fraction", s), x = Y(e, "snow_fraction", s), g = Y(e, "daylight_fraction", s), z = f1(m), k = [];
-  for (let v = 0; v < s; v++) {
-    const $ = a[v], B = r[v] ?? $, w = new Date(i[v]).getTime();
-    k.push({
-      local: new Date(w + o * 6e4),
-      utcMs: w,
-      tempC: l[v],
+  const a = V(e, "air_temperature_at_2m_agl", s), l = V(e, "lwe_precipitation_rate", s), r = V(e, "lwe_precipitation_rate_max", s), c = V(e, "wind_speed_at_10m_agl", s), m = V(e, "wind_speed_of_gust_at_10m_agl", s), u = V(e, "wind_from_direction_at_10m_agl", s), p = V(e, "cloud_area_fraction", s), x = V(e, "snow_fraction", s), v = V(e, "daylight_fraction", s), z = wi(m), B = [];
+  for (let b = 0; b < s; b++) {
+    const M = l[b], k = r[b] ?? M, $ = new Date(i[b]).getTime();
+    B.push({
+      local: new Date($ + o * 6e4),
+      utcMs: $,
+      tempC: a[b],
       // `== null` deliberately, not `===`: a missing value has to read as "no
       // rain", and `undefined * timestepH` is NaN, which paints nothing at all.
-      precipMm: $ == null ? 0 : $ * n,
-      precipMaxMm: B == null ? 0 : B * n,
-      windMs: d[v],
-      gustMs: z ? m[v] : null,
-      dirDeg: u[v],
-      symbol: I0($, p[v], x[v], g[v], n)
+      precipMm: M == null ? 0 : M * n,
+      precipMaxMm: k == null ? 0 : k * n,
+      windMs: c[b],
+      gustMs: z ? m[b] : null,
+      dirDeg: u[b],
+      symbol: N0(M, p[b], x[b], v[b], n)
     });
   }
-  return k;
+  return B;
 }
-const t0 = "bel-meteogram-nunito", g1 = 168, x1 = 12, O0 = "mimirMapPanelState", v1 = 440, h2 = 700, u2 = 360, i0 = 620, S2 = 360;
-function R0() {
+const o0 = /* @__PURE__ */ new Map();
+function j0(e) {
+  const t = o0.get(e);
+  if (t !== void 0) return t;
+  let i = null;
   try {
-    const e = localStorage.getItem(O0);
+    i = new Intl.DateTimeFormat("en-US", {
+      timeZone: e,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric"
+    });
+  } catch (n) {
+    if (!(n instanceof RangeError)) throw n;
+    console.warn(
+      `bel-meteogram: unknown display-time-zone "${e}"; showing the point's own time`
+    );
+  }
+  return o0.set(e, i), i;
+}
+function Mi(e) {
+  return j0(e) !== null;
+}
+function q0(e, t) {
+  const i = j0(e);
+  if (!i) return null;
+  const n = {};
+  for (const a of i.formatToParts(new Date(t)))
+    a.type !== "literal" && (n[a.type] = Number(a.value));
+  const o = Date.UTC(n.year, n.month - 1, n.day, n.hour % 24, n.minute), s = Math.floor(t / 6e4) * 6e4;
+  return Math.round((o - s) / 6e4);
+}
+function ki(e, t) {
+  return !t || !Mi(t) ? e : e.map((i) => ({
+    ...i,
+    local: new Date(i.utcMs + (q0(t, i.utcMs) ?? 0) * 6e4)
+  }));
+}
+function Bi(e, t, i) {
+  const n = t ? q0(t, i) : null;
+  return n === null || n === e ? e : n;
+}
+const s0 = "bel-meteogram-nunito", Si = 168, zi = 12, Y0 = "mimirMapPanelState", Ci = 440, u2 = 700, f2 = 360, n0 = 620, z2 = 360;
+function V0() {
+  try {
+    const e = localStorage.getItem(Y0);
     if (!e) return {};
     const t = JSON.parse(e);
     return t && typeof t == "object" ? t : {};
@@ -3749,38 +3844,38 @@ function R0() {
     return {};
   }
 }
-function b1(e) {
+function Ti(e) {
   try {
-    const t = R0();
+    const t = V0();
     localStorage.setItem(
-      O0,
+      Y0,
       JSON.stringify({ ...t, ...e })
     );
   } catch {
   }
 }
-function _1() {
-  if (document.getElementById(t0)) return;
+function Fi() {
+  if (document.getElementById(s0)) return;
   const e = document.createElement("link");
-  e.id = t0, e.rel = "stylesheet", e.href = "https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap", document.head.appendChild(e);
-}
-function z2(e, t) {
-  return typeof e == "string" ? e : e[t] ?? e.is ?? e.en ?? Object.values(e)[0] ?? "";
+  e.id = s0, e.rel = "stylesheet", e.href = "https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap", document.head.appendChild(e);
 }
 function C2(e, t) {
+  return typeof e == "string" ? e : e[t] ?? e.is ?? e.en ?? Object.values(e)[0] ?? "";
+}
+function T2(e, t) {
   try {
     localStorage.setItem(`bel-meteogram.${e}`, t);
   } catch {
   }
 }
-function T2(e) {
+function F2(e) {
   try {
     return localStorage.getItem(`bel-meteogram.${e}`);
   } catch {
     return null;
   }
 }
-function y1(e) {
+function Ei(e) {
   if (!(e instanceof HTMLElement) || !e.classList.length) return null;
   const t = CSS.escape(e.classList[0]);
   for (const i of ["day", "view", "lang", "model"]) {
@@ -3789,8 +3884,8 @@ function y1(e) {
   }
   return `.${t}`;
 }
-const o0 = ".ls-scroll, .panel-table";
-function w1(e) {
+const a0 = ".ls-scroll, .panel-table";
+function Ai(e) {
   return e instanceof HTMLElement ? e.isContentEditable || e instanceof HTMLTextAreaElement || e instanceof HTMLSelectElement ? !0 : e instanceof HTMLInputElement ? !["button", "checkbox", "radio", "reset", "submit"].includes(e.type) : !1 : !1;
 }
 class I2 extends HTMLElement {
@@ -3805,11 +3900,14 @@ class I2 extends HTMLElement {
     "last-updated",
     "station-place",
     "station-place-km",
-    "selected-time"
+    "selected-time",
+    "display-time-zone"
   ];
   root;
   body;
   points = [];
+  /** The points on the forecast point's own clock, before `display-time-zone`. */
+  pointClockPoints = [];
   status = "loading";
   started = !1;
   loadToken = 0;
@@ -3827,6 +3925,8 @@ class I2 extends HTMLElement {
   forecastId = "";
   pickedPlaceName = "";
   view = "table";
+  /** The expanded panel's view, separate from the docked panel's Table/Graph. */
+  expandedView = "both";
   /** Shared by the mobile day chips and the desktop day list (0 = today) */
   selectedDay = 0;
   settingsOpen = !1;
@@ -3885,7 +3985,7 @@ class I2 extends HTMLElement {
       t.preventDefault(), this.closeOverlay();
       return;
     }
-    if (!this.usesPanel || w1(t.composedPath()[0])) return;
+    if (!this.usesPanel || Ai(t.composedPath()[0])) return;
     if (t.key === "Escape" && this.isExpanded()) {
       t.preventDefault(), this.collapsePanel();
       return;
@@ -3923,25 +4023,25 @@ class I2 extends HTMLElement {
   constructor() {
     super(), this.root = this.attachShadow({ mode: "open" });
     const t = document.createElement("style");
-    t.textContent = l1, this.root.appendChild(t), this.body = document.createElement("div"), this.body.className = "bel-root", this.root.appendChild(this.body);
+    t.textContent = fi, this.root.appendChild(t), this.body = document.createElement("div"), this.body.className = "bel-root", this.root.appendChild(this.body);
   }
   get isFull() {
     return this.getAttribute("mode") === "full";
   }
   get uiLang() {
-    return this.getAttribute("language") ?? (this.isFull ? T2("lang") ?? "is" : "is");
+    return this.getAttribute("language") ?? (this.isFull ? F2("lang") ?? "is" : "is");
   }
   get t() {
-    return S0(this.uiLang);
+    return p0(this.uiLang);
   }
   get hours() {
     const t = parseInt(this.getAttribute("hours") ?? "", 10);
     return Number.isFinite(t) && t > 0 ? t : 48;
   }
   connectedCallback() {
-    _1(), this.started = !0, this.isWide = this.mql.matches, this.isLandscape = this.mqlLandscape.matches;
-    const t = this.isFull ? R0() : {};
-    typeof t.selectedDay == "number" && (this.selectedDay = t.selectedDay), typeof t.scrubUtcMs == "number" && (this.scrubUtcMs = t.scrubUtcMs), (t.view === "table" || t.view === "graph") && (this.view = t.view), t.panelPos && typeof t.panelPos.x == "number" && typeof t.panelPos.y == "number" && (this.panelPos = { ...t.panelPos }), t.panelSize && typeof t.panelSize.w == "number" && typeof t.panelSize.h == "number" && (this.panelSize = { ...t.panelSize });
+    Fi(), this.started = !0, this.isWide = this.mql.matches, this.isLandscape = this.mqlLandscape.matches;
+    const t = this.isFull ? V0() : {};
+    typeof t.selectedDay == "number" && (this.selectedDay = t.selectedDay), typeof t.scrubUtcMs == "number" && (this.scrubUtcMs = t.scrubUtcMs), (t.view === "table" || t.view === "graph") && (this.view = t.view), this.expandedView = X2(t.expandedView), t.panelPos && typeof t.panelPos.x == "number" && typeof t.panelPos.y == "number" && (this.panelPos = { ...t.panelPos }), t.panelSize && typeof t.panelSize.w == "number" && typeof t.panelSize.h == "number" && (this.panelSize = { ...t.panelSize });
     const i = this.getAttribute("view");
     i === "graph" || i === "table" ? this.view = i : t.view || (this.view = this.isWide ? "graph" : "table"), this.mql.addEventListener("change", this.onBreakpoint), this.mqlLandscape.addEventListener("change", this.onLandscape), document.addEventListener("keydown", this.onKeyDown), window.addEventListener("resize", this.onResize), this.hostTimeMs = this.selectedTimeAttr(), this.load(), requestAnimationFrame(() => {
       this.onBreakpoint(), this.onLandscape();
@@ -3962,10 +4062,22 @@ class I2 extends HTMLElement {
       this.resizeRaf = 0, this.paint(), this.persistMapPanel();
     }));
   };
+  /** The host's display clock: an IANA zone name, or null for the point's own. */
+  get displayTimeZone() {
+    return this.getAttribute("display-time-zone")?.trim() || null;
+  }
+  /** Keep the points as loaded, and show them on the display clock. */
+  setPoints(t) {
+    this.pointClockPoints = t, this.points = ki(t, this.displayTimeZone);
+  }
   attributeChangedCallback(t) {
     if (!(!this.started || this.suppressAttrCallback)) {
       if (t === "selected-time") {
         this.applySelectedTime();
+        return;
+      }
+      if (t === "display-time-zone") {
+        this.setPoints(this.pointClockPoints), this.paint();
         return;
       }
       t === "language" || t === "forecast-label" || t === "analysis-time" || t === "last-updated" || t === "station-place" || t === "station-place-km" ? this.paint() : this.load();
@@ -3974,6 +4086,14 @@ class I2 extends HTMLElement {
   /** Point the widget at a new location (kept from the previous widget's API) */
   loadChartLocation(t, i, n = "") {
     this.pickedPlaceName = n, this.suppressAttrCallback = !0, this.setAttribute("location-lat", String(t)), this.setAttribute("location-lon", String(i)), this.suppressAttrCallback = !1, this.load();
+  }
+  /**
+   * Open the settings dialog at its station search, with the search field
+   * focused on a device with a fine pointer (not on a phone, where focusing it
+   * would pop the keyboard up). Full mode only: graph mode has no dialog.
+   */
+  openSearch() {
+    this.isFull && (this.settingsOpen = !0, this.focusAfterPaint = Bt(matchMedia("(pointer: fine)").matches), this.paint());
   }
   emitStatus(t) {
     this.dispatchEvent(
@@ -4007,9 +4127,10 @@ class I2 extends HTMLElement {
   persistMapPanel() {
     if (clearTimeout(this.persistTimer), this.persistTimer = 0, !this.isFull || !this.usesPanel) return;
     const t = this.hostTimeMs === null ? { selectedDay: this.selectedDay, scrubUtcMs: this.scrubUtcMs ?? void 0 } : {};
-    b1({
+    Ti({
       ...t,
       view: this.view,
+      expandedView: this.expandedView,
       panelPos: this.panelPos.x >= 0 ? { x: this.panelPos.x, y: this.panelPos.y } : void 0,
       panelSize: this.panelSize.w > 0 ? { w: this.panelSize.w, h: this.panelSize.h } : void 0
     });
@@ -4023,12 +4144,12 @@ class I2 extends HTMLElement {
   }
   /** Rendered panel width after resolving defaults + clamping to the host. */
   resolvedPanelW() {
-    const t = this.panelSize.w > 0 ? this.panelSize.w : v1;
-    return Math.max(u2, Math.min(this.hostW() - 24, t));
+    const t = this.panelSize.w > 0 ? this.panelSize.w : Ci;
+    return Math.max(f2, Math.min(this.hostW() - 24, t));
   }
   /** Minimum panel height for the current layout (one-column needs more). */
   minPanelH() {
-    const t = this.resolvedPanelW() >= h2 ? S2 : i0;
+    const t = this.resolvedPanelW() >= u2 ? z2 : n0;
     return Math.min(t, this.hostH() - 24);
   }
   /** Rendered panel height after resolving defaults + clamping to the host. */
@@ -4038,7 +4159,7 @@ class I2 extends HTMLElement {
   }
   /** Two-column layout once the panel is at least EXPAND_THRESHOLD wide. */
   isExpanded() {
-    return this.resolvedPanelW() >= h2;
+    return this.resolvedPanelW() >= u2;
   }
   /** Collapse back to the default single-column card (keeps position). */
   collapsePanel() {
@@ -4059,13 +4180,13 @@ class I2 extends HTMLElement {
   expandPanel() {
     const t = I2.MAXIMISE_INSET;
     this.panelPos = { x: t, y: t }, this.panelSize = {
-      w: Math.max(u2, this.hostW() - t * 2),
-      h: Math.max(S2, this.hostH() - t * 2)
+      w: Math.max(f2, this.hostW() - t * 2),
+      h: Math.max(z2, this.hostH() - t * 2)
     }, this.persistMapPanel(), this.paint();
   }
   metaLine(t) {
-    const i = this.getAttribute("analysis-time"), n = i ? new Date(i) : this.analysisTime, o = this.getAttribute("last-updated"), s = o ? new Date(o) : this.lastModified, l = (a) => a && !isNaN(a.getTime()) ? xt(a, t) : "–";
-    return t.metaLine(l(n), l(s));
+    const i = this.getAttribute("analysis-time"), n = i ? new Date(i) : this.analysisTime, o = this.getAttribute("last-updated"), s = o ? new Date(o) : this.lastModified, a = (l) => l && !isNaN(l.getTime()) ? $t(l, t) : "–";
+    return t.metaLine(a(n), a(s));
   }
   /**
    * Inline left/top/width/height for the draggable panel. Resolves the user's
@@ -4074,13 +4195,13 @@ class I2 extends HTMLElement {
    * at a smaller size) snaps back in — and writes the clamped position back.
    */
   panelStyleAttr() {
-    const t = this.hostW(), i = this.hostH(), n = this.resolvedPanelW(), o = this.resolvedPanelH(), s = this.panelPos.x >= 0 ? this.panelPos : { x: t - n - 18, y: Math.min(48, Math.max(18, Math.round(i * 0.02))) }, l = Math.max(0, Math.min(t - n, s.x)), a = Math.max(0, Math.min(i - o, s.y));
-    return this.panelPos = { x: l, y: a }, ` style="left:${l}px;top:${a}px;width:${n}px;height:${o}px"`;
+    const t = this.hostW(), i = this.hostH(), n = this.resolvedPanelW(), o = this.resolvedPanelH(), s = this.panelPos.x >= 0 ? this.panelPos : { x: t - n - 18, y: Math.min(48, Math.max(18, Math.round(i * 0.02))) }, a = Math.max(0, Math.min(t - n, s.x)), l = Math.max(0, Math.min(i - o, s.y));
+    return this.panelPos = { x: a, y: l }, ` style="left:${a}px;top:${l}px;width:${n}px;height:${o}px"`;
   }
   emitLocation() {
     const t = parseFloat(this.getAttribute("location-lat") ?? ""), i = parseFloat(this.getAttribute("location-lon") ?? "");
     if (isNaN(t) || isNaN(i)) return;
-    const n = this.placeName(this.placeList(t, i), t, i, this.t), o = this.points[f2(this.points)]?.tempC ?? null;
+    const n = this.placeName(this.placeList(t, i), t, i, this.t), o = this.points[m2(this.points)]?.tempC ?? null;
     this.dispatchEvent(
       new CustomEvent("bel-meteogram-location", {
         detail: {
@@ -4103,17 +4224,15 @@ class I2 extends HTMLElement {
     this.loadAbort = i;
     const { signal: n } = i;
     if (this.scrubIdx = -1, this.lastTimeKey = null, this.hasAttribute("sample")) {
-      this.corrections = [], this.correctedStation = null, this.points = d1(
-        this.isFull ? g1 : this.hours
-      ), this.isFull && (this.rawForecasts = e0.map((r) => ({ ...r, url: "" })), this.rawStations = p1.map((r, d) => ({
-        id: `sample-${d}`,
+      this.corrections = [], this.correctedStation = null, this.setPoints(vi(this.isFull ? Si : this.hours)), this.isFull && (this.rawForecasts = i0.map((r) => ({ ...r, url: "" })), this.rawStations = bi.map((r, c) => ({
+        id: `sample-${c}`,
         name: r.name,
         lat: r.lat,
         lon: r.lon
-      })), this.forecastId || (this.forecastId = e0[0].id));
-      const a = /* @__PURE__ */ new Date();
-      this.lastModified = a, this.analysisTime = new Date(
-        Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), a.getUTCDate())
+      })), this.forecastId || (this.forecastId = i0[0].id));
+      const l = /* @__PURE__ */ new Date();
+      this.lastModified = l, this.analysisTime = new Date(
+        Date.UTC(l.getUTCFullYear(), l.getUTCMonth(), l.getUTCDate())
       ), this.status = "ready", this.followHostTime(), this.paint(), this.emitStatus(), this.emitLocation(), this.emitHostTime();
       return;
     }
@@ -4123,42 +4242,42 @@ class I2 extends HTMLElement {
       return;
     }
     this.status = "loading", this.paint(), this.emitStatus();
-    const l = {
+    const a = {
       clientName: this.getAttribute("client-name") ?? "",
       apiUrl: this.getAttribute("api-url") ?? void 0,
       user: this.getAttribute("api-user") ?? void 0,
       password: this.getAttribute("api-password") ?? void 0
     };
     try {
-      const a = await q0(l, n), r = Y0(
+      const l = await Z0(a, n), r = Q0(
         this.getAttribute("forecast-type"),
         this.getAttribute("forecast-name"),
         this.getAttribute("domain")
-      ), d = this.forecastId || r || (this.isFull ? T2("model") ?? "" : "");
-      let m = K0(a, d);
-      if (!m && d !== r && (m = a[0]), !m) throw new Error(`forecast not found: ${d}`);
+      ), c = this.forecastId || r || (this.isFull ? F2("model") ?? "" : "");
+      let m = ee(l, c);
+      if (!m && c !== r && (m = l[0]), !m) throw new Error(`forecast not found: ${c}`);
       this.forecastId = m.id;
-      const u = await V0(m.url, n), p = this.isFull ? 1 / 0 : this.hours, x = this.isFull ? void 0 : this.hours, g = a0(u) ? J0(u.stations ?? [], o, s) : null, z = g ? await y2(
-        _2(u, o, s, x, g.extra?.ref),
-        l,
+      const u = await te(m.url, n), p = this.isFull ? 1 / 0 : this.hours, x = this.isFull ? void 0 : this.hours, v = d0(u) ? oe(u.stations ?? [], o, s) : null, z = v ? await w2(
+        y2(u, o, s, x, v.extra?.ref),
+        a,
         n
-      ).catch(($) => {
-        if (n.aborted) throw $;
-        return console.warn("bel-meteogram: station data failed, using the point", $), y2(_2(u, o, s, x), l, n);
-      }) : await y2(_2(u, o, s, x), l, n);
+      ).catch((M) => {
+        if (n.aborted) throw M;
+        return console.warn("bel-meteogram: station data failed, using the point", M), w2(y2(u, o, s, x), a, n);
+      }) : await w2(y2(u, o, s, x), a, n);
       if (t !== this.loadToken) return;
-      this.rawForecasts = a, this.rawStations = u.stations ?? [], this.corrections = Object.keys(z.data.meta?.corrections ?? {}), this.correctedStation = this.corrections.length ? g : null, this.points = m1(z.data, p);
-      const k = z.data.meta?.location_timezone_offset;
-      this.tzOffsetMin = typeof k == "number" ? k : null;
-      const v = Z0(
+      this.rawForecasts = l, this.rawStations = u.stations ?? [], this.corrections = Object.keys(z.data.meta?.corrections ?? {}), this.correctedStation = this.corrections.length ? v : null, this.setPoints($i(z.data, p));
+      const B = z.data.meta?.location_timezone_offset;
+      this.tzOffsetMin = typeof B == "number" ? B : null;
+      const b = se(
         z.data,
         z.lastModified,
         this.points[0]?.utcMs
       );
-      this.analysisTime = v.analysisTime, this.lastModified = v.lastModified, this.status = this.points.length ? "ready" : "error", this.status === "ready" && this.followHostTime(), this.paint(), this.emitStatus(this.points.length ? void 0 : "empty forecast"), this.status === "ready" && (this.emitLocation(), this.emitHostTime());
-    } catch (a) {
+      this.analysisTime = b.analysisTime, this.lastModified = b.lastModified, this.status = this.points.length ? "ready" : "error", this.status === "ready" && this.followHostTime(), this.paint(), this.emitStatus(this.points.length ? void 0 : "empty forecast"), this.status === "ready" && (this.emitLocation(), this.emitHostTime());
+    } catch (l) {
       if (t !== this.loadToken || n.aborted) return;
-      console.error("bel-meteogram: failed to load forecast", a), this.status = "error", this.paint(), this.emitStatus(a instanceof Error ? a.message : String(a));
+      console.error("bel-meteogram: failed to load forecast", l), this.status = "error", this.paint(), this.emitStatus(l instanceof Error ? l.message : String(l));
     }
   }
   // ---- Painting ----
@@ -4191,12 +4310,12 @@ class I2 extends HTMLElement {
     this.refitRaf || (this.refitRaf = requestAnimationFrame(() => {
       this.refitRaf = 0;
       const i = this.body.querySelector(".chart-fit")?.clientHeight ?? 0;
-      if (!i || Math.abs(i - this.refitHeight) < x1) return;
+      if (!i || Math.abs(i - this.refitHeight) < zi) return;
       this.refitHeight = i;
-      const n = this.body.querySelector(".chart-scroll")?.scrollLeft ?? 0, { landscape: o, wide: s, expanded: l } = this.layoutFlags();
-      if (this.paintGraphHost(o, l, s, this.t), n > 0) {
-        const a = this.body.querySelector(".chart-scroll");
-        a && (a.scrollLeft = n);
+      const n = this.body.querySelector(".chart-scroll")?.scrollLeft ?? 0, { landscape: o, wide: s, expanded: a } = this.layoutFlags();
+      if (this.paintGraphHost(o, a, s, this.t), n > 0) {
+        const l = this.body.querySelector(".chart-scroll");
+        l && (l.scrollLeft = n);
       }
     }));
   }
@@ -4222,19 +4341,19 @@ class I2 extends HTMLElement {
     this.refitRaf && cancelAnimationFrame(this.refitRaf), this.refitRaf = 0, this.refitHeight = -1;
   }
   paint() {
-    const i = this.body.querySelector(o0)?.scrollTop ?? 0, o = this.body.querySelector(".chart-scroll")?.scrollLeft ?? 0, s = this.body.querySelector(".day-chips")?.scrollLeft ?? 0, l = this.focusAfterPaint ?? y1(this.root.activeElement);
+    const i = this.body.querySelector(a0)?.scrollTop ?? 0, o = this.body.querySelector(".chart-scroll")?.scrollLeft ?? 0, s = this.body.querySelector(".day-chips")?.scrollLeft ?? 0, a = this.focusAfterPaint ?? Ei(this.root.activeElement);
     this.focusAfterPaint = null, this.isFull ? this.paintFull() : this.paintGraph();
-    const a = this.body.querySelector(".day-chips");
-    if (a) {
-      a.scrollLeft = s;
-      const r = a.querySelector(".day-chip.sel");
+    const l = this.body.querySelector(".day-chips");
+    if (l) {
+      l.scrollLeft = s;
+      const r = l.querySelector(".day-chip.sel");
       if (r) {
-        const d = parseFloat(getComputedStyle(a).scrollPaddingLeft) || 0, m = r.offsetLeft - a.offsetLeft - d, u = r.offsetLeft - a.offsetLeft + r.offsetWidth + d;
-        m < a.scrollLeft ? a.scrollLeft = m : u > a.scrollLeft + a.clientWidth && (a.scrollLeft = u - a.clientWidth);
+        const c = parseFloat(getComputedStyle(l).scrollPaddingLeft) || 0, m = r.offsetLeft - l.offsetLeft - c, u = r.offsetLeft - l.offsetLeft + r.offsetWidth + c;
+        m < l.scrollLeft ? l.scrollLeft = m : u > l.scrollLeft + l.clientWidth && (l.scrollLeft = u - l.clientWidth);
       }
     }
-    if (l && this.body.querySelector(l)?.focus({ preventScroll: !0 }), i > 0) {
-      const r = this.body.querySelector(o0);
+    if (a && this.body.querySelector(a)?.focus({ preventScroll: !0 }), i > 0) {
+      const r = this.body.querySelector(a0);
       r && (r.scrollTop = i);
     }
     if (o > 0) {
@@ -4247,7 +4366,7 @@ class I2 extends HTMLElement {
     this.graphScrubSetter = null;
     const i = `
       <div class="head">
-        <div class="title">${f(B0(this.points, t) || t.nextHours(this.hours))}</div>
+        <div class="title">${f(C0(this.points, t) || t.nextHours(this.hours))}</div>
         <div class="hint">${f(t.swipe)}</div>
       </div>`;
     if (this.status === "loading") {
@@ -4260,12 +4379,12 @@ class I2 extends HTMLElement {
     }
     const n = this.points, o = this.selectedColumn(n);
     this.renderedScrubIdx = o;
-    const { setScrubIdx: s } = q2(
+    const { setScrubIdx: s } = V2(
       this.body,
       n,
       t,
       o,
-      (l, a) => this.onUserScrub(n, l, a),
+      (a, l) => this.onUserScrub(n, a, l),
       { previewHover: () => this.hostTimeMs !== null }
     );
     this.graphScrubSetter = s;
@@ -4274,7 +4393,7 @@ class I2 extends HTMLElement {
     const t = this.uiLang, i = this.getAttribute("forecast-label")?.trim();
     return this.rawForecasts.map((n) => ({
       id: n.id,
-      name: i && n.id === this.forecastId ? i : z2(n.name, t)
+      name: i && n.id === this.forecastId ? i : C2(n.name, t)
     }));
   }
   /**
@@ -4288,20 +4407,20 @@ class I2 extends HTMLElement {
    */
   placeList(t, i) {
     const n = this.uiLang, o = this.rawStations.map((s) => ({
-      name: z2(s.name, n),
+      name: C2(s.name, n),
       lat: s.lat,
       lon: s.lon
     }));
     if (!isNaN(t) && !isNaN(i)) {
-      for (const s of o) s.distanceKm = s0(t, i, s.lat, s.lon);
-      o.sort((s, l) => (s.distanceKm ?? 0) - (l.distanceKm ?? 0));
+      for (const s of o) s.distanceKm = l0(t, i, s.lat, s.lon);
+      o.sort((s, a) => (s.distanceKm ?? 0) - (a.distanceKm ?? 0));
     }
     return o;
   }
   /** The panel's title for the current point, and where it came from (see
    *  {@link placeTitle}). */
   placeTitle(t, i, n, o) {
-    return ct({
+    return mt({
       locationName: this.getAttribute("location-name"),
       pickedName: this.pickedPlaceName,
       preferCoordinates: this.hasAttribute("prefer-coordinates"),
@@ -4322,7 +4441,7 @@ class I2 extends HTMLElement {
    * the widget on an hour that has already happened.
    */
   restoreScrubIndex(t) {
-    return this.scrubUtcMs === null ? -1 : Ze(t, this.scrubUtcMs);
+    return this.scrubUtcMs === null ? -1 : pt(t, this.scrubUtcMs);
   }
   /** Remember a scrubbed column as the instant it stands for (see scrubUtcMs).
    *  A column with no point behind it is not recorded at all: keeping the index
@@ -4347,11 +4466,11 @@ class I2 extends HTMLElement {
    * or "now".
    */
   selectedColumn(t) {
-    if (this.hostTimeMs !== null) return Qe(t, this.hostTimeMs);
+    if (this.hostTimeMs !== null) return ht(t, this.hostTimeMs);
     const i = this.scrubIdx >= 0 ? this.scrubIdx : this.restoreScrubIndex(t);
     return Math.max(
       0,
-      Math.min(t.length - 1, i >= 0 ? i : f2(t))
+      Math.min(t.length - 1, i >= 0 ? i : m2(t))
     );
   }
   /**
@@ -4382,7 +4501,7 @@ class I2 extends HTMLElement {
   followSelectedDay(t, i) {
     const n = t[i];
     if (!this.isFull || !n) return !1;
-    const s = K2(this.points, this.t, j2(this.points)).findIndex((l) => l.hours.includes(n));
+    const s = K2(this.points, this.t, Y2(this.points)).findIndex((a) => a.hours.includes(n));
     return s < 0 || s === this.selectedDay ? !1 : (this.selectedDay = s, !0);
   }
   /**
@@ -4396,7 +4515,7 @@ class I2 extends HTMLElement {
   }
   /** Fire `bel-meteogram-time` for column `col`, unless it repeats the last. */
   emitTime(t, i, n) {
-    const o = et(t, i, n), s = `${o.time}|${o.tempC}`;
+    const o = ut(t, i, n), s = `${o.time}|${o.tempC}`;
     s !== this.lastTimeKey && (this.lastTimeKey = s, this.dispatchEvent(
       new CustomEvent("bel-meteogram-time", {
         detail: o,
@@ -4426,69 +4545,70 @@ class I2 extends HTMLElement {
       </button>`;
   }
   paintFull() {
-    const t = this.t, i = this.uiLang, n = parseFloat(this.getAttribute("location-lat") ?? ""), o = parseFloat(this.getAttribute("location-lon") ?? ""), s = this.models(), l = this.placeList(n, o), a = this.placeTitle(l, n, o, t), r = a.name, d = s.find((c) => c.id === this.forecastId) ?? s[0], m = l.find(
-      (c) => Math.abs(c.lat - n) < 1e-4 && Math.abs(c.lon - o) < 1e-4
-    ) ?? l.find((c) => c.name === r) ?? null, u = this.hasAttribute("closable"), { landscape: p, wide: x, expanded: g } = this.layoutFlags(), z = bt({
-      modelName: d?.name ?? "…",
-      place: r,
+    const t = this.t, i = this.uiLang, n = parseFloat(this.getAttribute("location-lat") ?? ""), o = parseFloat(this.getAttribute("location-lon") ?? ""), s = this.models(), a = this.placeList(n, o), l = this.placeTitle(a, n, o, t), r = l.name, c = s.find((g) => g.id === this.forecastId) ?? s[0], m = a.find(
+      (g) => Math.abs(g.lat - n) < 1e-4 && Math.abs(g.lon - o) < 1e-4
+    ) ?? a.find((g) => g.name === r) ?? null, u = this.hasAttribute("closable"), { landscape: p, wide: x, expanded: v } = this.layoutFlags(), z = zt({
+      modelName: c?.name ?? "…",
+      // The landscape sheet hides the title block; elsewhere the title names it.
+      place: St(l, !p),
       lang: i.toUpperCase(),
-      tzOffsetMin: this.tzOffsetMin
-    }), k = dt(
+      tzOffsetMin: Bi(this.tzOffsetMin, this.displayTimeZone, Date.now())
+    }), B = gt(
       n,
       o,
-      a.source,
-      this.status === "ready" && this.correctedStation ? Mt(
+      l.source,
+      this.status === "ready" && this.correctedStation ? Et(
         this.corrections,
-        z2(this.correctedStation.name, i),
+        C2(this.correctedStation.name, i),
         t
       ) : "",
       t
-    ), v = $t(
+    ), b = At(
       this.getAttribute("station-place"),
       parseFloat(this.getAttribute("station-place-km") ?? ""),
       t
     );
-    let $ = "";
+    let M = "";
     if (this.status === "loading")
-      $ = '<div class="sk sk-now"></div><div class="sk-rows"><div class="sk sk-row"></div><div class="sk sk-row"></div><div class="sk sk-row"></div></div>';
+      M = '<div class="sk sk-now"></div><div class="sk-rows"><div class="sk sk-row"></div><div class="sk sk-row"></div><div class="sk sk-row"></div></div>';
     else if (this.status === "error")
-      $ = `<div class="graph-wrap" style="padding-top:12px"><div class="card"><div class="error"><div class="error-msg">${f(t.error)}</div><button class="retry">${f(t.retry)}</button></div></div></div>`;
+      M = `<div class="graph-wrap" style="padding-top:12px"><div class="card"><div class="error"><div class="error-msg">${f(t.error)}</div><button class="retry">${f(t.retry)}</button></div></div></div>`;
     else {
-      const c = f2(this.points), b = K2(this.points, t, j2(this.points)), F = Math.max(0, Math.min(b.length - 1, this.selectedDay));
-      $ = p ? this.landscapeBodyHtml(b, F, this.points[c], t) : g ? this.expandedBodyHtml(b, F, this.points[c], t) : x ? this.desktopBodyHtml(b, F, this.points[c], t) : this.mobileBodyHtml(b, F, this.points[c], t);
+      const g = m2(this.points), F = K2(this.points, t, Y2(this.points)), A = Math.max(0, Math.min(F.length - 1, this.selectedDay));
+      M = p ? this.landscapeBodyHtml(F, A, this.points[g], t) : v ? this.expandedBodyHtml(F, A, this.points[g], t) : x ? this.desktopBodyHtml(F, A, this.points[g], t) : this.mobileBodyHtml(F, A, this.points[g], t);
     }
-    const B = this.settingsOpen ? Ct(
+    const k = this.settingsOpen ? Dt(
       s,
       this.forecastId,
       i,
-      l,
+      a,
       m,
       this.query,
       t,
       !this.hasAttribute("hide-language"),
       !this.hasAttribute("hide-models")
-    ) : "", w = `page ${x ? "wide wide-2a" : "narrow"}${g ? " is-expanded" : ""}${p ? " is-fullscreen" : ""}${u ? " page--closable" : ""} view-${this.view}`, T = this.status === "ready" && x ? Bt(this.metaLine(t)) : "", C = p ? "" : this.panelStyleAttr(), E = p ? "" : `<div class="panel-resize panel-resize-bl" data-resize-handle data-corner="bl" role="separator" aria-label="Resize" title="${f(t.resize)}"></div>
-         <div class="panel-resize panel-resize-br" data-resize-handle data-corner="br" role="separator" aria-label="Resize" title="${f(t.resize)}"></div>`, h = x ? `<div class="${w}"${C}>
-           ${_t(z, u, t)}
+    ) : "", $ = v && this.expandedView !== "both" ? this.expandedView : this.view, C = `page ${x ? "wide wide-2a" : "narrow"}${v ? " is-expanded" : ""}${p ? " is-fullscreen" : ""}${u ? " page--closable" : ""} view-${$}`, T = this.status === "ready" && x ? Pt(this.metaLine(t)) : "", E = p ? "" : this.panelStyleAttr(), h = p ? "" : `<div class="panel-resize panel-resize-bl" data-resize-handle data-corner="bl" role="separator" aria-label="Resize" title="${f(t.resize)}"></div>
+         <div class="panel-resize panel-resize-br" data-resize-handle data-corner="br" role="separator" aria-label="Resize" title="${f(t.resize)}"></div>`, d = x ? `<div class="${C}"${E}>
+           ${Ct(z, u, t)}
            <section class="panel-loc">
              <div class="panel-loc-name">${f(r)}</div>
-             <div class="panel-loc-sub">${k}</div>
-             ${v}
+             <div class="panel-loc-sub">${B}</div>
+             ${b}
            </section>
-           ${$}
+           ${M}
            ${T}
-           ${E}
-         </div>` : `<div class="${w}">
+           ${h}
+         </div>` : `<div class="${C}">
            ${u ? this.closeBtnHtml("page-close", t) : ""}
            <section class="loc">
              <h1 class="loc-name">${f(r)}</h1>
-             <div class="loc-sub">${k}</div>
-             ${v}
+             <div class="loc-sub">${B}</div>
+             ${b}
            </section>
-           <div class="pill-wrap">${ut(z)}</div>
-           ${$}
+           <div class="pill-wrap">${bt(z)}</div>
+           ${M}
          </div>`;
-    this.body.innerHTML = `${h}${B}`, this.wireFull(l, s, m), this.paintGraphHost(p, g, x, t);
+    this.body.innerHTML = `${d}${k}`, this.wireFull(a, s, m), this.paintGraphHost(p, v, x, t);
   }
   /**
    * Render the graph into `.graph-host` from current state.
@@ -4502,16 +4622,16 @@ class I2 extends HTMLElement {
   paintGraphHost(t, i, n, o) {
     const s = this.body.querySelector(".graph-host");
     if (s && this.status === "ready") {
-      const l = this.graphPoints();
-      this.renderedGraphPoints = l;
-      const a = this.selectedColumn(l);
-      this.renderedScrubIdx = a;
+      const a = this.graphPoints();
+      this.renderedGraphPoints = a;
+      const l = this.selectedColumn(a);
+      this.renderedScrubIdx = l;
       const r = () => this.hostTimeMs !== null;
       if (n) {
-        const { setScrubIdx: d } = n1(s, l, {
-          scrubIdx: a,
-          nowIdx: k0(l),
-          onScrub: (m, u) => this.onUserScrub(l, m, u),
+        const { setScrubIdx: c } = ui(s, a, {
+          scrubIdx: l,
+          nowIdx: T0(a),
+          onScrub: (m, u) => this.onUserScrub(a, m, u),
           previewHover: r,
           onFullscreen: () => {
             this.isExpanded() ? this.collapsePanel() : this.expandPanel();
@@ -4531,17 +4651,17 @@ class I2 extends HTMLElement {
           metaLine: this.metaLine(o),
           t: o
         });
-        this.graphScrubSetter = d;
+        this.graphScrubSetter = c;
       } else {
-        const { setScrubIdx: d } = q2(
+        const { setScrubIdx: c } = V2(
           s,
-          l,
-          o,
           a,
-          (m, u) => this.onUserScrub(l, m, u),
+          o,
+          l,
+          (m, u) => this.onUserScrub(a, m, u),
           { previewHover: r }
         );
-        this.graphScrubSetter = d;
+        this.graphScrubSetter = c;
       }
     } else
       this.renderedGraphPoints = [], this.renderedScrubIdx = 0, this.graphScrubSetter = null;
@@ -4554,27 +4674,25 @@ class I2 extends HTMLElement {
    * The meta footer is appended after this by paint(), i.e. below both columns.
    */
   expandedBodyHtml(t, i, n, o) {
-    return `
-      <div class="exp-body">
-        <div class="exp-left">
-          <div class="now-wrap">${r2(n, o, 44, 50)}</div>
-          ${c2(t, i, !1)}
-          ${$2(t[i], o)}
-        </div>
-        <div class="exp-right">
-          <div class="graph-view graph-view-2a"><div class="graph-host"></div></div>
-        </div>
-      </div>`;
+    return kt(
+      this.expandedView,
+      `<div class="now-wrap">${c2(n, o, 44, 50)}</div>
+          ${d2(t, i, !1)}
+          ${k2(t[i], o)}`,
+      '<div class="graph-view graph-view-2a"><div class="graph-host"></div></div>',
+      `<button class="chart-fs-btn exp-collapse" type="button" aria-label="${f(o.exitFullscreen)}" title="${f(o.exitFullscreen)}">${R0}</button>`,
+      o
+    );
   }
   /**
    * Desktop draggable panel body: compact now card, equal-width
    * day chips, Table/Graph switch, table or panel meteogram.
    */
   desktopBodyHtml(t, i, n, o) {
-    const s = this.view === "table" ? $2(t[i], o) : '<div class="graph-view graph-view-2a"><div class="graph-host"></div></div>';
+    const s = this.view === "table" ? k2(t[i], o) : '<div class="graph-view graph-view-2a"><div class="graph-host"></div></div>';
     return `
-      ${r2(n, o, 46, 58)}
-      ${c2(t, i, !1)}
+      ${c2(n, o, 46, 58)}
+      ${d2(t, i, !1)}
       <div class="tabs">
         <button class="tab${this.view === "table" ? " on" : ""}" type="button" data-view="table" aria-pressed="${this.view === "table"}">${f(o.table)}</button>
         <button class="tab${this.view === "graph" ? " on" : ""}" type="button" data-view="graph" aria-pressed="${this.view === "graph"}">${f(o.graph)}</button>
@@ -4583,9 +4701,9 @@ class I2 extends HTMLElement {
   }
   /** Mobile body: now card + Table/Graph control + chips/card or meteogram */
   mobileBodyHtml(t, i, n, o) {
-    const s = this.view === "table" ? `${c2(t, i)}<div class="sel-wrap">${kt(t[i], o)}</div>` : '<div class="graph-wrap"><div class="graph-host"></div></div>';
+    const s = this.view === "table" ? `${d2(t, i)}<div class="sel-wrap">${Lt(t[i], o)}</div>` : '<div class="graph-wrap"><div class="graph-host"></div></div>';
     return `
-      <div class="now-wrap">${r2(n, o)}</div>
+      <div class="now-wrap">${c2(n, o)}</div>
       <div class="tabs">
         <button class="tab${this.view === "table" ? " on" : ""}" type="button" data-view="table" aria-pressed="${this.view === "table"}">${f(o.table)}</button>
         <button class="tab${this.view === "graph" ? " on" : ""}" type="button" data-view="graph" aria-pressed="${this.view === "graph"}">${f(o.graph)}</button>
@@ -4599,16 +4717,16 @@ class I2 extends HTMLElement {
    * chips and the hourly table in one scrolling column.
    */
   landscapeBodyHtml(t, i, n, o) {
-    const s = this.view === "graph", l = `
+    const s = this.view === "graph", a = `
       <div class="tabs">
         <button class="tab${s ? "" : " on"}" type="button" data-view="table" aria-pressed="${!s}">${f(o.table)}</button>
         <button class="tab${s ? " on" : ""}" type="button" data-view="graph" aria-pressed="${s}">${f(o.graph)}</button>
-      </div>`, a = s ? '<div class="graph-view graph-view-2a"><div class="graph-host"></div></div>' : `<div class="ls-scroll">
-           <div class="now-wrap">${r2(n, o, 40, 46)}</div>
-           ${c2(t, i, !0)}
-           ${$2(t[i], o)}
+      </div>`, l = s ? '<div class="graph-view graph-view-2a"><div class="graph-host"></div></div>' : `<div class="ls-scroll">
+           <div class="now-wrap">${c2(n, o, 40, 46)}</div>
+           ${d2(t, i, !0)}
+           ${k2(t[i], o)}
          </div>`;
-    return `${l}${a}`;
+    return `${a}${l}`;
   }
   wireFull(t, i, n) {
     const o = (p) => this.body.querySelector(p);
@@ -4625,119 +4743,125 @@ class I2 extends HTMLElement {
         const x = p.dataset.view;
         x !== this.view && (this.view = x, this.persistMapPanel(), this.paint());
       });
+    o(".exp-collapse")?.addEventListener("click", () => this.collapsePanel());
+    for (const p of this.body.querySelectorAll(".tab[data-exp-view]"))
+      p.addEventListener("click", () => {
+        const x = X2(p.dataset.expView);
+        x !== this.expandedView && (this.expandedView = x, this.persistMapPanel(), this.paint());
+      });
     for (const p of this.body.querySelectorAll(".day-chip[data-day]"))
       p.addEventListener("click", () => {
         const x = parseInt(p.dataset.day ?? "", 10);
         x !== this.selectedDay && (this.selectedDay = x, this.persistMapPanel(), this.paint());
       });
-    const s = o("[data-drag-handle]"), l = o(".page.wide-2a");
-    if (!this.isLandscape && s && l) {
+    const s = o("[data-drag-handle]"), a = o(".page.wide-2a");
+    if (!this.isLandscape && s && a) {
       let p = null;
-      const x = ($, B) => {
-        const w = this.clientWidth || l.offsetWidth, T = this.clientHeight || l.offsetHeight, C = l.offsetWidth, E = l.offsetHeight;
+      const x = (M, k) => {
+        const $ = this.clientWidth || a.offsetWidth, C = this.clientHeight || a.offsetHeight, T = a.offsetWidth, E = a.offsetHeight;
         return {
-          x: Math.max(0, Math.min(w - C, $)),
-          y: Math.max(0, Math.min(T - E, B))
+          x: Math.max(0, Math.min($ - T, M)),
+          y: Math.max(0, Math.min(C - E, k))
         };
-      }, g = ($) => {
-        if (!p || $.buttons === 0) return;
-        const B = x(
-          p.px + $.clientX - p.sx,
-          p.py + $.clientY - p.sy
+      }, v = (M) => {
+        if (!p || M.buttons === 0) return;
+        const k = x(
+          p.px + M.clientX - p.sx,
+          p.py + M.clientY - p.sy
         );
-        this.panelPos = B, l.style.left = `${B.x}px`, l.style.top = `${B.y}px`;
+        this.panelPos = k, a.style.left = `${k.x}px`, a.style.top = `${k.y}px`;
       }, z = () => {
-        p && (p = null, this.persistMapPanel(), window.removeEventListener("pointermove", g), window.removeEventListener("pointerup", z));
+        p && (p = null, this.persistMapPanel(), window.removeEventListener("pointermove", v), window.removeEventListener("pointerup", z));
       };
-      s.addEventListener("pointerdown", ($) => {
-        if ($.target.closest("button")) return;
-        const B = l.getBoundingClientRect(), w = this.getBoundingClientRect();
+      s.addEventListener("pointerdown", (M) => {
+        if (M.target.closest("button")) return;
+        const k = a.getBoundingClientRect(), $ = this.getBoundingClientRect();
         try {
-          s.setPointerCapture($.pointerId);
+          s.setPointerCapture(M.pointerId);
         } catch {
         }
         p = {
-          sx: $.clientX,
-          sy: $.clientY,
-          px: B.left - w.left,
-          py: B.top - w.top
-        }, this.panelPos = { x: p.px, y: p.py }, window.addEventListener("pointermove", g), window.addEventListener("pointerup", z);
+          sx: M.clientX,
+          sy: M.clientY,
+          px: k.left - $.left,
+          py: k.top - $.top
+        }, this.panelPos = { x: p.px, y: p.py }, window.addEventListener("pointermove", v), window.addEventListener("pointerup", z);
       });
-      const k = ($, B) => {
-        let w = null;
-        const T = (E) => {
-          if (!w || E.buttons === 0) return;
+      const B = (M, k) => {
+        let $ = null;
+        const C = (E) => {
+          if (!$ || E.buttons === 0) return;
           const h = this.body.querySelector(".page.wide-2a");
           if (!h) return;
-          const c = this.getBoundingClientRect(), b = this.clientWidth || c.width, F = this.clientHeight || c.height, P = E.clientX - c.left, O = E.clientY - c.top;
-          let D = w.left, G;
-          B === "bl" ? (D = Math.max(0, Math.min(w.rightEdge - u2, P)), G = Math.min(b - 8, w.rightEdge - D)) : G = Math.max(u2, Math.min(b - w.left - 8, P - w.left));
-          const W = Math.min(
-            G >= h2 ? S2 : i0,
-            F - w.top - 8
-          ), N = Math.max(W, Math.min(F - w.top - 8, O - w.top));
-          this.panelPos = { x: D, y: w.top }, this.panelSize = { w: G, h: N };
-          const H = G >= h2;
-          H !== w.expanded ? (w.expanded = H, this.paint()) : (h.style.left = `${D}px`, h.style.width = `${G}px`, h.style.height = `${N}px`, this.scheduleGraphRefit());
-        }, C = () => {
-          w && (w = null, window.removeEventListener("pointermove", T), window.removeEventListener("pointerup", C), this.persistMapPanel(), this.cancelGraphRefit(), this.paint());
+          const d = this.getBoundingClientRect(), g = this.clientWidth || d.width, F = this.clientHeight || d.height, A = E.clientX - d.left, I = E.clientY - d.top;
+          let D = $.left, G;
+          k === "bl" ? (D = Math.max(0, Math.min($.rightEdge - f2, A)), G = Math.min(g - 8, $.rightEdge - D)) : G = Math.max(f2, Math.min(g - $.left - 8, A - $.left));
+          const N = Math.min(
+            G >= u2 ? z2 : n0,
+            F - $.top - 8
+          ), j = Math.max(N, Math.min(F - $.top - 8, I - $.top));
+          this.panelPos = { x: D, y: $.top }, this.panelSize = { w: G, h: j };
+          const H = G >= u2;
+          H !== $.expanded ? ($.expanded = H, this.paint()) : (h.style.left = `${D}px`, h.style.width = `${G}px`, h.style.height = `${j}px`, this.scheduleGraphRefit());
+        }, T = () => {
+          $ && ($ = null, window.removeEventListener("pointermove", C), window.removeEventListener("pointerup", T), this.persistMapPanel(), this.cancelGraphRefit(), this.paint());
         };
-        $.addEventListener("pointerdown", (E) => {
+        M.addEventListener("pointerdown", (E) => {
           E.preventDefault(), E.stopPropagation();
-          const h = l.getBoundingClientRect(), c = this.getBoundingClientRect();
+          const h = a.getBoundingClientRect(), d = this.getBoundingClientRect();
           try {
-            $.setPointerCapture(E.pointerId);
+            M.setPointerCapture(E.pointerId);
           } catch {
           }
-          w = {
-            left: h.left - c.left,
-            top: h.top - c.top,
-            rightEdge: h.right - c.left,
+          $ = {
+            left: h.left - d.left,
+            top: h.top - d.top,
+            rightEdge: h.right - d.left,
             expanded: this.isExpanded()
-          }, window.addEventListener("pointermove", T), window.addEventListener("pointerup", C);
+          }, window.addEventListener("pointermove", C), window.addEventListener("pointerup", T);
         });
-      }, v = this.body.querySelectorAll("[data-resize-handle]");
-      for (const $ of v)
-        k($, $.dataset.corner === "br" ? "br" : "bl");
-      v.length && !T2("resizeHintSeen") && (v.forEach(($) => $.classList.add("hint")), C2("resizeHintSeen", "1"));
+      }, b = this.body.querySelectorAll("[data-resize-handle]");
+      for (const M of b)
+        B(M, M.dataset.corner === "br" ? "br" : "bl");
+      b.length && !F2("resizeHintSeen") && (b.forEach((M) => M.classList.add("hint")), T2("resizeHintSeen", "1"));
     }
     this.closeOverlay = null;
-    const a = o(".backdrop");
-    if (!a) return;
+    const l = o(".backdrop");
+    if (!l) return;
     const r = () => {
       this.settingsOpen = !1, this.query = "", this.focusAfterPaint = ".pill", this.paint();
     };
     this.closeOverlay = r;
-    const d = o(".overlay");
-    d?.addEventListener("keydown", (p) => {
+    const c = o(".overlay");
+    c?.addEventListener("keydown", (p) => {
       if (p.key !== "Tab") return;
       const x = [
-        ...d.querySelectorAll("button, input, [tabindex='0']")
-      ].filter((v) => v.offsetParent !== null);
+        ...c.querySelectorAll("button, input, [tabindex='0']")
+      ].filter((b) => b.offsetParent !== null);
       if (!x.length) return;
-      const g = x[0], z = x[x.length - 1], k = this.root.activeElement;
-      p.shiftKey && (k === g || k === d) ? (p.preventDefault(), z.focus()) : !p.shiftKey && k === z && (p.preventDefault(), g.focus());
-    }), a.addEventListener("click", (p) => {
-      p.target === a && r();
+      const v = x[0], z = x[x.length - 1], B = this.root.activeElement;
+      p.shiftKey && (B === v || B === c) ? (p.preventDefault(), z.focus()) : !p.shiftKey && B === z && (p.preventDefault(), v.focus());
+    }), l.addEventListener("click", (p) => {
+      p.target === l && r();
     }), o(".overlay-close")?.addEventListener("click", r);
-    for (const p of a.querySelectorAll(".chip[data-model]"))
+    for (const p of l.querySelectorAll(".chip[data-model]"))
       p.addEventListener("click", () => {
         const x = i[parseInt(p.dataset.model ?? "", 10)];
-        !x || x.id === this.forecastId || (this.forecastId = x.id, C2("model", x.id), this.load());
+        !x || x.id === this.forecastId || (this.forecastId = x.id, T2("model", x.id), this.load());
       });
-    for (const p of a.querySelectorAll(".chip[data-lang]"))
+    for (const p of l.querySelectorAll(".chip[data-lang]"))
       p.addEventListener("click", () => {
         const x = p.dataset.lang ?? "is";
-        x !== this.uiLang && (this.suppressAttrCallback = !0, this.setAttribute("language", x), this.suppressAttrCallback = !1, C2("lang", x), this.paint());
+        x !== this.uiLang && (this.suppressAttrCallback = !0, this.setAttribute("language", x), this.suppressAttrCallback = !1, T2("lang", x), this.paint());
       });
     const m = o(".station-search"), u = o(".station-list");
     m?.addEventListener("input", () => {
-      this.query = m.value, u && (u.innerHTML = A0(t, n, this.query, this.t));
+      this.query = m.value, u && (u.innerHTML = U0(t, n, this.query, this.t));
     }), u?.addEventListener("click", (p) => {
       const x = p.target.closest(".station");
       if (!x) return;
-      const g = t[parseInt(x.dataset.station ?? "", 10)];
-      g && (this.suppressAttrCallback = !0, this.removeAttribute("location-name"), this.removeAttribute("station-place"), this.removeAttribute("station-place-km"), this.suppressAttrCallback = !1, this.pickedPlaceName = g.name, this.settingsOpen = !1, this.query = "", this.loadChartLocation(g.lat, g.lon, g.name));
+      const v = t[parseInt(x.dataset.station ?? "", 10)];
+      v && (this.suppressAttrCallback = !0, this.removeAttribute("location-name"), this.removeAttribute("station-place"), this.removeAttribute("station-place-km"), this.suppressAttrCallback = !1, this.pickedPlaceName = v.name, this.settingsOpen = !1, this.query = "", this.loadChartLocation(v.lat, v.lon, v.name));
     });
   }
   /**
@@ -4751,7 +4875,7 @@ class I2 extends HTMLElement {
     return i.configure(t.title, t.attributes), document.body.appendChild(i), i;
   }
 }
-class M1 extends HTMLElement {
+class Pi extends HTMLElement {
   root = this.attachShadow({ mode: "open" });
   /** Where focus was when the sheet opened; it goes back there on close. */
   returnFocus = null;
@@ -4760,25 +4884,25 @@ class M1 extends HTMLElement {
   };
   configure(t, i) {
     const n = document.createElement("style");
-    n.textContent = a1;
+    n.textContent = mi;
     const o = document.createElement("div");
     o.className = "scrim", o.innerHTML = `
       <div class="sheet" role="dialog" aria-modal="true" aria-label="${f(t)}">
         <div class="grabber"></div>
         <div class="sheet-head">
           <div class="sheet-title"></div>
-          <button class="close" type="button" aria-label="${f(S0(i.language ?? "").close)}">
+          <button class="close" type="button" aria-label="${f(p0(i.language ?? "").close)}">
             <svg width="16" height="16" viewBox="0 0 16 16"><path d="M3 3l10 10M13 3L3 13" stroke="#16324A" stroke-width="2.2" stroke-linecap="round"/></svg>
           </button>
         </div>
       </div>`, o.querySelector(".sheet-title").textContent = t;
     const s = document.createElement("bel-meteogram");
-    for (const [a, r] of Object.entries(i))
-      s.setAttribute(a, r);
-    const l = o.querySelector(".sheet");
-    l.appendChild(s), o.addEventListener("click", (a) => {
-      a.target === o && this.close();
-    }), o.querySelector(".close").addEventListener("click", () => this.close()), this.dragToDismiss(l), this.root.append(n, o);
+    for (const [l, r] of Object.entries(i))
+      s.setAttribute(l, r);
+    const a = o.querySelector(".sheet");
+    a.appendChild(s), o.addEventListener("click", (l) => {
+      l.target === o && this.close();
+    }), o.querySelector(".close").addEventListener("click", () => this.close()), this.dragToDismiss(a), this.root.append(n, o);
   }
   connectedCallback() {
     const t = document.activeElement;
@@ -4789,10 +4913,10 @@ class M1 extends HTMLElement {
   }
   dragToDismiss(t) {
     let i = 0, n = 0, o = !1;
-    t.addEventListener("pointerdown", (l) => {
-      l.target.closest(".mg-chart") || (o = !0, i = l.clientY, t.setPointerCapture(l.pointerId), t.style.transition = "none");
-    }), t.addEventListener("pointermove", (l) => {
-      o && (n = Math.max(0, l.clientY - i), t.style.transform = `translateY(${n}px)`);
+    t.addEventListener("pointerdown", (a) => {
+      a.target.closest(".mg-chart") || (o = !0, i = a.clientY, t.setPointerCapture(a.pointerId), t.style.transition = "none");
+    }), t.addEventListener("pointermove", (a) => {
+      o && (n = Math.max(0, a.clientY - i), t.style.transform = `translateY(${n}px)`);
     });
     const s = () => {
       o && (o = !1, t.style.transition = "", n > 90 ? this.close() : t.style.transform = "", n = 0);
@@ -4804,7 +4928,7 @@ class M1 extends HTMLElement {
   }
 }
 customElements.define("bel-meteogram", I2);
-customElements.define("bel-meteogram-sheet", M1);
+customElements.define("bel-meteogram-sheet", Pi);
 export {
   I2 as BelMeteogram
 };

@@ -11,7 +11,11 @@ export interface BelMeteogramStatusDetail {
 export interface BelMeteogramLocationDetail {
   lat: number;
   lon: number;
-  /** Resolved place name (nearest station, or the name passed to loadChartLocation). */
+  /**
+   * Resolved place name (nearest station, or the name passed to
+   * loadChartLocation). For a point without a place name, its coordinates in
+   * the `language` attribute's format (widget 0.9.0), e.g. "64,18°N 21,85°V".
+   */
   name: string;
   /** Rounded "now" temperature in °C, or null when unavailable. */
   tempC: number | null;
@@ -42,10 +46,22 @@ export interface BelMeteogramTimeDetail {
  *   instant, e.g. `2026-11-09T14:00:00.000Z`. Moves the panel's selected hour,
  *   graph cursor and shown day to the nearest column within half a step. It
  *   only repaints, never refetches; removing it returns to the "now" hour.
+ * - `display-time-zone` (widget 0.9.0): an IANA zone name, e.g.
+ *   `Atlantic/Reykjavik`. The table, graph, day chips, night bands and
+ *   selected time are shown on that clock, each hour at the zone's own offset;
+ *   the header names the zone when its offset differs from the point's.
+ *   Absent or unknown to the browser: the point's own offset. Repaints
+ *   without a refetch.
  */
 export class BelMeteogram extends HTMLElement {
   /** Point the widget at a new location. */
   loadChartLocation(lat: number, lon: number, name?: string): void;
+  /**
+   * Open the settings dialog at its station search (widget 0.9.0). The search
+   * field takes focus with a fine pointer only, so a phone's keyboard doesn't
+   * pop up. Full mode only; does nothing in graph mode.
+   */
+  openSearch(): void;
   /** Open the meteogram card in a self-managed bottom sheet. */
   static openSheet(options: {
     title: string;
