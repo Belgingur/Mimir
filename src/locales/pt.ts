@@ -64,7 +64,6 @@ export const pt: Record<string, string> = {
   "var.radiation": "Fluxo de onda curta descendente",
   "var.windGust": "Rajada de vento",
   // ── Legend titles ─────────────────────────────────────────────────────
-  "legend.waveHeight": "Altura significativa das ondas",
   // ── Units ────────────────────────────────────────────────────────────
   "unit.celsius": "°C",
   "unit.ms": "m/s",

@@ -2264,80 +2264,43 @@ ${this.legendLabelsHtml(
   }
 
   private renderWaveHeightLegend(host: HTMLDivElement): void {
-    // 30 discrete 1-m bins from 0–30 m.
-    // Replicates the WL GL LegendControl's horizontal layout (title → colour bar → ticks)
-    // using the same CSS classes so the visual is identical, but without calling addTo()
-    // which triggers DOM side-effects that break positioning on dynamic mode switches.
+    // 30 discrete 1-m bands from 0 to 30 m, in the same vertical markup as the
+    // other legends (#79), so it shares their layout: values on the left, the
+    // bar at the card's edge. It used to copy WeatherLayers' horizontal legend.
     const totalRange = 30; // metres
     const scale = WAVE_HEIGHT_SCALE as [number, string][];
-    const width = 220;
-    const ticksCount = 7; // 0, 5, 10, 15, 20, 25, 30
+    const percent = (value: number) => (value / totalRange) * 100;
 
-    const title = t("legend.waveHeight");
-    const unit = t("unit.metres");
-
-    // SVG linearGradient with two stops per 1-m band → crisp step boundaries,
-    // identical to the pixelated raster and to what WL GL's colorRampCanvas PNG produces.
-    const stopElements = scale
-      .slice(0, -1) // drop terminal anchor [30, '#00ffff']
+    // Two stops per band, so the steps stay crisp like the pixelated raster.
+    const gradient = scale
+      .slice(0, -1) // drop the terminal anchor [30, '#00ffff']
       .flatMap(([value, hex], i) => {
         const next = scale[i + 1];
-        const start = ((value / totalRange) * 100).toFixed(3);
-        const end = ((next[0] / totalRange) * 100).toFixed(3);
         return [
-          `<stop offset="${start}%" stop-color="${hex}"/>`,
-          `<stop offset="${end}%"   stop-color="${hex}"/>`,
+          `${hex} ${percent(value).toFixed(2)}%`,
+          `${hex} ${percent(next[0]).toFixed(2)}%`,
         ];
       })
-      .join("");
+      .join(", ");
 
-    const ticks = Array.from({ length: ticksCount }, (_, i) =>
-      Math.round((totalRange / (ticksCount - 1)) * i),
-    ); // [0, 5, 10, 15, 20, 25, 30]
+    const ticks = [0, 5, 10, 15, 20, 25, 30];
 
-    const tickElements = ticks
-      .map((v, i) => {
-        const pct = ((v / totalRange) * 100).toFixed(3);
-        const anchor =
-          i === 0 ? "start" : i === ticksCount - 1 ? "end" : "middle";
-        // Nudge the first/last tick lines inward by 0.5 px so they sit inside the bar
-        const lineXform =
-          i === 0
-            ? ' transform="translate(0.5 0)"'
-            : i === ticksCount - 1
-              ? ' transform="translate(-0.5 0)"'
-              : "";
-        return (
-          `<g style="transform:translate(${pct}%,0)">` +
-          `<line y1="0" y2="10" stroke="currentColor"${lineXform}/>` +
-          `<text x="0" y="22" style="text-anchor:${anchor};font-size:11px;">${v}</text>` +
-          `</g>`
-        );
-      })
-      .join("");
-
-    // Wrap in .weatherlayers-legend-control so the already-injected WL GL CSS styles it.
     host.innerHTML = `
-      <div class="weatherlayers-legend-control" style="width:${width}px;">
-        <div>
-          <header>
-            <span class="weatherlayers-legend-control__text">${title} [${unit}]</span>
-          </header>
-          <main>
-            <svg height="24px" class="weatherlayers-legend-control__legend" style="overflow:visible;">
-              <defs>
-                <linearGradient id="wave-height-ramp" x1="0" y1="0" x2="1" y2="0">
-                  ${stopElements}
-                </linearGradient>
-              </defs>
-              <rect x="0" y="0" width="100%" height="5" fill="url(#wave-height-ramp)"/>
-              ${tickElements}
-            </svg>
-          </main>
+      <div class="precip-legend">
+        <div class="precip-legend__title"><span class="precip-legend__unit">${t("unit.metres")}</span></div>
+        <div class="precip-legend__scale">
+${this.legendLabelsHtml(
+            ticks.map((value) => ({
+              text: String(value),
+              percent: percent(value),
+            })),
+          )}
+          <div class="precip-legend__bar" style="background: linear-gradient(to top, ${gradient});"></div>
         </div>
       </div>
     `;
   }
+
 
   private getInhouseContourIntervals(layer: InhouseLayer): {
     interval: number;

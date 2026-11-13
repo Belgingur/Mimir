@@ -76,7 +76,6 @@ export const fo: Record<string, string> = {
   "var.windGust": "Vindkast",
 
   // ── Legend titles ─────────────────────────────────────────────────────
-  "legend.waveHeight": "Alduhædd",
 
   // ── Units ────────────────────────────────────────────────────────────
   "unit.celsius": "°C",
