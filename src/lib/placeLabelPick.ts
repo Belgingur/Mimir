@@ -10,6 +10,10 @@
 import type * as maplibregl from "maplibre-gl";
 import { PLACE_SOURCE_LAYER } from "./mapLayerOrder";
 import { CITY_LABEL_LAYER_ID } from "./cityLabelLayer";
+import { LANDMARK_LAYER_IDS } from "./landmarkLabels";
+
+/** OpenMapTiles source-layer of the peaks Mímir draws (landmarkLabels). */
+const PEAK_SOURCE_LAYER = "mountain_peak";
 
 /**
  * Settlement label layers in the positron / OpenMapTiles schema, most specific
@@ -27,14 +31,15 @@ export const SETTLEMENT_LAYER_IDS = [
 ] as const;
 
 /**
- * Layers the click hit-test queries: Mímir's own city layer plus the basemap's.
- * The basemap city layers are hidden (see placeLabelStyle) and so return
- * nothing, but they stay listed so the hit-test still works if that changes or
- * the style is swapped.
+ * Layers the click hit-test queries: Mímir's own city layer plus the basemap's,
+ * and Mímir's peaks. The basemap city layers are hidden (see placeLabelStyle)
+ * and so return nothing, but they stay listed so the hit-test still works if
+ * that changes or the style is swapped.
  */
 export const PICKABLE_LABEL_LAYER_IDS = [
   CITY_LABEL_LAYER_ID,
   ...SETTLEMENT_LAYER_IDS,
+  LANDMARK_LAYER_IDS.peaks,
 ] as const;
 
 /**
@@ -57,6 +62,9 @@ const CLASS_WEIGHT: Record<string, number> = {
   neighbourhood: 15,
   isolated_dwelling: 10,
 };
+
+/** Below every settlement: where a peak and a town both qualify, the town wins. */
+const PEAK_WEIGHT = 5;
 
 /** Hit-box half-size in CSS pixels for a mouse pointer. */
 const HIT_PADDING_FINE = 6;
@@ -88,7 +96,7 @@ export interface PickedPlaceLabel {
   readonly name: string;
   readonly longitude: number;
   readonly latitude: number;
-  /** OpenMapTiles `class`, e.g. "city" / "town" / "village". */
+  /** OpenMapTiles `class`, e.g. "city" / "town" / "village", or "peak" / "volcano". */
   readonly placeClass?: string;
   /** OpenMapTiles `rank`, lower = more important. */
   readonly rank?: number;
@@ -206,7 +214,10 @@ export function pickPlaceLabel(
 
   for (const feature of features) {
     const isOwnCity = feature.layer?.id === CITY_LABEL_LAYER_ID;
-    if (!isOwnCity && feature.sourceLayer !== PLACE_SOURCE_LAYER) continue;
+    const isPeak = feature.sourceLayer === PEAK_SOURCE_LAYER;
+    if (!isOwnCity && !isPeak && feature.sourceLayer !== PLACE_SOURCE_LAYER) {
+      continue;
+    }
     if (feature.geometry?.type !== "Point") continue;
 
     const props = (feature.properties ?? {}) as Record<string, unknown>;
@@ -245,7 +256,11 @@ export function pickPlaceLabel(
       population:
         typeof props.population === "number" ? props.population : undefined,
       screenDistance,
-      weight: isOwnCity ? OWN_CITY_WEIGHT : (CLASS_WEIGHT[placeClass ?? ""] ?? 0),
+      weight: isOwnCity
+        ? OWN_CITY_WEIGHT
+        : isPeak
+          ? PEAK_WEIGHT
+          : (CLASS_WEIGHT[placeClass ?? ""] ?? 0),
     });
   }
 
