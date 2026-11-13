@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  featureFilter,
   validateStyleMin,
   type StyleSpecification,
 } from "@maplibre/maplibre-gl-style-spec";
@@ -172,19 +173,72 @@ describe("ensureForecastReferenceLayers", () => {
     expect(ensureForecastReferenceLayers(map, undefined)).toBeUndefined();
   });
 
-  it("keeps road context faint and limited to major routes", () => {
+  it("hides every basemap road and road-name layer, so roads look the same on every parameter", () => {
+    const layers = [
+      ...POSITRON_LAYERS,
+      {
+        id: "highway_minor",
+        type: "line",
+        source: "openmaptiles",
+        "source-layer": "transportation",
+      },
+      {
+        id: "railway",
+        type: "line",
+        source: "openmaptiles",
+        "source-layer": "transportation",
+        layout: { visibility: "none" },
+      },
+    ];
+    const { map, setLayoutProperty } = makeMap(layers);
+    ensureForecastReferenceLayers(map, "place_other");
+    const hidden = setLayoutProperty.mock.calls
+      .filter(([, property, value]) => property === "visibility" && value === "none")
+      .map(([id]) => id);
+
+    // Already hidden: left alone.
+    expect(hidden).toEqual(
+      expect.arrayContaining(["highway_major_inner", "highway_minor"]),
+    );
+    expect(hidden).not.toContain("railway");
+    // Road names go too: they showed through the same gaps. Place labels stay.
+    expect(hidden.filter((id) => !id.startsWith("boundary"))).toEqual([
+      "highway_major_inner",
+      "highway_name_other",
+      "highway_minor",
+    ]);
+  });
+
+  it("draws main roads from its first zoom and secondary roads from zoom 8", () => {
     const { map, addLayer } = makeMap();
     ensureForecastReferenceLayers(map, "place_other");
-    const road = addLayer.mock.calls
-      .map(([layer]) => layer)
-      .find((layer) => layer.id === FORECAST_REFERENCE_LAYER_IDS.road);
+    const roadLayers = addLayer.mock.calls
+      .map(([layer]) => layer as { id: string; filter?: unknown; minzoom?: number })
+      .filter((layer) =>
+        [FORECAST_REFERENCE_LAYER_IDS.roadHalo, FORECAST_REFERENCE_LAYER_IDS.road].includes(
+          layer.id as never,
+        ),
+      );
+    expect(roadLayers).toHaveLength(2);
 
-    expect(JSON.stringify(road?.filter)).toContain("motorway");
-    expect(JSON.stringify(road?.filter)).toContain("primary");
-    expect(JSON.stringify(road?.filter)).not.toContain("secondary");
-    expect(road?.paint?.["line-opacity"]).toEqual(
-      expect.arrayContaining(["interpolate", ["linear"], ["zoom"]]),
-    );
+    for (const layer of roadLayers) {
+      const filter = featureFilter(layer.filter as never, "filter");
+      const shown = (roadClass: string, zoom: number) =>
+        zoom >= (layer.minzoom ?? 0) &&
+        filter.filter(
+          { zoom } as never,
+          { type: 2, properties: { class: roadClass } } as never,
+        );
+      const first = layer.minzoom ?? 0;
+      for (const roadClass of ["motorway", "trunk", "primary"]) {
+        expect(shown(roadClass, first), `${layer.id} ${roadClass}`).toBe(true);
+      }
+      expect(shown("secondary", 7), layer.id).toBe(false);
+      expect(shown("secondary", 8), layer.id).toBe(true);
+      expect(shown("tertiary", 12), layer.id).toBe(false);
+      expect(shown("minor", 12), layer.id).toBe(false);
+      expect(first).toBeLessThanOrEqual(5);
+    }
   });
 
   it("keeps lake shading inside polygons without an outward line blur", () => {
