@@ -86,7 +86,6 @@ export const pl: Record<string, string> = {
   "var.windGust": "Porywy wiatru",
 
   // ── Legend titles ─────────────────────────────────────────────────────
-  "legend.waveHeight": "Znacząca wysokość fali",
 
   // ── Units ────────────────────────────────────────────────────────────
   "unit.celsius": "°C",

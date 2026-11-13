@@ -1798,6 +1798,7 @@ describe("LayerComposer", () => {
       "renderPrecipLegend",
       "renderCloudLegend",
       "renderSnowDepthLegend",
+      "renderWaveHeightLegend",
     ];
 
     it.each(legends)("%s puts the values before the bar", (render) => {
@@ -1808,6 +1809,42 @@ describe("LayerComposer", () => {
       expect(
         [...(scale?.children ?? [])].map((el) => el.className),
       ).toEqual(["precip-legend__labels", "precip-legend__bar"]);
+    });
+  });
+
+  describe("the wave height legend (#79)", () => {
+    /** The element tree's classes, without the text or the inline styles. */
+    const shape = (el: Element): unknown => ({
+      cls: el.className,
+      kids: [...el.children]
+        .filter((c) => !c.classList.contains("precip-legend__label"))
+        .map(shape),
+    });
+    const render = (name: string) => {
+      const host = document.createElement("div");
+      callPrivate(new LayerComposer(makeDeps()), name, host);
+      return host;
+    };
+
+    it("has the same structure as the precipitation legend", () => {
+      const waves = render("renderWaveHeightLegend");
+      const precip = render("renderPrecipLegend");
+      expect(shape(waves)).toEqual(shape(precip));
+      expect(waves.querySelector(".weatherlayers-legend-control")).toBeNull();
+    });
+
+    it("keeps the 1 m bands and the labels every 5 m, in metres", () => {
+      const host = render("renderWaveHeightLegend");
+      expect(host.querySelector(".precip-legend__unit")?.textContent).toBe("m");
+      expect(
+        [...host.querySelectorAll(".precip-legend__label")].map(
+          (el) => el.textContent,
+        ),
+      ).toEqual(["0", "5", "10", "15", "20", "25", "30"]);
+      const style = host.querySelector(".precip-legend__bar")?.getAttribute("style") ?? "";
+      // Two stops per band: the first metre and the last.
+      expect(style).toContain("#5353ec 0.00%, #5353ec 3.33%");
+      expect(style.match(/#[0-9a-f]{6} /gi)).toHaveLength(60);
     });
   });
 

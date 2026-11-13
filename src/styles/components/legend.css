@@ -1,16 +1,3 @@
-/*
- * The weatherlayers-gl LegendControl renders the colour ramp as a 256-px PNG
- * data-URL inside an SVG <image> element.  Without this rule the browser uses
- * bilinear interpolation when scaling that image to the display width, which
- * blurs step boundaries and makes the legend look like a smooth gradient.
- * "pixelated" (crisp-edges on Firefox) forces nearest-neighbour scaling so
- * every colour band stays a solid block, matching the discrete raster rendering.
- */
-.weatherlayers-legend-control image {
-  image-rendering: -moz-crisp-edges;
-  image-rendering: pixelated;
-}
-
 .legend-stack-card {
   /* position: absolute within .map-wrap (position: relative; height: 100vh)
      gives the same visual result as position: fixed, but is unaffected by

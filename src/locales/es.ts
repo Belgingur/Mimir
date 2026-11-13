@@ -80,7 +80,6 @@ export const es: Record<string, string> = {
   "var.windGust": "Ráfaga de viento",
 
   // ── Legend titles ─────────────────────────────────────────────────────
-  "legend.waveHeight": "Altura significativa de la ola",
 
   // ── Units ────────────────────────────────────────────────────────────
   "unit.celsius": "°C",

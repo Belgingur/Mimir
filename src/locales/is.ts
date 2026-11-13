@@ -81,7 +81,6 @@ export const is: Record<string, string> = {
   "var.windGust": "Vindhviða",
 
   // ── Legend titles ─────────────────────────────────────────────────────
-  "legend.waveHeight": "Ölduhæð",
 
   // ── Units ────────────────────────────────────────────────────────────
   "unit.celsius": "°C",
