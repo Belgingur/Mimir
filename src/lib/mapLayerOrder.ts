@@ -74,6 +74,7 @@ export const FORECAST_REFERENCE_LAYER_IDS = {
   coast: "mimir-reference-coast",
   riverHalo: "mimir-reference-river-halo",
   river: "mimir-reference-river",
+  roadHalo: "mimir-reference-road-halo",
   road: "mimir-reference-road",
   countryHalo: "mimir-reference-country-halo",
   country: "mimir-reference-country",
@@ -141,6 +142,28 @@ export function buildGlacierPattern(): {
   return { width: size, height: size, data };
 }
 
+/** Basemap source layers hidden because Mímir draws its own above the forecast. */
+const BASEMAP_SOURCE_LAYERS_REDRAWN: ReadonlySet<string> = new Set([
+  "boundary",
+  "transportation",
+  "transportation_name",
+]);
+
+/** Road classes drawn from the road layer's first zoom. */
+export const MAIN_ROAD_CLASSES = ["motorway", "trunk", "primary"] as const;
+/** Secondary roads join at this zoom. */
+export const SECONDARY_ROAD_MIN_ZOOM = 8;
+
+const ROAD_FILTER = [
+  "any",
+  ["match", ["to-string", ["get", "class"]], [...MAIN_ROAD_CLASSES], true, false],
+  [
+    "all",
+    [">=", ["zoom"], SECONDARY_ROAD_MIN_ZOOM],
+    ["==", ["to-string", ["get", "class"]], "secondary"],
+  ],
+] as maplibregl.FilterSpecification;
+
 type ReferenceLayerId =
   (typeof FORECAST_REFERENCE_LAYER_IDS)[keyof typeof FORECAST_REFERENCE_LAYER_IDS];
 
@@ -159,13 +182,15 @@ export function ensureForecastReferenceLayers(
   labelBeforeId: string | undefined,
 ): string | undefined {
   const style = map.getStyle() as MinimalStyle;
-  // Positron's boundary stack also includes maritime/territorial lines. Hide
-  // that entire stack and redraw only filtered land-country borders below.
-  // Otherwise those pale offshore rings remain visible wherever a regional
-  // forecast is transparent or ends at its domain edge.
+  // Hide the basemap's boundary and road stacks, road names included; Mímir
+  // redraws filtered boundaries and roads above the forecast. Positron's boundaries include maritime and
+  // territorial lines, pale offshore rings wherever a regional forecast is
+  // transparent or ends at its domain edge. Its roads sit under the forecast,
+  // so they showed only through the transparent (dry) end of precipitation
+  // and on no other parameter.
   for (const layer of style.layers ?? []) {
     if (
-      layer["source-layer"] !== "boundary" ||
+      !BASEMAP_SOURCE_LAYERS_REDRAWN.has(layer["source-layer"] ?? "") ||
       layer.id.startsWith("mimir-reference-") ||
       layer.layout?.visibility === "none"
     ) {
@@ -393,44 +418,81 @@ export function ensureForecastReferenceLayers(
     },
   });
 
+  // Secondary roads are drawn thinner than the main ones at the same zoom.
+  const roadWidth = (main: number, secondary: number) =>
+    [
+      "match",
+      ["to-string", ["get", "class"]],
+      "secondary",
+      secondary,
+      main,
+    ] as maplibregl.ExpressionSpecification;
+  add(
+    FORECAST_REFERENCE_LAYER_IDS.roadHalo,
+    transportationSource,
+    "transportation",
+    {
+      minzoom: 5,
+      filter: ROAD_FILTER,
+      paint: {
+        "line-color": "rgba(240, 245, 246, 0.5)",
+        "line-width": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          5,
+          2.2,
+          8,
+          roadWidth(2.8, 2),
+          12,
+          roadWidth(3.6, 2.8),
+        ] as maplibregl.ExpressionSpecification,
+        "line-blur": 0.6,
+        "line-opacity": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          5,
+          0.4,
+          8,
+          0.5,
+          12,
+          0.55,
+        ],
+      },
+    },
+  );
   add(
     FORECAST_REFERENCE_LAYER_IDS.road,
     transportationSource,
     "transportation",
     {
       minzoom: 5,
-      filter: [
-        "match",
-        ["to-string", ["get", "class"]],
-        ["motorway", "trunk", "primary"],
-        true,
-        false,
-      ],
+      filter: ROAD_FILTER,
       paint: {
-        "line-color": "#38545e",
+        "line-color": "#2f454d",
         "line-width": [
           "interpolate",
           ["linear"],
           ["zoom"],
           5,
-          0.35,
+          0.9,
           8,
-          0.65,
+          roadWidth(1.3, 0.8),
           12,
-          1.15,
-        ],
+          roadWidth(2, 1.4),
+        ] as maplibregl.ExpressionSpecification,
         "line-opacity": [
           "interpolate",
           ["linear"],
           ["zoom"],
           5,
-          0.08,
+          0.6,
           8,
-          0.16,
+          0.65,
           12,
-          0.25,
+          0.7,
         ],
-        "line-blur": 0.2,
       },
     },
   );
