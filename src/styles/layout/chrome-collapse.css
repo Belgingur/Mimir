@@ -58,6 +58,12 @@
     max-width: none;
   }
 
+  /* The menu can start open (lib/mobileDrawer.ts) before the variable buttons
+     have been built; don't show an empty card in the meantime. */
+  body.chrome-open .layer-switch-card:has(> .layer-group-list:empty) {
+    display: none !important;
+  }
+
   /* Subtle reveal so the stack expands rather than popping into place. */
   @media (prefers-reduced-motion: no-preference) {
     body.chrome-open .view-toggle--map,

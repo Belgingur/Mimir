@@ -29,6 +29,7 @@ import "./styles/index.css";
 import { BOOT_SPLASH_MAX_MS, dismissBootSplash } from "./lib/bootSplash";
 import { connectHostPage, keepsLanguageMenu } from "./lib/hostPage";
 import { watchMapStartup } from "./lib/mapStartup";
+import { applyInitialMenuState } from "./lib/mobileDrawer";
 import {
   createDatasetLoadingOverlay,
   type DatasetLoadingOverlay,
@@ -54,6 +55,9 @@ if (!mapTilerKey) {
 
 // Apply i18n translations to all data-i18n DOM nodes before anything renders.
 translateDOM();
+
+// The menu's starting state, while the boot splash still covers the page.
+applyInitialMenuState();
 
 document.body.classList.add("is-loading");
 
