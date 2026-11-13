@@ -104,10 +104,13 @@ body.view-iconography .legend-stack-card {
   /* Values first, the bar last. The legend sits at the map's bottom left, so
      the colours face the map and the numbers face the window's edge. One fixed
      layout: it doesn't flip when the legend is dragged. */
-  grid-template-columns: max-content 24px;
+  grid-template-columns: max-content 28px;
   width: fit-content;
   gap: 10px;
-  min-height: 220px;
+  /* Taller on taller windows (#97): 220px used to be 11.6px a band for the 19
+     precipitation bands, whatever the window. Phones keep their own fit, in
+     mobile-small.css. */
+  min-height: clamp(220px, 42vh, 440px);
   margin-top: 5px;
 }
 
@@ -122,7 +125,7 @@ body.view-iconography .legend-stack-card {
  * LayerComposer.temperatureGradient), so this should stay unseen.
  */
 .precip-legend__bar {
-  width: 24px;
+  width: 28px;
   border-radius: 0;
   border: 0;
   background: repeating-linear-gradient(
@@ -146,7 +149,7 @@ body.view-iconography .legend-stack-card {
 .precip-legend__sizer {
   display: inline-block;
   visibility: hidden;
-  font-size: 11px;
+  font-size: 12px;
   pointer-events: none;
 }
 
@@ -156,7 +159,7 @@ body.view-iconography .legend-stack-card {
   right: 0;
   white-space: nowrap;
   transform: translateY(50%);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text);
 }
 
