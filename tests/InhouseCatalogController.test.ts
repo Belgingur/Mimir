@@ -558,6 +558,16 @@ describe("InhouseCatalogController", () => {
       expect(ctrl.computeModelMaxZoom("M", { manifest })).toBeGreaterThan(9);
     });
 
+    it("caps where 12 cells of the finest grid span 1024 px, a level deeper than 24 did", () => {
+      setCoverage(ctrl, [{ id: "FINE", resolutionKm: 2, available: true }]);
+      // View centre at 40° N (the test map's centre).
+      const groundPer1024Px = (zoom: number) =>
+        (78271.51696402048 * Math.cos((40 * Math.PI) / 180) * 1024) / 2 ** zoom;
+      const cap = ctrl.computeModelMaxZoom("FINE");
+      expect(groundPer1024Px(cap)).toBeCloseTo(12 * 2000, 3);
+      expect(groundPer1024Px(cap - 1)).toBeCloseTo(24 * 2000, 3);
+    });
+
     it("reports the resolution the chooser shows", () => {
       setCoverage(ctrl, [{ id: "M", resolutionKm: 3.2, available: true }]);
       expect(ctrl.getModelResolutionMeters("M")).toBe(3200);
