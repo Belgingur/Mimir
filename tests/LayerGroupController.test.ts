@@ -316,6 +316,34 @@ describe("LayerGroupController", () => {
       expect(buttons.length).toBe(LAYER_GROUPS.length);
     });
 
+    it("gives each button a visible name, read once by screen readers", () => {
+      ctrl.renderLayerGroupList();
+      const buttons = [
+        ...deps.dom.layerGroupList.querySelectorAll<HTMLButtonElement>(
+          "button.layer-slot",
+        ),
+      ];
+      for (const btn of buttons) {
+        expect(btn.classList.contains("has-menu-label")).toBe(true);
+        const labels = btn.querySelectorAll(".menu-label");
+        expect(labels.length).toBe(1);
+        const label = labels[0] as HTMLElement;
+        const name = btn.getAttribute("aria-label");
+        expect(name).toBeTruthy();
+        // The same text as the name, hidden from assistive tech, so the
+        // aria-label is the one place it is read from.
+        expect(label.textContent).toBe(name);
+        expect(label.getAttribute("aria-hidden")).toBe("true");
+        // No other text inside the button that a screen reader could reach.
+        const reachable = [...btn.querySelectorAll("*")].filter(
+          (el) => !el.closest('[aria-hidden="true"]') && el.children.length === 0,
+        );
+        expect(reachable.map((el) => el.textContent?.trim()).join("")).toBe("");
+        // The label comes before the icon square, so the row reads name → icon.
+        expect(btn.firstElementChild).toBe(label);
+      }
+    });
+
     it("sets data-layer-mode from group id on each button", () => {
       ctrl.renderLayerGroupList();
       LAYER_GROUPS.forEach((group) => {
