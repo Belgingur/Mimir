@@ -14,7 +14,8 @@
   },
   "notes": [
     "Canonical form is the discrete 110-band table: band i covers [lower, upper).",
-    "There is a deliberate hard discontinuity at 0 C (cyan -> green) marking the freezing line. Do not smooth across it.",
+    "There is a deliberate hard discontinuity at 0 C (light cyan -> dark teal) marking the freezing line. Do not smooth across it.",
+    "The 0-10 C bands are not sampled from the source: they were replaced so that lightness rises steadily from 0 C into 11 C (teal, green, yellow-green) and neighbouring bands differ by at least Delta E 8 (CIELAB 1976). The source's greens dipped in lightness at 5 C, which made 4 C and 6 C look alike.",
     "The continuous knot list is a convenience for smooth shading. It reproduces the band table to within ~4/255 per channel except below -55 C, where the source ramp is coarsely stepped and error reaches ~19/255 in pale lavender.",
     "This is a rainbow-family scale: not colourblind-safe and it creates apparent edges at hue transitions. That is accepted here because meteorology audiences read this convention fluently."
   ],
@@ -622,111 +623,111 @@
     {
       "lower": 0,
       "upper": 1,
-      "hex": "#98E6B0",
+      "hex": "#07423D",
       "rgb": [
-        152,
-        230,
-        176
+        7,
+        66,
+        61
       ]
     },
     {
       "lower": 1,
       "upper": 2,
-      "hex": "#7AD28D",
+      "hex": "#105040",
       "rgb": [
-        122,
-        210,
-        141
+        16,
+        80,
+        64
       ]
     },
     {
       "lower": 2,
       "upper": 3,
-      "hex": "#5BBD6A",
+      "hex": "#0C5F45",
       "rgb": [
-        91,
-        189,
-        106
+        12,
+        95,
+        69
       ]
     },
     {
       "lower": 3,
       "upper": 4,
-      "hex": "#3DA946",
+      "hex": "#176F49",
       "rgb": [
-        61,
-        169,
-        70
+        23,
+        111,
+        73
       ]
     },
     {
       "lower": 4,
       "upper": 5,
-      "hex": "#1E9423",
+      "hex": "#2A7C47",
       "rgb": [
-        30,
-        148,
-        35
+        42,
+        124,
+        71
       ]
     },
     {
       "lower": 5,
       "upper": 6,
-      "hex": "#008000",
+      "hex": "#268845",
       "rgb": [
-        0,
-        128,
-        0
+        38,
+        136,
+        69
       ]
     },
     {
       "lower": 6,
       "upper": 7,
-      "hex": "#188C0B",
+      "hex": "#429441",
       "rgb": [
-        24,
-        140,
-        11
+        66,
+        148,
+        65
       ]
     },
     {
       "lower": 7,
       "upper": 8,
-      "hex": "#309816",
+      "hex": "#529C36",
       "rgb": [
-        48,
-        152,
-        22
+        82,
+        156,
+        54
       ]
     },
     {
       "lower": 8,
       "upper": 9,
-      "hex": "#48A322",
+      "hex": "#65A62C",
       "rgb": [
-        72,
-        163,
-        34
+        101,
+        166,
+        44
       ]
     },
     {
       "lower": 9,
       "upper": 10,
-      "hex": "#60AF2D",
+      "hex": "#75AE1A",
       "rgb": [
-        96,
-        175,
-        45
+        117,
+        174,
+        26
       ]
     },
     {
       "lower": 10,
       "upper": 11,
-      "hex": "#78BB38",
+      "hex": "#8CBB0C",
       "rgb": [
-        120,
+        140,
         187,
-        56
+        12
       ]
     },
     {
@@ -1178,11 +1179,51 @@
     "zero_and_above": [
       {
         "t": 0,
-        "hex": "#98E6B0"
+        "hex": "#07423D"
+      },
+      {
+        "t": 1,
+        "hex": "#105040"
+      },
+      {
+        "t": 2,
+        "hex": "#0C5F45"
+      },
+      {
+        "t": 3,
+        "hex": "#176F49"
+      },
+      {
+        "t": 4,
+        "hex": "#2A7C47"
       },
       {
         "t": 5,
-        "hex": "#008000"
+        "hex": "#268845"
+      },
+      {
+        "t": 6,
+        "hex": "#429441"
+      },
+      {
+        "t": 7,
+        "hex": "#529C36"
+      },
+      {
+        "t": 8,
+        "hex": "#65A62C"
+      },
+      {
+        "t": 9,
+        "hex": "#75AE1A"
+      },
+      {
+        "t": 10,
+        "hex": "#8CBB0C"
+      },
+      {
+        "t": 11,
+        "hex": "#90C743"
       },
       {
         "t": 15,
