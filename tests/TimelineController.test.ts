@@ -587,6 +587,32 @@ describe("TimelineController", () => {
       }
     });
 
+    it("marks the rail as grabbed until pointer up or cancel (#92)", () => {
+      const { deps, dom } = createDeps();
+      const ctrl = new TimelineController(deps);
+      ctrl.activeTimelineDatetimes = ["a", "b", "c"];
+      ctrl.ensureCustomTimeline(dom.timelineHost);
+      const rail = dom.timelineHost.querySelector(
+        ".timeline-rail",
+      ) as HTMLDivElement;
+      const bubble = dom.timelineHost.querySelector(
+        ".timeline-bubble",
+      ) as HTMLButtonElement;
+      expect(rail.classList.contains("is-grabbing")).toBe(false);
+      for (const [target, end] of [
+        [rail, "pointerup"],
+        [rail, "pointercancel"],
+        [bubble, "pointerup"],
+      ] as const) {
+        target.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+        expect(rail.classList.contains("is-grabbing")).toBe(true);
+        window.dispatchEvent(new MouseEvent("pointermove"));
+        expect(rail.classList.contains("is-grabbing")).toBe(true);
+        window.dispatchEvent(new MouseEvent(end));
+        expect(rail.classList.contains("is-grabbing")).toBe(false);
+      }
+    });
+
     it("clamps pointer outside rail bounds", async () => {
       const { deps, dom } = createDeps();
       const ctrl = new TimelineController(deps);
