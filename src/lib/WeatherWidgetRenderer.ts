@@ -128,6 +128,21 @@ const TEMP_POS_COLOUR = "#b83200";
 const TEMP_NEG_COLOUR = "#0050a0";
 const ICON_TINT_WIND = "#1a3a6e";
 
+/**
+ * Text sizes for a widget drawn at `iconSize`: the values grow with the icon
+ * from 12 px and their units from 11 px, the smallest sizes Mímir uses for
+ * values and captions (#95).
+ */
+export const widgetTextSizes = (
+  iconSize: number,
+): { fontSize: number; unitFontSz: number } => {
+  const fontSize = Math.max(12, Math.round(iconSize * 0.26));
+  return {
+    fontSize,
+    unitFontSz: Math.max(11, Math.round(fontSize * 0.75)),
+  };
+};
+
 // ── Atlas entry returned by _renderWidget ────────────────────────────────────
 interface WidgetCanvas {
   canvas: HTMLCanvasElement;
@@ -333,12 +348,11 @@ export class WeatherWidgetRenderer implements IconographyRenderer {
     const helper = Math.round(iconSize * 0.4);
     const pad = Math.max(2, Math.round(iconSize * 0.06));
     const colGap = Math.max(1, Math.round(iconSize * 0.03));
-    const fontSize = Math.max(9, Math.round(iconSize * 0.26));
+    const { fontSize, unitFontSz } = widgetTextSizes(iconSize);
 
     const mc = document.createElement("canvas");
     const mctx = mc.getContext("2d")!;
     const unitStr = "m/s";
-    const unitFontSz = Math.max(7, Math.round(fontSize * 0.75));
 
     const windBin =
       point.windDirection !== null

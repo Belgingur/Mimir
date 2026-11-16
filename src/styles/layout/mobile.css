@@ -148,18 +148,16 @@
   .timeline-play {
     width: 24px;
     height: 24px;
-    font-size: 10px;
   }
 
   .timeline-bubble {
-    top: -22px;
     padding: 3px 6px;
-    font-size: 8px;
   }
 
+  /* Day names are 12px (#95); the boxes are narrow here, so the side padding
+     goes to the text. */
   .timeline-day-segment {
-    padding: 2px 4px;
-    font-size: 8px;
+    padding: 0 2px;
   }
 
   body.is-dev .mode-icon-button:hover,

@@ -121,6 +121,13 @@ const TEMP_POS_COLOUR = "#b83200"; // matches WeatherWidgetRenderer
 const TEMP_NEG_COLOUR = "#0050a0";
 const WIND_COLOUR = "#1a3a6e";
 
+/**
+ * The compact widget's text size at `iconSize`: grows with the icon from
+ * 12 px, the smallest size Mímir uses for values (#95).
+ */
+export const compactWidgetFontSize = (iconSize: number): number =>
+  Math.max(12, Math.round(iconSize * 0.27));
+
 // ── Wind direction: FROM-degrees → Unicode TO-arrow ──────────────────────────
 // 16-bin compass (22.5° each).  Pairs of adjacent bins share one of the 8
 // diagonal/cardinal Unicode arrows because adjacent half-winds differ by only
@@ -332,7 +339,7 @@ export class CompactWidgetRenderer implements IconographyRenderer {
     yrImg: HTMLImageElement | null,
   ): WidgetCanvas {
     const h = iconSize;
-    const fontSize = Math.max(9, Math.round(iconSize * 0.27));
+    const fontSize = compactWidgetFontSize(iconSize);
     const hPad = Math.max(3, Math.round(iconSize * 0.1)); // horizontal padding inside left panel
     const gap = Math.max(1, Math.round(iconSize * 0.04)); // gap between left panel and icon
 

@@ -71,13 +71,13 @@
 }
 
 .model-slot__name {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1;
 }
 
 .model-slot__meta {
-  font-size: 7px;
+  font-size: 11px;
   font-weight: 600;
   color: rgba(247, 249, 251, 0.72) !important;
   line-height: 1;
@@ -121,7 +121,7 @@
   color: var(--text-on-dark-muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .analysis-chip__value {

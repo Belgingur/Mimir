@@ -62,7 +62,7 @@
   /* ── Sizing ───────────────────────────── */
   --icon-button-size: 42px;
   --icon-button-sm: 38px;
-  --bottom-bar-height: 34px;
+  --bottom-bar-height: 40px;
   /* Insets reported by the device (iOS notch / camera housing, home indicator,
      Android gesture bar). 0px everywhere they do not apply, so the calc()s below
      are inert on desktop and only reserve space where the platform needs it.
