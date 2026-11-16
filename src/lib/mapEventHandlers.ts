@@ -1,6 +1,7 @@
 import type * as maplibregl from "maplibre-gl";
 import type { MapboxOverlay } from "@deck.gl/mapbox";
 import type { InhouseGroupId, UiState } from "./inhouseTypes";
+import { formatWholeDegrees } from "./formatTemperature";
 import { resolveMapClickTarget } from "./mapClickRouting";
 import { getPresentSettlementLayerIds, pickPlaceLabel } from "./placeLabelPick";
 import type { PlaceResolver, ResolvedPlace } from "./resolveClickedPlace";
@@ -279,7 +280,7 @@ export function attachMapEventHandlers(
           });
           const displayValue = value > 100 ? value - 273.15 : value;
           tooltipController.updateTooltipValueOverride(
-            `${displayValue.toFixed(0)} °C`,
+            `${formatWholeDegrees(displayValue)} °C`,
           );
         }
       }
