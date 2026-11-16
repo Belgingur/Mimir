@@ -56,6 +56,7 @@ import {
   type UserLocation,
 } from "./initialCamera";
 import { createUserLocationWatch, PERMISSION_DENIED } from "./userLocationWatch";
+import { createLocateForecast, locateOpensForecast } from "./locateForecast";
 import { createDatasetLoadingOverlay } from "./datasetLoadingOverlay";
 import { createFrameLoadNotice } from "./frameLoadNotice";
 import { createNewRunNotice } from "./newRunNotice";
@@ -945,12 +946,36 @@ export function createControllers(config: ControllerFactoryConfig) {
   // The reader's own position as a yellow dot, as on belgingur.is. It follows
   // the device once the permission is granted, and comes back on later visits
   // without asking when the browser still holds that grant.
+  //
+  // The button opens the forecast there on a wide screen once the map has
+  // moved; on a phone the dot opens it instead, as the panel would cover the
+  // map (#84).
+  const opensMeteogramOnClick = (): boolean =>
+    resolveMapClickTarget({
+      selectedModel: catalogController.inhouseSelectedModel,
+      layerMode: uiState.layerMode,
+      viewMode: layerGroupController.viewMode,
+      meteogramEnabled: true,
+    }) === "meteogram";
+  const locateForecast = createLocateForecast({
+    opensByItself: locateOpensForecast,
+    canOpen: () => !!meteogramController && opensMeteogramOnClick(),
+    open: (loc) =>
+      void meteogramController?.openAt(
+        loc.lon,
+        loc.lat,
+        t("map.yourLocation"),
+      ),
+  });
   let userLocationDot: maplibregl.Marker | null = null;
+  let userLocation: UserLocation | null = null;
   const showUserLocation = (loc: UserLocation): void => {
+    userLocation = loc;
     if (!userLocationDot) {
       const el = document.createElement("div");
       el.className = "mimir-user-location";
-      el.setAttribute("aria-hidden", "true");
+      el.setAttribute("aria-label", t("map.yourLocation"));
+      locateForecast.bindDot(el, () => userLocation);
       userLocationDot = new maplibregl.Marker({ element: el });
     }
     userLocationDot.setLngLat([loc.lon, loc.lat]).addTo(map);
@@ -962,6 +987,7 @@ export function createControllers(config: ControllerFactoryConfig) {
       showUserLocation(loc);
     },
     onLost: () => {
+      userLocation = null;
       userLocationDot?.remove();
       dom.locateButton?.classList.remove("is-tracking");
     },
@@ -986,6 +1012,7 @@ export function createControllers(config: ControllerFactoryConfig) {
             ? changeModel(next)
             : Promise.resolve();
         void switched.then(() => {
+          map.once("moveend", () => locateForecast.located(loc));
           map.easeTo({
             center: [loc.lon, loc.lat],
             zoom: LOCATED_ZOOM,
@@ -1240,13 +1267,7 @@ export function createControllers(config: ControllerFactoryConfig) {
               catalogController.hideInhouseTooltip();
             }
           },
-          isMeteogramTarget: () =>
-            resolveMapClickTarget({
-              selectedModel: catalogController.inhouseSelectedModel,
-              layerMode: uiState.layerMode,
-              viewMode: layerGroupController.viewMode,
-              meteogramEnabled: true,
-            }) === "meteogram",
+          isMeteogramTarget: opensMeteogramOnClick,
           // The crosshair button goes quiet over water the model has no data
           // for, so the reader is never offered a panel that can only fail.
           // "unknown" (frame still decoding) keeps the button, since refusing

@@ -167,6 +167,9 @@ export class MeteogramController {
     name: string;
     placeName: string | undefined;
   } | null = null;
+  /** A name the opener gave a point (the reader's location), which outranks
+   *  the place lookup there while the panel stays at that point. */
+  private givenName: { lng: number; lat: number; name: string } | null = null;
   /** The label the pin was last given from a time event, to skip repeats. */
   private pinLabel: string | null = null;
   /** A bare point's pin was dropped without text and the widget hasn't named
@@ -247,6 +250,7 @@ export class MeteogramController {
     // before the pulse was scoped to an open modal, keep animating).
     dom.status.textContent = "";
     this.opened = null;
+    this.givenName = null;
     this.pinTarget = null;
     this.pinLabel = null;
     this.pinWaitsForName = false;
@@ -256,8 +260,23 @@ export class MeteogramController {
     if (wasOpen) this.deps.onOpenStateChange?.(false);
   }
 
+  /** The name the opener gave this point, if it gave one (see openAt). */
+  private givenNameAt(lng: number, lat: number): string | undefined {
+    const given = this.givenName;
+    if (
+      given &&
+      Math.abs(given.lng - lng) < SAME_POINT_EPSILON_DEG &&
+      Math.abs(given.lat - lat) < SAME_POINT_EPSILON_DEG
+    ) {
+      return given.name;
+    }
+    return undefined;
+  }
+
   /** Resolved place name for a point, or undefined when there isn't a usable one. */
   private placeNameAt(lng: number, lat: number): string | undefined {
+    const given = this.givenNameAt(lng, lat);
+    if (given) return given;
     const name = this.deps.getPlaceLabel?.(lng, lat)?.trim();
     return name ? name : undefined;
   }
@@ -648,8 +667,15 @@ export class MeteogramController {
     this.shownPin = { lng, lat, placeName };
   }
 
-  async openAt(lng: number, lat: number): Promise<void> {
+  /**
+   * Open the panel at a point. `name`, when given, names the point in place of
+   * the place found there (the location button's "Your location", #84), and
+   * keeps naming it while the panel reloads at the same point.
+   */
+  async openAt(lng: number, lat: number, name?: string): Promise<void> {
     const { dom } = this.deps;
+    if (name) this.givenName = { lng, lat, name };
+    else if (!this.givenNameAt(lng, lat)) this.givenName = null;
     const modelId = this.deps.getSelectedModel();
     const target = this.resolveTargetForModel(modelId);
     const wasOpen = this.isOpen;

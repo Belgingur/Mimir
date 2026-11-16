@@ -107,6 +107,21 @@ describe("MeteogramController", () => {
     expect(widget.hasAttribute("display-time-zone")).toBe(false);
   });
 
+  it("names the point with the name it was opened under (#84)", async () => {
+    const { controller, dom, widget } = buildController({
+      getPlaceLabel: () => "Seltjarnarnes",
+    });
+    await controller.openAt(-21.94, 64.15, "Your location");
+    expect(widget.getAttribute("location-name")).toBe("Your location");
+    expect(dom.location.textContent).toBe("Your location");
+    // A reload at the same point (a model change) keeps the name …
+    await controller.openAt(-21.94, 64.15);
+    expect(widget.calls.at(-1)?.[2]).toBe("Your location");
+    // … and a point elsewhere goes back to the place found there.
+    await controller.openAt(-20, 65);
+    expect(widget.getAttribute("location-name")).toBe("Seltjarnarnes");
+  });
+
   it("reuses the widget for the same client and repoints it via loadChartLocation", async () => {
     const { controller, widget, createWidget } = buildController();
     await controller.openAt(-20, 64);

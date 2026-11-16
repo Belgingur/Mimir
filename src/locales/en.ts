@@ -34,6 +34,7 @@ export const en: Record<string, string> = {
   "map.myLocation": "Use my location",
   "map.locationUnavailable": "Couldn't get your location.",
   "map.locationBlocked": "Location is blocked for this site. Allow it in your browser or phone settings.",
+  "map.yourLocation": "Your location",
   "map.noForecastHere": "No forecast here — this point is outside the forecast region.",
   "map.variable": "Variable",
   "map.variables": "Variables",
