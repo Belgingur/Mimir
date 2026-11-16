@@ -323,8 +323,17 @@ export class TimelineController {
     const selectedDatetime = datetimes[selectedIndex];
     // The rail tab is 8–9px and absolutely positioned, so it keeps the bare
     // reading; the roomier on-map bubble carries the zone marker for both.
-    this.timelineBubbleTextEl.textContent =
-      formatTimelineBubbleLabel(selectedDatetime);
+    const bubbleLabel = formatTimelineBubbleLabel(selectedDatetime);
+    this.timelineBubbleTextEl.textContent = bubbleLabel;
+    // The bubble is the timeline's slider: its value is the step's index, read
+    // out as the time it shows. The name is set again for a change of language.
+    this.timelineBubbleEl.setAttribute("aria-label", t("timeline.selectedTime"));
+    this.timelineBubbleEl.setAttribute(
+      "aria-valuemax",
+      String(datetimes.length - 1),
+    );
+    this.timelineBubbleEl.setAttribute("aria-valuenow", String(selectedIndex));
+    this.timelineBubbleEl.setAttribute("aria-valuetext", bubbleLabel);
     if (this.mapTimeBubbleTextEl) {
       this.mapTimeBubbleTextEl.textContent =
         formatTimelineBubbleLabelWithZone(selectedDatetime);
@@ -419,7 +428,12 @@ export class TimelineController {
     this.timelineCustomEl.innerHTML = `
       <button class="timeline-play" type="button" aria-label="${t("timeline.play")}"></button>
       <div class="timeline-track">
-        <button class="timeline-bubble" type="button" aria-label="${t("timeline.selectedTime")}">
+        <button class="timeline-bubble" type="button" role="slider" aria-label="${t("timeline.selectedTime")}" aria-valuemin="0">
+          <svg class="timeline-bubble__grip" viewBox="0 0 4 8" aria-hidden="true" focusable="false">
+            <circle cx="1" cy="1" r="0.8"/><circle cx="3" cy="1" r="0.8"/>
+            <circle cx="1" cy="4" r="0.8"/><circle cx="3" cy="4" r="0.8"/>
+            <circle cx="1" cy="7" r="0.8"/><circle cx="3" cy="7" r="0.8"/>
+          </svg>
           <span class="timeline-bubble__text"></span>
         </button>
         <div class="timeline-rail">

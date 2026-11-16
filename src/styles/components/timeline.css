@@ -181,6 +181,9 @@
 .timeline-bubble {
   position: absolute;
   top: -24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   transform: translateX(-50%);
   /* Anchor the scale to the arrow tip so the bubble grows up/out on hover
      without the pointer drifting off the rail position it marks. */
@@ -223,6 +226,14 @@
   cursor: grabbing;
   transform: translateX(-50%) scale(1.7);
   box-shadow: 0 12px 26px rgba(0, 0, 0, 0.28);
+}
+
+/* Grip dots: the bubble is dragged to change the time. */
+.timeline-bubble__grip {
+  width: 4px;
+  height: 8px;
+  flex: none;
+  fill: currentColor;
 }
 
 .timeline-bubble::after {
@@ -282,7 +293,8 @@
 
 /* ── Draggable forecast-time bubble on the map ─────────────────────────────
    Mirrors the timeline tab's timestamp; positioned absolute inside .map-wrap
-   and draggable with the same helper as the legend card (setupLegendDrag). */
+   and draggable with the same helper as the legend card (setupLegendDrag).
+   Dragging moves the bubble, not the time, hence `move` rather than `grab`. */
 .map-time-bubble {
   position: absolute;
   /* Top-centre: the map's corners are taken (zoom top-left, menu/view-toggle
@@ -303,7 +315,7 @@
   font-weight: 700;
   letter-spacing: 0.01em;
   white-space: nowrap;
-  cursor: grab;
+  cursor: move;
   touch-action: none;
   user-select: none;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
@@ -311,10 +323,6 @@
 
 .map-time-bubble[hidden] {
   display: none;
-}
-
-.map-time-bubble.is-dragging {
-  cursor: grabbing;
 }
 
 /* Touch devices: informational only. Let touches fall through to the map so
