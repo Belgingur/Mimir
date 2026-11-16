@@ -1704,10 +1704,10 @@ describe("LayerComposer", () => {
       const full = deps.dom.legendHost.innerHTML;
       observe(composer, tempLayer(splitFrame(5, 9), [code(5), code(9)]));
       const cropped = deps.dom.legendHost.innerHTML;
-      // #48a322 is the 8°C band in TEMPERATURE_SCALE; it survives the crop
+      // #65a62c is the 8°C band in TEMPERATURE_SCALE; it survives the crop
       // unchanged, and so does every other colour still on the bar.
-      expect(full).toContain("rgba(72, 163, 34, 1)");
-      expect(cropped).toContain("rgba(72, 163, 34, 1)");
+      expect(full).toContain("rgba(101, 166, 44, 1)");
+      expect(cropped).toContain("rgba(101, 166, 44, 1)");
       // ...while a colour outside the window is simply not drawn any more.
       expect(full).toContain("rgba(96, 0, 96, 1)"); // -40°C
       expect(cropped).not.toContain("rgba(96, 0, 96, 1)");

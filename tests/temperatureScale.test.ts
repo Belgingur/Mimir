@@ -71,7 +71,7 @@ describe("TEMPERATURE_SCALE band lookup", () => {
     expect(lookup(-25)).toBe("#8612be"); // violet
     expect(lookup(-12)).toBe("#619be7"); // blue
     expect(lookup(-2)).toBe("#7dd0e6"); // cyan approaching zero
-    expect(lookup(8)).toBe("#48a322"); // green
+    expect(lookup(8)).toBe("#65a62c"); // green
     expect(lookup(15)).toBe("#f0f670"); // yellow
     expect(lookup(22)).toBe("#f56d21"); // orange
     expect(lookup(34)).toBe("#800000"); // deep red
@@ -89,9 +89,9 @@ describe("TEMPERATURE_SCALE band lookup", () => {
 });
 
 describe("0°C discontinuity", () => {
-  it("is a hard cyan→green break in the band table", () => {
+  it("is a hard light-cyan→dark-teal break in the band table", () => {
     expect(lookup(-0.001)).toBe("#90ecff");
-    expect(lookup(0)).toBe("#98e6b0");
+    expect(lookup(0)).toBe("#07423d");
   });
 
   it("survives buildStepPalette without a blended stop across zero", () => {
@@ -110,6 +110,45 @@ describe("0°C discontinuity", () => {
     expect(beforeValue).toBeCloseTo(0, 3);
     expect(beforeValue).toBeLessThan(0);
     expect(beforeHex).toBe("#90ecff");
-    expect(palette[zeroIndex][1]).toBe("#98e6b0");
+    expect(palette[zeroIndex][1]).toBe("#07423d");
+  });
+});
+
+/** CIELAB 1976 (D65) of an sRGB hex colour. */
+const toLab = (hex: string): [number, number, number] => {
+  const [r, g, b] = [1, 3, 5].map((i) => {
+    const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  const x = (0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047;
+  const y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  const z = (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883;
+  const f = (t: number) =>
+    t > 216 / 24389 ? Math.cbrt(t) : (24389 / 27) * t / 116 + 16 / 116;
+  return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))];
+};
+
+const deltaE = (a: string, b: string): number => {
+  const [l1, a1, b1] = toLab(a);
+  const [l2, a2, b2] = toLab(b);
+  return Math.hypot(l1 - l2, a1 - a2, b1 - b2);
+};
+
+describe("0–10°C segment (issue #86)", () => {
+  it("keeps the neighbours either side unchanged", () => {
+    expect(lookup(-1)).toBe("#90ecff");
+    expect(lookup(11)).toBe("#90c743");
+  });
+
+  it("rises in lightness from 0°C into 11°C", () => {
+    for (let t = 0; t < 11; t++) {
+      expect(toLab(lookup(t + 1))[0]).toBeGreaterThan(toLab(lookup(t))[0]);
+    }
+  });
+
+  it("separates neighbouring bands from -1°C to 11°C by ΔE ≥ 8", () => {
+    for (let t = -1; t < 11; t++) {
+      expect(deltaE(lookup(t), lookup(t + 1))).toBeGreaterThanOrEqual(8);
+    }
   });
 });
