@@ -1231,6 +1231,7 @@ export class InhouseCatalogController {
           // running. Its frame must not overwrite the newer one's.
           if (controller.signal.aborted) throw new Error("aborted");
           layer.image = image;
+          layer.frameTime = layer.times[matchIndex] ?? null;
 
           let alphaOffCount = 0;
           let totalPixels = 0;
@@ -1737,6 +1738,22 @@ export class InhouseCatalogController {
    * Whether every layer's texture for `index` is already in the cache — i.e.
    * the frame will appear without touching the network.
    */
+  /**
+   * The time `layer` should hold for the timeline's selection: the selected
+   * time for the first layer, the nearest of its own times for the others
+   * (as loadFrameSetNow picks them). Null with no selection.
+   */
+  selectedFrameTime(layer: InhouseLayer): string | null {
+    const base = this._inhouseLayers[0];
+    const targetTime = base?.times[this._inhouseTimeIndex];
+    if (!targetTime) return null;
+    const matchIndex =
+      layer === base
+        ? this._inhouseTimeIndex
+        : matchNearestTimeIndex(layer.times, targetTime);
+    return layer.times[matchIndex] ?? null;
+  }
+
   isFrameBuffered(index: number): boolean {
     const base = this._inhouseLayers[0];
     if (!base) return false;

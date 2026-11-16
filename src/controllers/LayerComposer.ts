@@ -66,8 +66,12 @@ import {
 import {
   extractSnowPoints,
   hideSnowOverlayWhileMoving,
+  snowBlockPx,
+  snowFramesAreCurrent,
   SnowOverlaySVG,
+  snowSymbolScale,
 } from "../lib/snowOverlay";
+import { manifestGridSpacingMeters } from "../lib/modelConfig";
 import type { SnowPoint } from "../lib/snowOverlay";
 import {
   INHOUSE_GROUP_VARIABLES,
@@ -255,7 +259,10 @@ export class LayerComposer {
    * rasterScalar is replaced each time a new frame loads, so the WeakMap entry
    * is automatically GC'd when the old frame's data is released.
    */
-  private readonly snowPointsCache = new WeakMap<object, SnowPoint[]>();
+  private readonly snowPointsCache = new WeakMap<
+    object,
+    { precip: object; points: SnowPoint[] }
+  >();
   /** Temperature frames re-encoded to the palette range, per source frame.
    *  Rebuilding one is a 4 MB allocation and a full-frame loop, and a fresh
    *  image makes the raster layer upload a new texture — on every redraw,
@@ -1769,8 +1776,22 @@ export class LayerComposer {
         ? catalogController.findInhouseLayerByCandidates(["snow_fraction"])
         : null;
 
-      if (!snowLayer?.rasterScalar) {
-        // Clear overlay when not in precip mode or no data.
+      const precipLayer = snowLayer
+        ? catalogController.findInhouseLayerByCandidates(
+            INHOUSE_GROUP_VARIABLES.precip.primary,
+          )
+        : null;
+      // Symbols only from a snow-fraction frame and a precipitation frame
+      // that are both for the selected time: while one is still arriving, or
+      // after one failed, the other time's frame would gate the wrong cells.
+      if (
+        !snowLayer?.rasterScalar ||
+        !precipLayer?.scalar ||
+        !snowFramesAreCurrent(snowLayer, precipLayer, (layer) =>
+          catalogController.selectedFrameTime(layer),
+        )
+      ) {
+        // Clear overlay when not in precip mode, no data, or frames not current.
         this.snowOverlaySVG?.update(null, this.deps.projectMap, 0, 0, {
           west: 0,
           south: 0,
@@ -1786,26 +1807,40 @@ export class LayerComposer {
         hideSnowOverlayWhileMoving(this.deps.getMap(), this.snowOverlaySVG);
       }
 
-      // Extract points; cache by rasterScalar identity so we re-extract only on new frames.
-      let points = this.snowPointsCache.get(snowLayer.rasterScalar);
+      // Extract points; cache by the pair of frames so we re-extract only on new frames.
+      const cached = this.snowPointsCache.get(snowLayer.rasterScalar);
+      let points = cached?.precip === precipLayer.scalar ? cached.points : null;
       if (!points) {
-        points = extractSnowPoints(snowLayer) ?? [];
-        this.snowPointsCache.set(snowLayer.rasterScalar, points);
+        points = extractSnowPoints(snowLayer, precipLayer.scalar) ?? [];
+        this.snowPointsCache.set(snowLayer.rasterScalar, {
+          precip: precipLayer.scalar,
+          points,
+        });
       }
 
+      // 8–18 px, from how wide a block of the model's grid is on screen here.
+      const spacing = manifestGridSpacingMeters(snowLayer.manifest);
       const mb = this.deps.getMapBounds();
+      const scale = snowSymbolScale(
+        spacing === null
+          ? null
+          : snowBlockPx(
+              spacing,
+              this.deps.getMapZoom(),
+              this.deps.getMapCenter().lat,
+            ),
+      );
       this.snowOverlaySVG.update(
         points.length > 0 ? points : null,
         this.deps.projectMap,
         uiState.opacity,
-        this.deps.getMapZoom(),
+        scale,
         {
           west: mb.getWest(),
           south: mb.getSouth(),
           east: mb.getEast(),
           north: mb.getNorth(),
         },
-        snowLayer.model ?? "",
       );
     })();
 
