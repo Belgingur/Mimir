@@ -482,6 +482,48 @@ describe("TimelineController", () => {
       expect(play.getAttribute("aria-pressed")).toBe("true");
     });
 
+    it("draws the run's ticks once per list of times (#83)", async () => {
+      const { deps, dom } = createDeps();
+      const ctrl = new TimelineController(deps);
+      const start = new Date(2026, 10, 16, 0, 0, 0).getTime();
+      const datetimes = Array.from({ length: 13 }, (_, i) =>
+        new Date(start + i * 3_600_000).toISOString(),
+      );
+      ctrl.activeTimelineDatetimes = datetimes;
+      ctrl.currentDatetime = datetimes[0];
+      ctrl.ensureCustomTimeline(dom.timelineHost);
+      const ticks = () =>
+        Array.from(
+          dom.timelineHost.querySelectorAll<HTMLDivElement>(
+            ".timeline-rail__tick",
+          ),
+        );
+      const first = ticks();
+      // 00, 03, 06, 09, 12 of 13 hourly steps; 00 and 12 taller.
+      expect(first.map((el) => el.style.left)).toEqual([
+        "0%",
+        "25%",
+        "50%",
+        "75%",
+        "100%",
+      ]);
+      expect(
+        first.map((el) => el.classList.contains("timeline-rail__tick--major")),
+      ).toEqual([true, false, false, false, true]);
+
+      // Moving the selected time redraws the rail but not the ticks.
+      ctrl.applyTimelineIndexFromPointer(0);
+      await flush();
+      ctrl.renderCustomTimeline();
+      expect(ticks()).toHaveLength(first.length);
+      ticks().forEach((el, i) => expect(el).toBe(first[i]));
+
+      // A new run brings new ticks.
+      ctrl.activeTimelineDatetimes = datetimes.slice(0, 7);
+      ctrl.renderCustomTimeline();
+      expect(ticks().map((el) => el.style.left)).toEqual(["0%", "50%", "100%"]);
+    });
+
     it("renders day segments and marks active day", () => {
       const { deps, dom } = createDeps();
       const ctrl = new TimelineController(deps);

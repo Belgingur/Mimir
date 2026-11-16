@@ -3,6 +3,7 @@ import {
   buildTimelineDayBlocks,
   formatTimelineBubbleLabel,
   formatTimelineBubbleLabelWithZone,
+  buildTimelineTicks,
   matchNearestTimeIndex,
   nowRailRatio,
   timelineDayBoxes,
@@ -91,6 +92,10 @@ export class TimelineController {
   /** Static tick showing where the present hour falls in the run. Absent from
    *  the null-checks below: a rail without it still renders correctly. */
   private timelineNowEl: HTMLDivElement | null = null;
+  private timelineTicksEl: HTMLDivElement | null = null;
+  /** The list of times the ticks were last built for, by identity and by value. */
+  private timelineTicksSource: string[] | null = null;
+  private timelineTicksKey = "";
   private timelineDaysEl: HTMLDivElement | null = null;
   private timelinePlayBtnEl: HTMLButtonElement | null = null;
   private requestedIndex: number | null = null;
@@ -345,6 +350,7 @@ export class TimelineController {
     this.timelineProgressEl.style.width = `${ratio * 100}%`;
     this.renderBufferedRange(selectedIndex, datetimes.length);
     this.timelineMarkerEl.style.left = `${ratio * 100}%`;
+    this.renderTimelineTicks(datetimes);
     if (this.timelineNowEl) {
       // Re-read the clock on every render rather than caching it: this is what
       // keeps the tick honest once a tab has been open for hours, and it is a
@@ -413,6 +419,26 @@ export class TimelineController {
     });
   }
 
+  /** The ticks change with the run, not with the selected time: rebuilt only
+   *  when the list of times does (#83). */
+  private renderTimelineTicks(datetimes: string[]): void {
+    if (!this.timelineTicksEl || datetimes === this.timelineTicksSource) return;
+    this.timelineTicksSource = datetimes;
+    const key = datetimes.join(",");
+    if (key === this.timelineTicksKey) return;
+    this.timelineTicksKey = key;
+    this.timelineTicksEl.replaceChildren(
+      ...buildTimelineTicks(datetimes).map((tick) => {
+        const el = document.createElement("div");
+        el.className = tick.major
+          ? "timeline-rail__tick timeline-rail__tick--major"
+          : "timeline-rail__tick";
+        el.style.left = `${tick.ratio * 100}%`;
+        return el;
+      }),
+    );
+  }
+
   ensureCustomTimeline(timelineHost: HTMLDivElement): void {
     this._timelineHostEl = timelineHost;
     const timelineControlWrapper = timelineHost.closest(
@@ -442,6 +468,7 @@ export class TimelineController {
         <div class="timeline-rail">
           <div class="timeline-rail__buffered"></div>
           <div class="timeline-rail__progress"></div>
+          <div class="timeline-rail__ticks" aria-hidden="true"></div>
           <div class="timeline-rail__now" hidden title="${t("timeline.now")}"></div>
           <div class="timeline-rail__marker"></div>
         </div>
@@ -472,6 +499,9 @@ export class TimelineController {
     ) as HTMLDivElement;
     this.timelineNowEl = this.timelineCustomEl.querySelector(
       ".timeline-rail__now",
+    ) as HTMLDivElement;
+    this.timelineTicksEl = this.timelineCustomEl.querySelector(
+      ".timeline-rail__ticks",
     ) as HTMLDivElement;
     this.timelineDaysEl = this.timelineCustomEl.querySelector(
       ".timeline-days",

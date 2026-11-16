@@ -145,6 +145,29 @@
   background: rgba(255, 255, 255, 0.92);
 }
 
+/* Tick marks for the run's steps (#83), hung just under the line in the gap
+   above the day row, so neither the played part of the line nor the thumb
+   covers them. The taller ones mark the start of each half day. */
+.timeline-rail__ticks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.timeline-rail__tick {
+  position: absolute;
+  top: calc(100% + 2px);
+  width: 1px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.55);
+  transform: translateX(-0.5px);
+}
+
+.timeline-rail__tick--major {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
 /* Where the present hour falls in the run. Sits under .timeline-rail__marker in
    document order so the scrub thumb always wins the overlap, and is deliberately
    quieter than it — a fixed reference, not the thing being moved. The amber ties

@@ -10,6 +10,7 @@ import {
   filterTimesByRange,
   timelineDayBoxes,
   timelineRailRatio,
+  buildTimelineTicks,
 } from "../src/lib/timelineHelpers";
 
 // The label helpers render in whatever zone the runtime is in, so expectations
@@ -139,6 +140,105 @@ describe("timelineRailRatio", () => {
   it("puts a lone step at 0", () => {
     expect(timelineRailRatio(0, 1)).toBe(0);
     expect(timelineRailRatio(0, 0)).toBe(0);
+  });
+});
+
+describe("buildTimelineTicks (#83)", () => {
+  const HOUR = 3_600_000;
+  // Steps from a moment on the viewer's clock, with the step lengths given.
+  const run = (start: Date, steps: number[]) => {
+    const out = [start.toISOString()];
+    let t = start.getTime();
+    for (const h of steps) {
+      t += h * HOUR;
+      out.push(new Date(t).toISOString());
+    }
+    return out;
+  };
+  const localHour = (iso: string) => new Date(iso).getHours();
+  const repeat = (h: number, n: number) => Array<number>(n).fill(h);
+
+  it("ticks an hourly run on the hours divisible by 3, taller at 00 and 12", () => {
+    const times = run(new Date(2026, 10, 16, 0), repeat(1, 24));
+    const ticks = buildTimelineTicks(times);
+    expect(ticks.map((t) => localHour(times[t.index]))).toEqual([
+      0, 3, 6, 9, 12, 15, 18, 21, 0,
+    ]);
+    expect(
+      ticks.filter((t) => t.major).map((t) => localHour(times[t.index])),
+    ).toEqual([0, 12, 0]);
+  });
+
+  it("changes rule where the step changes: 1 h, then 3 h, then 6 h", () => {
+    // 07:00–13:00 hourly, then 3-hourly to 22:00, then 6-hourly to 10:00.
+    const times = run(new Date(2026, 10, 16, 7), [
+      ...repeat(1, 6),
+      ...repeat(3, 3),
+      ...repeat(6, 2),
+    ]);
+    const ticks = buildTimelineTicks(times);
+    // 07, 08 and 13 (the hourly part's last step) stay bare; 04 and 10 are
+    // the same morning, so only 04 is tall.
+    expect(ticks.map((t) => localHour(times[t.index]))).toEqual([
+      9, 12, 16, 19, 22, 4, 10,
+    ]);
+    expect(
+      ticks.filter((t) => t.major).map((t) => localHour(times[t.index])),
+    ).toEqual([12, 4]);
+  });
+
+  it("ticks every step of a 6-hourly run", () => {
+    const times = run(new Date(2026, 10, 16, 0), repeat(6, 8));
+    const ticks = buildTimelineTicks(times);
+    expect(ticks.map((t) => t.index)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(ticks.filter((t) => t.major).map((t) => t.index)).toEqual([
+      0, 2, 4, 6, 8,
+    ]);
+  });
+
+  it("puts the taller tick on the first step after 00 and 12 when none falls on them", () => {
+    // 3-hourly from 01:00: no step is at 00:00 or 12:00 on this clock.
+    const times = run(new Date(2026, 10, 16, 1), repeat(3, 8));
+    const ticks = buildTimelineTicks(times);
+    expect(ticks).toHaveLength(times.length);
+    expect(
+      ticks.filter((t) => t.major).map((t) => localHour(times[t.index])),
+    ).toEqual([13, 1]);
+    // The run's first step is past 00:00 but not the first after it in the run.
+    expect(ticks[0].major).toBe(false);
+  });
+
+  it("works on a clock with a half-hour offset", () => {
+    const saved = process.env.TZ;
+    process.env.TZ = "Asia/Kolkata"; // UTC+5:30
+    try {
+      // Hourly on the UTC hour: 00:30, 01:30 … on this clock.
+      const times = Array.from({ length: 25 }, (_, i) =>
+        new Date(Date.UTC(2026, 10, 15, 19, 0) + i * HOUR).toISOString(),
+      );
+      expect(new Date(times[0]).getMinutes()).toBe(30);
+      const ticks = buildTimelineTicks(times);
+      expect(ticks.map((t) => localHour(times[t.index]))).toEqual([
+        0, 3, 6, 9, 12, 15, 18, 21, 0,
+      ]);
+      // 00:30 is the first step at or after 00:00, 12:30 after 12:00.
+      expect(
+        ticks.filter((t) => t.major).map((t) => localHour(times[t.index])),
+      ).toEqual([12, 0]);
+    } finally {
+      process.env.TZ = saved;
+    }
+  });
+
+  it("places each tick at its step's rail position", () => {
+    const times = run(new Date(2026, 10, 16, 0), [1, 1, 1, 3, 6]);
+    for (const tick of buildTimelineTicks(times))
+      expect(tick.ratio).toBe(timelineRailRatio(tick.index, times.length));
+  });
+
+  it("gives no ticks for no times or a bad time", () => {
+    expect(buildTimelineTicks([])).toEqual([]);
+    expect(buildTimelineTicks(["2026-11-16T00:00:00Z", "nope"])).toEqual([]);
   });
 });
 
