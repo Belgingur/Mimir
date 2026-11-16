@@ -171,7 +171,11 @@
 /* Where the present hour falls in the run. Sits under .timeline-rail__marker in
    document order so the scrub thumb always wins the overlap, and is deliberately
    quieter than it — a fixed reference, not the thing being moved. The amber ties
-   it to the time bubble that carries the same reading. */
+   it to the time bubble that carries the same reading. The ring is opaque so
+   the mark reaches 3 : 1 on both parts of the rail whatever the map behind
+   the bar (#88): orange on the ring is 5.5 : 1, the ring on the played part
+   about 16 : 1. On the bare part the ring is close to the rail's colour, and
+   the orange inside it is what reads. */
 .timeline-rail__now {
   position: absolute;
   top: -2px;
@@ -179,7 +183,7 @@
   height: 9px;
   border-radius: 1px;
   background: var(--accent-orange-decor);
-  box-shadow: 0 0 0 1px rgba(19, 24, 29, 0.55);
+  box-shadow: 0 0 0 1px #13181d;
   transform: translateX(-1px);
   pointer-events: none;
 }
