@@ -6,6 +6,7 @@ import {
   showPinnedPlaceLabels,
 } from "../src/lib/pinnedPlaceLabels";
 import { CITY_LABEL_LAYER_ID } from "../src/lib/cityLabelLayer";
+import { PINNED_SETTLEMENT_STATE } from "../src/lib/settlementLabelFilters";
 import type { PlaceTuple } from "../src/lib/nearestPlace";
 
 //               name          lon       lat     pop      cc  cap rank
@@ -52,23 +53,33 @@ describe("settlementNameKeys", () => {
 
 describe("showPinnedPlaceLabels", () => {
   function makeMap() {
-    const layers = new Set([CITY_LABEL_LAYER_ID, "place_town"]);
+    // One object per layer, as MapLibre's getLayer returns.
+    const layers = new Map(
+      [CITY_LABEL_LAYER_ID, "place_town"].map((id) => [id, { id }]),
+    );
     const setFilter = vi.fn();
+    const globalState: Record<string, unknown> = {};
     const map = {
-      getLayer: (id: string) => (layers.has(id) ? { id } : undefined),
+      getLayer: (id: string) => layers.get(id),
       getFilter: () => ["==", "class", "town"],
       setFilter,
+      getGlobalState: () => globalState,
+      setGlobalStateProperty: (key: string, value: unknown) => {
+        globalState[key] = value;
+      },
     } as unknown as maplibregl.Map;
-    return { map, setFilter };
+    const pinnedName = () => globalState[PINNED_SETTLEMENT_STATE];
+    return { map, setFilter, pinnedName };
   }
   const lastFilter = (setFilter: ReturnType<typeof vi.fn>, id: string) =>
     setFilter.mock.calls.filter(([layer]) => layer === id).at(-1)?.[1];
 
   it("hides the pinned city in Mímir's layer and its name in the basemap's", () => {
-    const { map, setFilter } = makeMap();
+    const { map, setFilter, pinnedName } = makeMap();
     showPinnedPlaceLabels(map, PLACES, { name: "Reykjavík", lng: -21.9079, lat: 64.1288 }, ["en"]);
     expect(JSON.stringify(lastFilter(setFilter, CITY_LABEL_LAYER_ID))).toContain('["!=",["id"],2]');
-    expect(JSON.stringify(lastFilter(setFilter, "place_town"))).toContain('"Reykjavík"');
+    expect(JSON.stringify(lastFilter(setFilter, "place_town"))).toContain(PINNED_SETTLEMENT_STATE);
+    expect(pinnedName()).toBe("Reykjavík");
   });
 
   it("hides nothing for a pin without a name", () => {
@@ -78,10 +89,13 @@ describe("showPinnedPlaceLabels", () => {
   });
 
   it("shows the labels again when the pin goes", () => {
-    const { map, setFilter } = makeMap();
+    const { map, setFilter, pinnedName } = makeMap();
     showPinnedPlaceLabels(map, PLACES, { name: "Reykjavík", lng: -21.9079, lat: 64.1288 }, ["en"]);
+    setFilter.mockClear();
     showPinnedPlaceLabels(map, PLACES, null, ["en"]);
     expect(JSON.stringify(lastFilter(setFilter, CITY_LABEL_LAYER_ID))).not.toContain('["id"]');
-    expect(lastFilter(setFilter, "place_town")).toEqual(["==", "class", "town"]);
+    // The basemap's filter keeps its term; only the name in global state goes.
+    expect(lastFilter(setFilter, "place_town")).toBeUndefined();
+    expect(pinnedName()).toBeNull();
   });
 });
