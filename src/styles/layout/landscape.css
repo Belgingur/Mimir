@@ -210,16 +210,6 @@
     font-size: 9px;
   }
 
-  .timeline-rail {
-    height: 4px;
-  }
-
-  .timeline-rail__marker {
-    width: 12px;
-    height: 12px;
-    top: -4px;
-  }
-
   /* ── 4. LEGEND: bottom-left, scaled down for the short landscape canvas ── */
   /* Landscape phones are very short; the full-size legend ate ~2/3 of the
      height. Shrink it from its bottom-left anchor so it stays pinned in the

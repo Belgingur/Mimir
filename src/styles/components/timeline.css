@@ -88,11 +88,21 @@
 
 .timeline-rail {
   position: relative;
-  height: 3px;
+  height: 5px;
   margin-top: 2px;
   border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.16);
   cursor: pointer;
+}
+
+/* The line is 5px, too thin to aim at, so an invisible band around it takes
+   the clicks and drags: 24px tall in all (WCAG 2.2, 2.5.8). It belongs to the
+   rail, so the rail's own pointerdown handles it. It stops above the day row,
+   which keeps a click meant for the rail off the day boxes. */
+.timeline-rail::before {
+  content: "";
+  position: absolute;
+  inset: -10px 0 -9px;
 }
 
 /* How far ahead of the playhead the forecast is already loaded — the same
@@ -137,7 +147,7 @@
   position: absolute;
   top: -2px;
   width: 2px;
-  height: 7px;
+  height: 9px;
   border-radius: 1px;
   background: var(--accent-orange-decor);
   box-shadow: 0 0 0 1px rgba(19, 24, 29, 0.55);
@@ -149,13 +159,17 @@
   display: none;
 }
 
+/* The selected time: a round thumb centred on the line. Half of it hangs below
+   the line, still well clear of the day row. */
 .timeline-rail__marker {
   position: absolute;
-  top: -3px;
-  width: 2px;
-  height: 9px;
+  top: -3.5px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
   background: rgba(255, 255, 255, 0.96);
-  transform: translateX(-1px);
+  box-shadow: 0 0 0 1px rgba(19, 24, 29, 0.35);
+  transform: translateX(-6px);
 }
 
 .timeline-bubble {
@@ -176,6 +190,8 @@
   white-space: nowrap;
   cursor: grab;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+  /* Above the rail's hit band, which reaches up under the bubble's tip. */
+  z-index: 1;
   transition:
     left 80ms ease,
     transform 140ms cubic-bezier(0.34, 1.56, 0.64, 1),

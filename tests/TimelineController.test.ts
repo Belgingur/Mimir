@@ -553,6 +553,40 @@ describe("TimelineController", () => {
       expect(ctrl.currentDatetime).toBe("b");
     });
 
+    it("takes a press 10px above or below the line from its x (#91)", async () => {
+      // The 24px hit band is the rail's ::before, so a press on it reaches the
+      // rail's own handler with a clientY off the 5px line; only x counts.
+      const { deps, dom } = createDeps();
+      const ctrl = new TimelineController(deps);
+      ctrl.activeTimelineDatetimes = ["a", "b", "c", "d", "e"];
+      ctrl.ensureCustomTimeline(dom.timelineHost);
+      const rail = dom.timelineHost.querySelector(
+        ".timeline-rail",
+      ) as HTMLDivElement;
+      Object.defineProperty(rail, "getBoundingClientRect", {
+        value: () => ({
+          left: 0,
+          width: 400,
+          top: 100,
+          bottom: 105,
+          right: 400,
+          height: 5,
+        }),
+      });
+      for (const [clientX, clientY, expected] of [
+        [100, 90, "b"],
+        [300, 115, "d"],
+      ] as const) {
+        rail.dispatchEvent(
+          new MouseEvent("pointerdown", { clientX, clientY, bubbles: true }),
+        );
+        window.dispatchEvent(new MouseEvent("pointerup"));
+        vi.advanceTimersByTime(160);
+        await flush();
+        expect(ctrl.currentDatetime).toBe(expected);
+      }
+    });
+
     it("clamps pointer outside rail bounds", async () => {
       const { deps, dom } = createDeps();
       const ctrl = new TimelineController(deps);
