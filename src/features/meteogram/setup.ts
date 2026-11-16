@@ -15,6 +15,7 @@ import {
 } from "./meteogramConfig";
 import { injectMeteogramModal } from "./meteogramModal";
 import { createMeteogramTrigger } from "./meteogramTrigger";
+import { browserTimeZone } from "../../lib/timeZoneLocation";
 
 export interface SetupMeteogramDeps {
   /** `.map-wrap` element the modal and mobile trigger are appended to. */
@@ -189,6 +190,7 @@ export function setupMeteogram(deps: SetupMeteogramDeps): MeteogramController {
     getSelectedTime: deps.getSelectedTime,
     onUserSelectTime: deps.onUserSelectTime,
     onOpenStateChange: deps.onOpenStateChange,
+    getDisplayTimeZone: browserTimeZone,
     isDev: deps.isDev,
   });
 
