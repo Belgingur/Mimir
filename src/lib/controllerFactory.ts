@@ -7,6 +7,7 @@ import type { PersistedStateV1, LayerMode } from "./viewerTypes";
 import { createPersistScheduler } from "./persistence";
 import { initWeather } from "./initWeather";
 import { createForecastStart } from "./forecastStart";
+import { createStartFinished } from "./startFinished";
 import type { StartOutcome } from "./mapStartup";
 import { LAYER_GROUPS } from "./inhouseTypes";
 import type { UiState, InhouseGroupId } from "./inhouseTypes";
@@ -1132,6 +1133,9 @@ export function createControllers(config: ControllerFactoryConfig) {
     }
   }
 
+  // Work that waits for the start to end (see startFinished).
+  const startFinished = createStartFinished();
+
   // The start can fail (a catalog file or a manifest that doesn't load, or
   // times out). The reader then gets an error with Retry; see forecastStart.
   const forecastStart = createForecastStart({
@@ -1304,16 +1308,15 @@ export function createControllers(config: ControllerFactoryConfig) {
         });
         // State may have loaded while the chunk was fetching — sync once now.
         meteogramController.refreshMobileTrigger();
-        // Restore the persisted point only once the map has restored its own
-        // camera (the "load" handler above jumps to persisted.mapCamera). If we
-        // dropped the pin first, the subsequent camera jump would make it appear
-        // to slide across the map on reload. When the map is already loaded (the
-        // chunk resolved late), restore immediately.
-        const restorePoint = (): void => {
+        // Restore the saved point once the forecast's start has ended (at once
+        // if this chunk arrived later), so the panel opens over the forecast
+        // and the selected model. Not on MapLibre's `load`: that waits for
+        // every basemap request, and a tile that never answered kept the point
+        // from coming back (#66). The map already opens at its saved view, so
+        // the pin can't slide.
+        startFinished.then(() => {
           void meteogramController?.restorePersistedPoint();
-        };
-        if (map.loaded()) restorePoint();
-        else map.once("load", restorePoint);
+        });
       })
       .catch((error) => {
         console.error("Failed to initialise meteogram feature", error);
@@ -1370,7 +1373,10 @@ export function createControllers(config: ControllerFactoryConfig) {
     },
     onStyleReady,
     styleLoaded: config.styleLoaded,
-    onStartFinished: config.onStartFinished,
+    onStartFinished: (outcome) => {
+      startFinished.finish();
+      config.onStartFinished?.(outcome);
+    },
     getOverlay: () => overlay,
     getLayerComposer: () => layerComposer,
     getCatalogController: () => catalogController,
