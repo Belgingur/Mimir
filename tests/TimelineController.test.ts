@@ -6,7 +6,12 @@ import {
   type TimelineDeps,
   type TimelineDom,
 } from "../src/controllers/TimelineController";
-import { buildTimelineDayBlocks } from "../src/lib/timelineHelpers";
+import {
+  buildTimelineDayBlocks,
+  formatTimelineBubbleLabel,
+} from "../src/lib/timelineHelpers";
+import { registerLocale, setLocale } from "../src/lib/i18n";
+import { is } from "../src/locales/is";
 import { listenForKeyActions, type KeyAction } from "../src/lib/keymap";
 
 type ControlLike = {
@@ -401,6 +406,66 @@ describe("TimelineController", () => {
       expect(bubble.style.left).toBe("50%");
       expect(progress.style.width).toBe("50%");
       expect(marker.style.left).toBe("50%");
+    });
+
+    it("makes the bubble a slider over the steps, in each language (#93)", async () => {
+      registerLocale("is", is);
+      const datetimes = [
+        "2026-03-20T00:00:00Z",
+        "2026-03-20T06:00:00Z",
+        "2026-03-20T12:00:00Z",
+      ];
+      const seen: string[] = [];
+      try {
+        for (const code of ["en", "is"]) {
+          setLocale(code);
+          document.body.innerHTML = "";
+          const { deps, dom } = createDeps();
+          const ctrl = new TimelineController(deps);
+          ctrl.activeTimelineDatetimes = datetimes;
+          ctrl.currentDatetime = datetimes[0];
+          ctrl.ensureCustomTimeline(dom.timelineHost);
+          const bubble = dom.timelineHost.querySelector(
+            ".timeline-bubble",
+          ) as HTMLButtonElement;
+          const read = () => ({
+            role: bubble.getAttribute("role"),
+            name: bubble.getAttribute("aria-label"),
+            min: bubble.getAttribute("aria-valuemin"),
+            max: bubble.getAttribute("aria-valuemax"),
+            now: bubble.getAttribute("aria-valuenow"),
+            text: bubble.getAttribute("aria-valuetext"),
+          });
+          const name = code === "en" ? "Selected time" : "Valinn tími";
+          expect(read()).toEqual({
+            role: "slider",
+            name,
+            min: "0",
+            max: "2",
+            now: "0",
+            text: formatTimelineBubbleLabel(datetimes[0]),
+          });
+          void ctrl.stepTimelineByKeyboard(1);
+          vi.advanceTimersByTime(160);
+          await flush();
+          expect(read()).toEqual({
+            role: "slider",
+            name,
+            min: "0",
+            max: "2",
+            now: "1",
+            text: formatTimelineBubbleLabel(datetimes[1]),
+          });
+          expect(read().text).toBe(
+            bubble.querySelector(".timeline-bubble__text")?.textContent,
+          );
+          seen.push(read().text ?? "");
+        }
+      } finally {
+        setLocale("en");
+      }
+      // The weekday is translated, so the two readings differ.
+      expect(seen[0]).not.toBe(seen[1]);
     });
 
     it("renders play button glyph from playbackState", () => {
