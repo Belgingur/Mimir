@@ -10,9 +10,10 @@
  *
  * Architecture
  * ────────────
- * extractSnowPoints()  scans the raster and returns a flat list of SnowPoint
- *   objects (one per symbol, two per tile block).  This is cached by the caller
- *   on the rasterScalar object so it is recomputed only when a new frame loads.
+ * extractSnowPoints()  scans the snow-fraction raster, gated by the
+ *   precipitation frame for the same time, and returns a flat list of
+ *   SnowPoint objects (one per symbol, two per tile block). The caller caches
+ *   it per pair of frames, so it is recomputed only when a new frame loads.
  *
  * SnowOverlaySVG       owns a <svg> element mounted over the MapLibre canvas.
  *   update() is called from LayerComposer.updateLayers() on every viewport
@@ -29,28 +30,16 @@ import { getInhouseLayerUnscale } from "./inhouseLayerHelpers";
 export const SNOW_OVERLAY_MIN = 0.25;
 
 /**
- * The zoom level at which the base symbol sizes in SnowPoint look right.
- * Larger zoom → smaller domain → symbols need to be bigger at a given map zoom.
- *
- * Three tiers by domain extent:
- *   Large  (GFS, ECMWF)                  → 3.0
- *   Medium (ICON-EU, UWC-DINI, UWC-IG)   → 4.0
- *   Small  (BEL-IS, BEL-FO, …)           → 5.8
+ * The least precipitation, in mm/h, at which a cell's snow fraction counts.
+ * A dry cell's snow fraction says what would fall, not that anything does.
  */
-const LARGE_DOMAIN_MODELS = new Set(["GFS", "ECMWF"]);
-const MEDIUM_DOMAIN_MODELS = new Set(["ICON-EU", "UWC-DINI", "UWC-IG"]);
-
-export function referenceZoomForModel(model: string): number {
-  if (LARGE_DOMAIN_MODELS.has(model)) return 3.0;
-  if (MEDIUM_DOMAIN_MODELS.has(model)) return 4.0;
-  return 5.8; // default: small domain (BEL-IS, BEL-FO, …)
-}
+export const SNOW_PRECIP_MIN_MM_H = 0.1;
 
 /**
  * Distance between tile block centres in raster pixels.
  * Controls symbol density.  Larger = sparser.
  */
-const TILE_STEP = 12;
+export const TILE_STEP = 12;
 
 /** Scale factors of a tile's two snowflakes (pt-snow-3: 0.02 and 0.027). */
 const SMALL_FLAKE_SIZE = 0.02;
@@ -60,23 +49,51 @@ const LARGE_FLAKE_SIZE = 0.027;
 const FLAKE_PATH_HEIGHT = 326.84;
 
 /**
- * The tallest a snowflake is drawn on screen, in pixels, at any zoom. At the
- * reference zoom the larger flake is about 9 px high, so the symbols grow for
- * a little over two zoom levels past it and keep that size from there on.
+ * The smallest and the largest a symbol is drawn on screen, in pixels: the
+ * height of the larger snowflake. The other symbols keep their proportions to
+ * it (a tier-2 dot is 2.5 base units across to the flake's 8.8).
  */
-export const MAX_FLAKE_PX = 40;
+export const MIN_FLAKE_PX = 8;
+export const MAX_FLAKE_PX = 18;
+
+/** The circumference of the earth at the equator, in metres (Web Mercator). */
+const EARTH_CIRCUMFERENCE_M = 40075016.686;
+/** MapLibre's tile size: the world is 512 × 2^zoom px wide. */
+const WORLD_PX_AT_ZOOM_0 = 512;
 
 /**
- * The factor the symbols' base sizes are multiplied by at `zoom`.
- *
- * It is 1 at the model's reference zoom and doubles with each zoom level, as
- * the map's scale does, until the larger snowflake is MAX_FLAKE_PX high. From
- * there it stays the same: a symbol stands for an area of the forecast grid,
- * and one that kept growing would cover the map and its labels.
+ * How wide a tile block (TILE_STEP cells) is on screen, in pixels, for a grid
+ * of `gridSpacingMeters` at `zoom` and latitude `lat`. This ties the symbols
+ * to the model's resolution: a block of a 2.5 km model is ten times smaller
+ * on screen than a block of a 25 km one at the same zoom.
  */
-export function snowSymbolScale(zoom: number, referenceZoom: number): number {
-  const maxScale = MAX_FLAKE_PX / (FLAKE_PATH_HEIGHT * LARGE_FLAKE_SIZE);
-  return Math.min(2 ** (zoom - referenceZoom), maxScale);
+export function snowBlockPx(
+  gridSpacingMeters: number,
+  zoom: number,
+  lat: number,
+): number {
+  const metersPerPx =
+    (EARTH_CIRCUMFERENCE_M * Math.cos((lat * Math.PI) / 180)) /
+    (WORLD_PX_AT_ZOOM_0 * 2 ** zoom);
+  return (TILE_STEP * gridSpacingMeters) / metersPerPx;
+}
+
+/**
+ * The factor the symbols' base sizes are multiplied by, for a tile block
+ * `blockPx` wide on screen.
+ *
+ * The larger snowflake is half a block high, as a block holds two symbols,
+ * kept between MIN_FLAKE_PX and MAX_FLAKE_PX: zoomed out, a symbol stays big
+ * enough to see; zoomed in, it stands for an area of the forecast grid and
+ * doesn't grow over the map and its labels. Without a block size (a grid of
+ * unknown spacing) the symbols are drawn at the smallest size.
+ */
+export function snowSymbolScale(blockPx: number | null): number {
+  const flakePx =
+    blockPx !== null && Number.isFinite(blockPx)
+      ? Math.min(MAX_FLAKE_PX, Math.max(MIN_FLAKE_PX, blockPx / 2))
+      : MIN_FLAKE_PX;
+  return flakePx / (FLAKE_PATH_HEIGHT * LARGE_FLAKE_SIZE);
 }
 
 /**
@@ -141,20 +158,69 @@ type RasterScalar = {
   widthMeta?: number;
 };
 
+/** A decoded precipitation frame, in mm/h (`InhouseLayer.scalar`). */
+export type PrecipGrid = { data: Float32Array; width: number; height: number };
+
+/**
+ * Whether the snow-fraction frame and the precipitation frame both hold the
+ * selected time. `selectedFrameTime` gives the time a layer should hold for
+ * the timeline's selection; a layer's `frameTime` is the time it does hold.
+ * A frame still arriving, or one that failed, leaves the layer on an earlier
+ * time, so the symbols wait instead of being gated on another time's
+ * precipitation.
+ */
+export function snowFramesAreCurrent<L extends Pick<InhouseLayer, "frameTime">>(
+  snow: L,
+  precip: L,
+  selectedFrameTime: (layer: L) => string | null,
+): boolean {
+  if (!snow.frameTime || !precip.frameTime) return false;
+  if (snow.frameTime !== precip.frameTime) return false;
+  return (
+    selectedFrameTime(snow) === snow.frameTime &&
+    selectedFrameTime(precip) === precip.frameTime
+  );
+}
+
 /**
  * Scan the snow_fraction raster and return one SnowPoint per symbol to render
  * (two staggered symbols per tile block, mirroring the two-element stagger in
  * the reference SVG patterns).
  *
- * Returns null when no block exceeds SNOW_OVERLAY_MIN.
+ * Only cells with at least SNOW_PRECIP_MIN_MM_H of precipitation count: a
+ * block's symbol comes from the largest snow fraction among them, and a block
+ * without one gets no symbol. `precip` must be the frame for the same time
+ * (see snowFramesAreCurrent); without it there are no symbols.
+ *
+ * Returns null when no block has a counted cell at SNOW_OVERLAY_MIN or more.
  */
-export function extractSnowPoints(layer: InhouseLayer): SnowPoint[] | null {
+export function extractSnowPoints(
+  layer: InhouseLayer,
+  precip: PrecipGrid | null,
+): SnowPoint[] | null {
   const rasterScalar = layer.rasterScalar as RasterScalar | null | undefined;
-  if (!rasterScalar) return null;
+  if (!rasterScalar || !precip) return null;
 
   const { data, width: paddedWidth, height, widthMeta } = rasterScalar;
   const rasterW = widthMeta ?? paddedWidth;
   const rasterH = height;
+
+  // The precipitation cell under a snow cell. Both come from the same model's
+  // grid and normally have the same size; otherwise the nearest cell by
+  // position in the domain.
+  const sameGrid = precip.width === rasterW && precip.height === rasterH;
+  const px = (rx: number) =>
+    sameGrid
+      ? rx
+      : Math.round((rx * (precip.width - 1)) / Math.max(1, rasterW - 1));
+  const py = (ry: number) =>
+    sameGrid
+      ? ry
+      : Math.round((ry * (precip.height - 1)) / Math.max(1, rasterH - 1));
+  // NaN (outside the domain) fails the comparison and doesn't count.
+  const isWet = (rx: number, ry: number) =>
+    (precip.data[py(ry) * precip.width + px(rx)] ?? Number.NaN) >=
+    SNOW_PRECIP_MIN_MM_H;
 
   const [unscaleMin, unscaleMax] = getInhouseLayerUnscale(layer);
   const decode = (raw: number) =>
@@ -182,11 +248,12 @@ export function extractSnowPoints(layer: InhouseLayer): SnowPoint[] | null {
     for (let gx = 0; gx < rasterW; gx += step) {
       const xEnd = Math.min(gx + step, rasterW);
 
-      // Maximum snow_fraction in this tile block.
+      // Maximum snow_fraction among this tile block's wet cells.
       let maxFrac = 0;
       for (let ry = gy; ry < yEnd; ry++) {
         const rowBase = ry * paddedWidth;
         for (let rx = gx; rx < xEnd; rx++) {
+          if (!isWet(rx, ry)) continue;
           const frac = decode(data[rowBase + rx]);
           if (frac > maxFrac) maxFrac = frac;
         }
@@ -314,16 +381,15 @@ export class SnowOverlaySVG {
    * @param points      Output of extractSnowPoints(), or null to clear.
    * @param projectMap  map.project() bound to the current MapLibre instance.
    * @param opacity     Layer opacity (0–1).
-   * @param zoom        Current MapLibre zoom level — drives symbol size scaling.
+   * @param zoomScale   Factor for the symbols' base sizes (snowSymbolScale).
    * @param bounds      Current map viewport bounds for culling.
    */
   update(
     points: SnowPoint[] | null,
     projectMap: (coord: [number, number]) => { x: number; y: number },
     opacity: number,
-    zoom: number,
+    zoomScale: number,
     bounds: { west: number; south: number; east: number; north: number },
-    model: string = "",
   ): void {
     // Freshly projected: show it, unless the map is still moving (an update
     // scheduled mid-move would be stale again by the time the move ends).
@@ -333,11 +399,6 @@ export class SnowOverlaySVG {
       this.groupEl.style.opacity = "0";
       return;
     }
-
-    // The symbols grow with the map from the zoom at which their base sizes
-    // look right, which depends on domain size (large domains are viewed at
-    // lower zoom levels), up to a largest on-screen size.
-    const zoomScale = snowSymbolScale(zoom, referenceZoomForModel(model));
 
     // Geographic padding in degrees: cull points just outside the viewport.
     const PAD = 3;

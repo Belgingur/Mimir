@@ -139,6 +139,13 @@ export type InhouseLayer = {
   times: string[];
   visible: boolean;
   image: WeatherLayers.TextureData | null;
+  /**
+   * The time of the frame in `image` (an entry of `times`), set when the
+   * frame lands. A frame still loading or one that failed leaves the earlier
+   * time here, so readers can tell a frame for the selected time from a stale
+   * one.
+   */
+  frameTime?: string | null;
   scalar: { data: Float32Array; width: number; height: number } | null;
   rasterScalar: {
     data: Uint8Array;
