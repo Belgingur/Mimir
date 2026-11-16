@@ -83,7 +83,8 @@
   position: relative;
   display: grid;
   align-content: center;
-  gap: 4px;
+  /* Far enough apart that the rail and the day row read as two controls. */
+  gap: 10px;
 }
 
 .timeline-rail {
@@ -92,7 +93,12 @@
   margin-top: 2px;
   border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.16);
-  cursor: pointer;
+  cursor: grab;
+}
+
+/* Set by TimelineController for as long as the time is being dragged. */
+.timeline-rail.is-grabbing {
+  cursor: grabbing;
 }
 
 /* The line is 5px, too thin to aim at, so an invisible band around it takes
@@ -214,6 +220,7 @@
    instead — the `is-scrubbing` class is toggled on pointerdown/up. This also
    gives mouse users feedback while scrubbing. */
 .timeline-bubble.is-scrubbing {
+  cursor: grabbing;
   transform: translateX(-50%) scale(1.7);
   box-shadow: 0 12px 26px rgba(0, 0, 0, 0.28);
 }

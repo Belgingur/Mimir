@@ -476,11 +476,13 @@ export class TimelineController {
       // Blow the tab up for the duration of the drag — the CSS hover state
       // covers desktop, but touch screens only get feedback via this class.
       this.timelineBubbleEl?.classList.add("is-scrubbing");
+      this.timelineRailEl?.classList.add("is-grabbing");
       this.applyTimelineIndexFromPointer(event.clientX);
       const onMove = (moveEvent: PointerEvent) =>
         this.applyTimelineIndexFromPointer(moveEvent.clientX);
       const onUp = () => {
         this.timelineBubbleEl?.classList.remove("is-scrubbing");
+        this.timelineRailEl?.classList.remove("is-grabbing");
         window.removeEventListener("pointermove", onMove);
         window.removeEventListener("pointerup", onUp);
         window.removeEventListener("pointercancel", onUp);
