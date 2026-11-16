@@ -14,8 +14,10 @@
  *  - Mímir's own city layer: the one city with that name nearest the pin
  *    within {@link STATION_MATCH_MAX_KM} (the snapping rule), by feature id,
  *    so pinning London, England leaves London, Ontario. Label and dot go.
- *  - The basemap's town and village layers: labels with that name within the
- *    same distance (see settlementLabelFilters.ts).
+ *  - The basemap's town and village layers: labels with that name (see
+ *    settlementLabelFilters.ts). By name only, so that a pin change sets one
+ *    value instead of re-sending the layers' filters: a same-named town far
+ *    away loses its label too while the pin is shown.
  */
 
 import type * as maplibregl from "maplibre-gl";
@@ -82,10 +84,5 @@ export function showPinnedPlaceLabels(
 ): void {
   const named = pin && pin.name.trim() ? pin : null;
   setPinnedCity(map, named ? findPinnedCityId(places, named) : null);
-  setPinnedSettlement(
-    map,
-    named,
-    STATION_MATCH_MAX_KM * 1000,
-    settlementNameKeys(locales),
-  );
+  setPinnedSettlement(map, named?.name ?? null, settlementNameKeys(locales));
 }

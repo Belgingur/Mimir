@@ -7,9 +7,10 @@ import {
 } from "@maplibre/maplibre-gl-style-spec";
 import {
   buildDuplicateCityFilter,
-  buildPinnedSettlementFilter,
+  buildPinnedSettlementTerm,
   DUPLICATE_RADIUS_M,
   FILTERED_SETTLEMENT_LAYER_IDS,
+  PINNED_SETTLEMENT_STATE,
   refreshSettlementLabelFilters,
   setCityDuplicates,
   setPinnedSettlement,
@@ -51,9 +52,14 @@ function passes(
   lon: number,
   lat: number,
   properties: Record<string, unknown>,
+  globalState: Record<string, unknown> = {},
 ): boolean {
   const { feature, canonical } = pointFeature(lon, lat, properties);
-  return featureFilter(filter as FilterSpecification, "filter").filter(
+  return featureFilter(
+    filter as FilterSpecification,
+    "filter",
+    globalState,
+  ).filter(
     { zoom: ZOOM },
     feature,
     canonical,
@@ -190,19 +196,27 @@ function makeMap(initial: Record<string, unknown> = { place_town: TOWN, place_vi
     filters.set(id, filter);
   }
   const setFilter = vi.fn((id: string, filter: unknown) => filters.set(id, filter));
+  let globalState: Record<string, unknown> = {};
+  const setGlobalStateProperty = vi.fn((key: string, value: unknown) => {
+    globalState = { ...globalState, [key]: value };
+  });
   const map = {
     getLayer: (id: string) => layers.get(id),
     getFilter: (id: string) => filters.get(id),
     setFilter,
+    getGlobalState: () => globalState,
+    setGlobalStateProperty,
   } as unknown as maplibregl.Map;
-  /** Swap in a fresh style: new layer objects with the style's filters again. */
+  /** Swap in a fresh style: new layer objects with the style's filters again, and no global state. */
   const reloadStyle = () => {
     for (const [id, filter] of Object.entries(initial)) {
       layers.set(id, { id });
       filters.set(id, filter);
     }
+    globalState = {};
   };
-  return { map, setFilter, filters, reloadStyle };
+  const state = () => globalState;
+  return { map, setFilter, setGlobalStateProperty, filters, reloadStyle, state };
 }
 
 describe("setCityDuplicates", () => {
@@ -256,85 +270,102 @@ describe("setCityDuplicates", () => {
 
 // ─── The pinned place ────────────────────────────────────────────────────────
 
-describe("buildPinnedSettlementFilter", () => {
+describe("buildPinnedSettlementTerm", () => {
   const KEYS = ["name:latin", "name", "name:en", "name:is"];
+  const term = buildPinnedSettlementTerm(KEYS);
+  const pinned = (name: string | null) => ({ [PINNED_SETTLEMENT_STATE]: name });
   // A pin dropped on Njarðvík's basemap label.
-  const pin = { name: "Njarðvík", lng: -22.5427, lat: 63.9733 };
-  const kept = (lon: number, lat: number, props: Record<string, unknown>) =>
-    passes(buildPinnedSettlementFilter(pin, 25_000, KEYS), lon, lat, props);
+  const kept = (props: Record<string, unknown>, name: string | null = "Njarðvík") =>
+    passes(term, -22.5427, 63.9733, props, pinned(name));
 
   it("hides the pinned place's label", () => {
-    expect(kept(-22.5427, 63.9733, { "name:latin": "Njarðvík" })).toBe(false);
+    expect(kept({ "name:latin": "Njarðvík" })).toBe(false);
   });
 
   it("ignores case and accents, as the click path does", () => {
-    expect(kept(-22.5427, 63.9733, { "name:latin": "NJARDVIK" })).toBe(false);
+    expect(kept({ "name:latin": "NJARDVIK" })).toBe(false);
   });
 
   it("matches a name the click may have taken from another property", () => {
     // A click in Icelandic takes name:is, which can differ from the drawn name.
-    const garður = { name: "Sveitarfélagið Garður", lng: -22.6512, lat: 64.0703 };
     expect(
-      passes(buildPinnedSettlementFilter(garður, 25_000, KEYS), -22.6512, 64.0703, {
-        "name:latin": "Garður",
-        "name:is": "Sveitarfélagið Garður",
-      }),
+      kept(
+        { "name:latin": "Garður", "name:is": "Sveitarfélagið Garður" },
+        "Sveitarfélagið Garður",
+      ),
     ).toBe(false);
   });
 
-  it("keeps other names, and the same name beyond the radius", () => {
-    expect(kept(-22.5565, 63.9998, { "name:latin": "Keflavík" })).toBe(true);
-    // ~30 km north: a different Njarðvík, if there were one.
-    expect(kept(-22.5427, 64.24, { "name:latin": "Njarðvík" })).toBe(true);
+  it("keeps other names", () => {
+    expect(kept({ "name:latin": "Keflavík" })).toBe(true);
+  });
+
+  it("hides the same name anywhere, having no distance check", () => {
+    // The point is literal in a distance expression; global state can't feed it.
+    expect(
+      passes(term, -22.5427, 64.24, { "name:latin": "Njarðvík" }, pinned("Njarðvík")),
+    ).toBe(false);
+  });
+
+  it("hides nothing while no name is set", () => {
+    expect(kept({ "name:latin": "Njarðvík" }, null)).toBe(true);
+    expect(passes(term, -22.5427, 63.9733, { "name:latin": "" })).toBe(true);
   });
 
   it("keeps a label that lacks the name properties", () => {
-    expect(kept(-22.5427, 63.9733, {})).toBe(true);
+    expect(kept({})).toBe(true);
+  });
+
+  it("is built once per list of keys", () => {
+    expect(buildPinnedSettlementTerm([...KEYS])).toBe(term);
   });
 });
 
 describe("setPinnedSettlement", () => {
   const KEYS = ["name:latin", "name"];
-  const pin = { name: "Njarðvík", lng: -22.5427, lat: 63.9733 };
 
   it("adds the pin term next to the duplicates term", () => {
-    const { map, filters } = makeMap();
+    const { map, filters, state } = makeMap();
     setCityDuplicates(map, PLACES);
-    setPinnedSettlement(map, pin, 25_000, KEYS);
+    setPinnedSettlement(map, "Njarðvík", KEYS);
     const town = filters.get("place_town");
     expect(town).toContain(buildDuplicateCityFilter(PLACES));
-    expect(passes(town, -22.5427, 63.9733, { class: "town", "name:latin": "Njarðvík" })).toBe(false);
-    expect(passes(town, -22.5565, 63.9998, { class: "town", "name:latin": "Keflavík" })).toBe(false);
-    expect(passes(town, -22.6512, 64.0703, { class: "town", "name:latin": "Garður" })).toBe(true);
+    const at = (lon: number, lat: number, name: string) =>
+      passes(town, lon, lat, { class: "town", "name:latin": name }, state());
+    expect(at(-22.5427, 63.9733, "Njarðvík")).toBe(false);
+    expect(at(-22.5565, 63.9998, "Keflavík")).toBe(false);
+    expect(at(-22.6512, 64.0703, "Garður")).toBe(true);
   });
 
-  it("drops only the pin term when the pin goes", () => {
-    const { map, filters } = makeMap();
+  it("changes only the global state when the pin moves or goes", () => {
+    // Re-sending the ~600 KB filter took ~150 ms per pin change at 4× CPU.
+    const { map, setFilter, filters, state } = makeMap();
     setCityDuplicates(map, PLACES);
-    setPinnedSettlement(map, pin, 25_000, KEYS);
-    setPinnedSettlement(map, null, 25_000, KEYS);
-    expect(filters.get("place_town")).toEqual([
-      "all",
-      toExpressionFilter(TOWN),
-      buildDuplicateCityFilter(PLACES),
-    ]);
-    setCityDuplicates(map, null);
-    expect(filters.get("place_town")).toEqual(TOWN);
-  });
-
-  it("leaves the layers alone when the same pin is shown again", () => {
-    const { map, setFilter } = makeMap();
-    setPinnedSettlement(map, pin, 25_000, KEYS);
+    setPinnedSettlement(map, "Njarðvík", KEYS);
     setFilter.mockClear();
-    setPinnedSettlement(map, { ...pin }, 25_000, KEYS);
+    setPinnedSettlement(map, "Garður", KEYS);
+    expect(state()[PINNED_SETTLEMENT_STATE]).toBe("Garður");
+    setPinnedSettlement(map, null, KEYS);
+    expect(state()[PINNED_SETTLEMENT_STATE]).toBeNull();
     expect(setFilter).not.toHaveBeenCalled();
+    const town = filters.get("place_town");
+    expect(passes(town, -22.5427, 63.9733, { class: "town", "name:latin": "Njarðvík" }, state())).toBe(true);
   });
 
-  it("is re-applied over a reloaded style", () => {
-    const { map, filters, reloadStyle } = makeMap();
-    setPinnedSettlement(map, pin, 25_000, KEYS);
+  it("leaves the global state alone when the same pin is shown again", () => {
+    const { map, setGlobalStateProperty } = makeMap();
+    setPinnedSettlement(map, "Njarðvík", KEYS);
+    setGlobalStateProperty.mockClear();
+    setPinnedSettlement(map, "Njarðvík", KEYS);
+    expect(setGlobalStateProperty).not.toHaveBeenCalled();
+  });
+
+  it("is re-applied over a reloaded style, filter and global state", () => {
+    const { map, filters, reloadStyle, state } = makeMap();
+    setPinnedSettlement(map, "Njarðvík", KEYS);
     reloadStyle();
     refreshSettlementLabelFilters(map);
-    expect(passes(filters.get("place_town"), -22.5427, 63.9733, { class: "town", "name:latin": "Njarðvík" })).toBe(false);
+    expect(state()[PINNED_SETTLEMENT_STATE]).toBe("Njarðvík");
+    expect(passes(filters.get("place_town"), -22.5427, 63.9733, { class: "town", "name:latin": "Njarðvík" }, state())).toBe(false);
   });
 });

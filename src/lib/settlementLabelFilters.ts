@@ -12,7 +12,9 @@
  * what keeps London, Ontario from being hidden for London, England.
  *
  * It also hides the label of the place the meteogram pin names, while the pin
- * is shown: the pin carries the name itself (see pinnedPlaceLabels.ts).
+ * is shown: the pin carries the name itself (see pinnedPlaceLabels.ts). The
+ * pin's name is read from MapLibre's global state, so a pin change sets one
+ * value instead of re-sending the duplicate term, which is ~600 KB per layer.
  *
  * MapTiler's positron writes these filters in the legacy syntax, and MapLibre
  * cannot mix legacy and expression syntax in one filter (a mixed `all` is read
@@ -228,12 +230,8 @@ export function buildDuplicateCityFilter(
 
 // ─── The pinned place ────────────────────────────────────────────────────────
 
-/** A place the meteogram pin names, at the pin's point. */
-export interface PinnedSettlement {
-  readonly name: string;
-  readonly lng: number;
-  readonly lat: number;
-}
+/** The global-state property that holds the pinned place's name, or null. */
+export const PINNED_SETTLEMENT_STATE = "mimir-pinned-settlement";
 
 /** Compares names the way the click path does: ignoring case and accents. */
 const SAME_NAME = [
@@ -241,37 +239,46 @@ const SAME_NAME = [
   { "case-sensitive": false, "diacritic-sensitive": false },
 ];
 
+const PINNED_NAME = ["to-string", ["global-state", PINNED_SETTLEMENT_STATE]];
+
+const pinnedTerms = new Map<string, Filter>();
+
 /**
- * Hide basemap labels named like the pin, within `radiusM` of it. The pin's
- * name can come from any of `nameKeys` (a click takes the app locale's
+ * Hide basemap labels named like the pinned place, whose name is held in
+ * global state ({@link PINNED_SETTLEMENT_STATE}), anywhere on the map. The
+ * pin's name can come from any of `nameKeys` (a click takes the app locale's
  * `name:xx` first), so each is compared. `to-string` keeps a label without the
- * property from failing the comparison, which would hide it.
+ * property from failing the comparison, which would hide it. Nothing is
+ * hidden while the state is unset. Built once per list of keys, so setting it
+ * again leaves the layers' filters alone.
+ *
+ * There is no distance check: an expression can only measure distance to a
+ * literal geometry, and putting the pin's point in the filter is what made
+ * every pin change re-send the whole filter.
  */
-export function buildPinnedSettlementFilter(
-  pin: PinnedSettlement,
-  radiusM: number,
-  nameKeys: readonly string[],
-): Filter {
-  return [
-    "!",
-    [
-      "all",
+export function buildPinnedSettlementTerm(nameKeys: readonly string[]): Filter {
+  const key = nameKeys.join("\n");
+  let term = pinnedTerms.get(key);
+  if (!term) {
+    term = [
+      "!",
       [
-        "any",
-        ...nameKeys.map((key) => [
-          "==",
-          ["to-string", ["get", key]],
-          pin.name,
-          SAME_NAME,
-        ]),
+        "all",
+        ["!=", PINNED_NAME, ""],
+        [
+          "any",
+          ...nameKeys.map((nameKey) => [
+            "==",
+            ["to-string", ["get", nameKey]],
+            PINNED_NAME,
+            SAME_NAME,
+          ]),
+        ],
       ],
-      [
-        "<=",
-        ["distance", { type: "Point", coordinates: [pin.lng, pin.lat] }],
-        radiusM,
-      ],
-    ],
-  ];
+    ];
+    pinnedTerms.set(key, term);
+  }
+  return term;
 }
 
 // ─── Applying the filters ────────────────────────────────────────────────────
@@ -279,8 +286,10 @@ export function buildPinnedSettlementFilter(
 interface FilterState {
   /** Hide basemap duplicates of Mímir's cities, or null to show them. */
   duplicates: Filter | null;
-  /** Hide the pinned place's label, or null when nothing is pinned. */
+  /** Hide the pinned place's label, or null before the first pin. */
   pinned: Filter | null;
+  /** The pinned place's name, for {@link PINNED_SETTLEMENT_STATE}. */
+  pinnedName: string | null;
 }
 
 const states = new WeakMap<maplibregl.Map, FilterState>();
@@ -294,7 +303,7 @@ const applied = new WeakMap<object, FilterState>();
 function stateOf(map: maplibregl.Map): FilterState {
   let state = states.get(map);
   if (!state) {
-    state = { duplicates: null, pinned: null };
+    state = { duplicates: null, pinned: null, pinnedName: null };
     states.set(map, state);
   }
   return state;
@@ -307,6 +316,7 @@ function stateOf(map: maplibregl.Map): FilterState {
  */
 export function refreshSettlementLabelFilters(map: maplibregl.Map): void {
   const state = stateOf(map);
+  applyPinnedName(map, state.pinnedName);
   for (const id of FILTERED_SETTLEMENT_LAYER_IDS) {
     let layer: object | undefined;
     try {
@@ -355,6 +365,16 @@ export function refreshSettlementLabelFilters(map: maplibregl.Map): void {
   }
 }
 
+/** Set the pinned name in global state, unless it is set already (a new style starts without it). */
+function applyPinnedName(map: maplibregl.Map, name: string | null): void {
+  try {
+    if ((map.getGlobalState()[PINNED_SETTLEMENT_STATE] ?? null) === name) return;
+    map.setGlobalStateProperty(PINNED_SETTLEMENT_STATE, name);
+  } catch {
+    // The style is still loading; the next styledata retries.
+  }
+}
+
 /**
  * Hide basemap labels that repeat a city from `places` (Mímir's city layer),
  * or pass null to show them all again — as when Mímir's city layer is absent
@@ -374,32 +394,21 @@ export function setCityDuplicates(
   refreshSettlementLabelFilters(map);
 }
 
-/** The pin each map's `pinned` term was built for, to skip rebuilding it. */
-const pinnedFor = new WeakMap<maplibregl.Map, PinnedSettlement | null>();
-
 /**
- * Hide the basemap label of the place the pin names (see
- * {@link buildPinnedSettlementFilter}), or pass null to show it again. A pin
- * re-shown at the same place leaves the layers alone.
+ * Hide the basemap labels named like the place the pin names (see
+ * {@link buildPinnedSettlementTerm}), or pass null to show them again. The
+ * term goes into the filters with the first name, and stays; after that a pin
+ * change only sets the name in global state.
  */
 export function setPinnedSettlement(
   map: maplibregl.Map,
-  pin: PinnedSettlement | null,
-  radiusM: number,
+  name: string | null,
   nameKeys: readonly string[],
 ): void {
-  const previous = pinnedFor.get(map) ?? null;
-  const same =
-    previous === pin ||
-    (previous !== null &&
-      pin !== null &&
-      previous.name === pin.name &&
-      previous.lng === pin.lng &&
-      previous.lat === pin.lat);
-  if (same) return;
-  pinnedFor.set(map, pin);
-  stateOf(map).pinned = pin
-    ? buildPinnedSettlementFilter(pin, radiusM, nameKeys)
-    : null;
+  const state = stateOf(map);
+  const pinned = name === null ? state.pinned : buildPinnedSettlementTerm(nameKeys);
+  if (pinned === state.pinned && name === state.pinnedName) return;
+  state.pinned = pinned;
+  state.pinnedName = name;
   refreshSettlementLabelFilters(map);
 }
