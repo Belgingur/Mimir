@@ -3,7 +3,7 @@ import type * as maplibregl from "maplibre-gl";
 import type { IconPoint } from "../src/controllers/IconographyController";
 import type { AtlasResult } from "../src/lib/iconographyTypes";
 import {
-  CITY_DOT_LAYER_ID,
+  CITY_DOT_IMAGE_ID,
   CITY_LABEL_LAYER_ID,
 } from "../src/lib/cityLabelLayer";
 import {
@@ -103,6 +103,7 @@ function makeMap(order: string[] = [], zoom = 8) {
     getLayersOrder: () => layers,
     getZoom: () => zoom,
     setFilter: vi.fn(),
+    setLayoutProperty: vi.fn(),
   };
   return { map: map as unknown as maplibregl.Map, raw: map, images, source };
 }
@@ -126,23 +127,25 @@ describe("syncIconographySymbols", () => {
   });
 
   it("names its own place; the city layer stands down for it", () => {
-    const { map, raw } = makeMap([CITY_DOT_LAYER_ID, CITY_LABEL_LAYER_ID]);
+    const { map, raw } = makeMap([CITY_LABEL_LAYER_ID]);
     syncIconographySymbols(map, [point("Hvanneyri", "01d", 2)], 30, makeAtlas());
     const [layer] = raw.addLayer.mock.calls[0] as unknown as [
       { layout: Record<string, unknown> },
     ];
     expect(layer.layout["text-optional"]).toBe(true);
-    const hidden = ["!", ["in", ["get", "name"], ["literal", ["Hvanneyri"]]]];
-    for (const id of [CITY_DOT_LAYER_ID, CITY_LABEL_LAYER_ID]) {
-      const [, filter] = raw.setFilter.mock.calls.find(([l]) => l === id)!;
-      expect(filter).toContainEqual(hidden);
-    }
+    const [, filter] = raw.setFilter.mock.calls.find(
+      ([l]) => l === CITY_LABEL_LAYER_ID,
+    )!;
+    expect(filter).toContainEqual([
+      "!",
+      ["in", ["get", "name"], ["literal", ["Hvanneyri"]]],
+    ]);
   });
 
   it("lets the city layer label a place its bubble leaves unnamed", () => {
     // Zoomed out, a rank-2 bubble draws no name; the city layer may still
     // label it on its own ladder, but its dot stays hidden under the tip.
-    const { map, raw } = makeMap([CITY_DOT_LAYER_ID, CITY_LABEL_LAYER_ID], 4.5);
+    const { map, raw } = makeMap([CITY_LABEL_LAYER_ID], 4.5);
     syncIconographySymbols(
       map,
       [point("Paris", "01d", 1), point("Warsaw", "01d", 2)],
@@ -155,9 +158,14 @@ describe("syncIconographySymbols", () => {
       "!",
       ["in", ["get", "name"], ["literal", ["Paris"]]],
     ]);
-    expect(filterFor(CITY_DOT_LAYER_ID)).toContainEqual([
-      "!",
+    const [, , icon] = raw.setLayoutProperty.mock.calls.find(
+      ([l, property]) => l === CITY_LABEL_LAYER_ID && property === "icon-image",
+    )!;
+    expect(icon).toEqual([
+      "case",
       ["in", ["get", "name"], ["literal", ["Paris", "Warsaw"]]],
+      "",
+      CITY_DOT_IMAGE_ID,
     ]);
   });
 
