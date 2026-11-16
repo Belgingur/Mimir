@@ -91,6 +91,22 @@ describe("MeteogramController", () => {
     expect(dom.status.textContent).toBe("");
   });
 
+  it("puts the panel on the timeline's clock with display-time-zone (#40)", async () => {
+    const { controller, widget } = buildController({
+      getDisplayTimeZone: () => "America/Sao_Paulo",
+    });
+    await controller.openAt(-20, 64);
+    expect(widget.getAttribute("display-time-zone")).toBe("America/Sao_Paulo");
+  });
+
+  it("leaves display-time-zone off when the device's zone is unknown", async () => {
+    const { controller, widget } = buildController({
+      getDisplayTimeZone: () => "",
+    });
+    await controller.openAt(-20, 64);
+    expect(widget.hasAttribute("display-time-zone")).toBe(false);
+  });
+
   it("reuses the widget for the same client and repoints it via loadChartLocation", async () => {
     const { controller, widget, createWidget } = buildController();
     await controller.openAt(-20, 64);

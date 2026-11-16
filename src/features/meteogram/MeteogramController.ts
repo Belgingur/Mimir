@@ -132,6 +132,11 @@ export interface MeteogramControllerDeps {
    *  on screen. Only fired on an actual change, so repeated opens at the same
    *  point don't churn. */
   readonly onOpenStateChange?: (open: boolean) => void;
+  /** The IANA zone the map's timeline shows its hours in (the device's), or
+   *  "" when unknown. The panel is put on the same clock through the widget's
+   *  `display-time-zone` (0.9.0), which names the zone in its header when the
+   *  point's own differs (#40). Without it the panel keeps the point's zone. */
+  readonly getDisplayTimeZone?: () => string;
   readonly isDev: boolean;
 }
 
@@ -439,6 +444,8 @@ export class MeteogramController {
     fresh.setAttribute("forecast-label", modelLabel);
     fresh.setAttribute("location-lat", String(lat));
     fresh.setAttribute("location-lon", String(lng));
+    const zone = this.deps.getDisplayTimeZone?.();
+    if (zone) fresh.setAttribute("display-time-zone", zone);
     this.applyLocationName(fresh, lng, lat);
     this.applyStationPlace(fresh, lng, lat);
     this.attachWidgetListeners(fresh);
