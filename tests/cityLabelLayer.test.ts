@@ -4,7 +4,8 @@ import {
   addCityLabelLayer,
   buildCityFilter,
   buildCityGeoJSON,
-  CITY_DOT_LAYER_ID,
+  buildCityDotIcon,
+  CITY_DOT_IMAGE_ID,
   CITY_LABEL_LAYER_ID,
   CITY_LABEL_SOURCE_ID,
   CAPITAL_POPULATION_BY_ZOOM,
@@ -195,22 +196,51 @@ describe("addCityLabelLayer", () => {
       getLayer: (id: string) => (present.has(id) ? { id } : undefined),
       addLayer: vi.fn((layer: { id: string }) => present.add(layer.id)),
       setFilter: vi.fn(),
+      hasImage: (id: string) => present.has(id),
+      addImage: vi.fn((id: string) => present.add(id)),
     };
     return { map: map as unknown as maplibregl.Map, setData, raw: map };
   }
 
-  it("adds the source and both layers on first call", () => {
+  it("adds the source, the dot image and one layer on first call", () => {
     const { raw, map } = makeMap();
     expect(addCityLabelLayer(map, PLACES)).toBe(true);
     expect(raw.addSource).toHaveBeenCalledTimes(1);
+    expect(raw.addImage).toHaveBeenCalledWith(
+      CITY_DOT_IMAGE_ID,
+      expect.anything(),
+      { pixelRatio: 2 },
+    );
     const added = raw.addLayer.mock.calls.map(([l]) => (l as { id: string }).id);
-    expect(added).toEqual([CITY_DOT_LAYER_ID, CITY_LABEL_LAYER_ID]);
+    expect(added).toEqual([CITY_LABEL_LAYER_ID]);
+  });
+
+  it("draws the dot as the label's icon, so the two collide as one", () => {
+    // A separate circle layer takes no part in collision: its dots stayed
+    // where their names had lost.
+    const { raw, map } = makeMap();
+    addCityLabelLayer(map, PLACES);
+    const [layer] = raw.addLayer.mock.calls[0] as unknown as [
+      { layout: Record<string, unknown> },
+    ];
+    expect(layer.layout["icon-image"]).toBe(CITY_DOT_IMAGE_ID);
+    expect(layer.layout["text-optional"]).toBeUndefined();
+    expect(layer.layout["icon-optional"]).toBeUndefined();
+    expect(layer.layout["text-allow-overlap"]).toBeUndefined();
+    expect(layer.layout["icon-allow-overlap"]).toBeUndefined();
+  });
+
+  it("re-adds the dot image after a style swap, and only then", () => {
+    const { raw, map } = makeMap();
+    addCityLabelLayer(map, PLACES);
+    addCityLabelLayer(map, PLACES);
+    expect(raw.addImage).toHaveBeenCalledTimes(1);
   });
 
   it("labels come from the dataset's name field", () => {
     const { raw, map } = makeMap();
     addCityLabelLayer(map, PLACES);
-    const [layer] = raw.addLayer.mock.calls[1] as unknown as [
+    const [layer] = raw.addLayer.mock.calls[0] as unknown as [
       { layout: Record<string, unknown> },
     ];
     expect(layer.layout["text-field"]).toEqual(["get", "name"]);
@@ -225,14 +255,13 @@ describe("addCityLabelLayer", () => {
   it("updates in place instead of re-adding on a second call", () => {
     const { raw, map, setData } = makeMap([
       CITY_LABEL_SOURCE_ID,
-      CITY_DOT_LAYER_ID,
       CITY_LABEL_LAYER_ID,
     ]);
     addCityLabelLayer(map, PLACES);
     expect(raw.addSource).not.toHaveBeenCalled();
     expect(raw.addLayer).not.toHaveBeenCalled();
     expect(setData).toHaveBeenCalledTimes(1);
-    expect(raw.setFilter).toHaveBeenCalledTimes(2);
+    expect(raw.setFilter).toHaveBeenCalledTimes(1);
   });
 
   it("does not re-send an unchanged dataset", () => {
@@ -264,9 +293,22 @@ describe("setHiddenCities", () => {
       getLayer: (id: string) => (present.has(id) ? { id } : undefined),
       addLayer: vi.fn((layer: { id: string }) => present.add(layer.id)),
       setFilter: vi.fn(),
+      setLayoutProperty: vi.fn(),
+      hasImage: (id: string) => present.has(id),
+      addImage: vi.fn((id: string) => present.add(id)),
     };
     return { map: map as unknown as maplibregl.Map, raw: map };
   }
+  const iconFor = (raw: ReturnType<typeof makeMap>["raw"]) =>
+    raw.setLayoutProperty.mock.calls
+      .filter(([, property]) => property === "icon-image")
+      .at(-1)?.[2];
+  const noMadridDot = [
+    "case",
+    ["in", ["get", "name"], ["literal", ["Madrid"]]],
+    "",
+    CITY_DOT_IMAGE_ID,
+  ];
   const filterFor = (raw: ReturnType<typeof makeMap>["raw"], id: string) =>
     raw.setFilter.mock.calls.filter(([layer]) => layer === id).at(-1)?.[1];
   const hidingMadrid = [
@@ -281,7 +323,6 @@ describe("setHiddenCities", () => {
     const { raw, map } = makeMap();
     addCityLabelLayer(map, PLACES);
     setHiddenCities(map, both(["Madrid"]));
-    expect(filterFor(raw, CITY_DOT_LAYER_ID)).toEqual(hidingMadrid);
     expect(filterFor(raw, CITY_LABEL_LAYER_ID)).toEqual(hidingMadrid);
   });
 
@@ -289,8 +330,18 @@ describe("setHiddenCities", () => {
     const { raw, map } = makeMap();
     addCityLabelLayer(map, PLACES);
     setHiddenCities(map, { labels: [], dots: ["Madrid"] });
-    expect(filterFor(raw, CITY_DOT_LAYER_ID)).toEqual(hidingMadrid);
-    expect(filterFor(raw, CITY_LABEL_LAYER_ID)).toBeUndefined();
+    expect(iconFor(raw)).toEqual(noMadridDot);
+    expect(raw.setFilter).not.toHaveBeenCalled();
+  });
+
+  it("builds a new layer with the dots already hidden", () => {
+    const { raw, map } = makeMap();
+    setHiddenCities(map, { labels: [], dots: ["Madrid"] });
+    addCityLabelLayer(map, PLACES);
+    const [layer] = raw.addLayer.mock.calls[0] as unknown as [
+      { layout: Record<string, unknown> },
+    ];
+    expect(layer.layout["icon-image"]).toEqual(noMadridDot);
   });
 
   it("keeps them hidden when the layers are refreshed on styledata", () => {
@@ -298,7 +349,6 @@ describe("setHiddenCities", () => {
     addCityLabelLayer(map, PLACES);
     setHiddenCities(map, both(["Madrid"]));
     addCityLabelLayer(map, PLACES);
-    expect(filterFor(raw, CITY_DOT_LAYER_ID)).toEqual(hidingMadrid);
     expect(filterFor(raw, CITY_LABEL_LAYER_ID)).toEqual(hidingMadrid);
   });
 
@@ -309,7 +359,8 @@ describe("setHiddenCities", () => {
     addCityLabelLayer(map, PLACES);
     setHiddenCities(map, both(["Madrid"]));
     setHiddenCities(map, both(["Madrid"]));
-    expect(raw.setFilter).toHaveBeenCalledTimes(2);
+    expect(raw.setFilter).toHaveBeenCalledTimes(1);
+    expect(raw.setLayoutProperty).toHaveBeenCalledTimes(1);
   });
 
   it("brings every city back for an empty list", () => {
@@ -317,8 +368,8 @@ describe("setHiddenCities", () => {
     addCityLabelLayer(map, PLACES);
     setHiddenCities(map, both(["Madrid"]));
     setHiddenCities(map, both([]));
-    expect(filterFor(raw, CITY_DOT_LAYER_ID)).toEqual(buildCityFilter());
     expect(filterFor(raw, CITY_LABEL_LAYER_ID)).toEqual(buildCityFilter());
+    expect(iconFor(raw)).toBe(CITY_DOT_IMAGE_ID);
   });
 
   describe("with a pinned city", () => {
@@ -335,7 +386,7 @@ describe("setHiddenCities", () => {
       addCityLabelLayer(map, PLACES);
       setPinnedCity(map, 2);
       const expected = ["all", buildCityFilter(), pinningMadrid];
-      expect(filterFor(raw, CITY_DOT_LAYER_ID)).toEqual(expected);
+      // The dot is the label's icon, so the filter drops both.
       expect(filterFor(raw, CITY_LABEL_LAYER_ID)).toEqual(expected);
     });
 
@@ -351,7 +402,6 @@ describe("setHiddenCities", () => {
         pinningMadrid,
       ];
       expect(filterFor(raw, CITY_LABEL_LAYER_ID)).toEqual(union);
-      expect(filterFor(raw, CITY_DOT_LAYER_ID)).toEqual(union);
 
       setPinnedCity(map, null);
       const iconographyOnly = [
@@ -360,7 +410,6 @@ describe("setHiddenCities", () => {
         ["!", ["in", ["get", "name"], ["literal", ["Tokyo"]]]],
       ];
       expect(filterFor(raw, CITY_LABEL_LAYER_ID)).toEqual(iconographyOnly);
-      expect(filterFor(raw, CITY_DOT_LAYER_ID)).toEqual(iconographyOnly);
     });
 
     it("does not re-filter for the same pin", () => {
@@ -383,5 +432,17 @@ describe("setHiddenCities", () => {
         pinningMadrid,
       ]);
     });
+  });
+});
+
+describe("buildCityDotIcon", () => {
+  it("is a light disc in a dark ring, clear at the corners", () => {
+    const { width, height, data } = buildCityDotIcon();
+    // (2.5 + 1.2) px radius at pixel ratio 2.
+    expect([width, height]).toEqual([15, 15]);
+    const at = (x: number, y: number) => [...data.slice((y * width + x) * 4, (y * width + x) * 4 + 4)];
+    expect(at(7, 7)).toEqual([0xf2, 0xf6, 0xf7, 255]);
+    expect(at(7, 1).slice(0, 3)).toEqual([14, 31, 38]);
+    expect(at(0, 0)[3]).toBe(0);
   });
 });

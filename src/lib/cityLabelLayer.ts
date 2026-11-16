@@ -28,7 +28,8 @@ import {
 
 export const CITY_LABEL_SOURCE_ID = "mimir-places";
 export const CITY_LABEL_LAYER_ID = "mimir-city-labels";
-export const CITY_DOT_LAYER_ID = "mimir-city-dots";
+/** The dot under each city's name, drawn as the label's own icon. */
+export const CITY_DOT_IMAGE_ID = "mimir-city-dot";
 
 /** City name typography, shared with the iconography bubbles' names. */
 export const CITY_TEXT_FONT = ["Metropolis Bold", "Noto Sans Bold"];
@@ -182,29 +183,44 @@ function withoutHidden(
 const sameNames = (a: readonly string[], b: readonly string[]) =>
   a.length === b.length && a.every((name, i) => name === b[i]);
 
+/**
+ * The label's icon: the dot, or none for the cities whose dot the iconography
+ * stands in for while their name stays (a bubble that doesn't name itself).
+ */
+export function cityDotImage(
+  hiddenDots: readonly string[],
+): maplibregl.DataDrivenPropertyValueSpecification<
+  maplibregl.ResolvedImageSpecification
+> {
+  if (hiddenDots.length === 0) return CITY_DOT_IMAGE_ID;
+  return [
+    "case",
+    ["in", ["get", "name"], ["literal", hiddenDots]],
+    "",
+    CITY_DOT_IMAGE_ID,
+  ];
+}
+
 function setHidden(map: maplibregl.Map, next: HiddenState): void {
   const current = hiddenCities.get(map) ?? NOTHING_HIDDEN;
   hiddenCities.set(map, next);
-  const pinChanged = next.pinnedId !== current.pinnedId;
+  if (!map.getLayer(CITY_LABEL_LAYER_ID)) return;
   // Called on every iconography redraw: re-filtering an unchanged list would
   // restart label placement for nothing.
   if (
-    (pinChanged || !sameNames(next.iconography.dots, current.iconography.dots)) &&
-    map.getLayer(CITY_DOT_LAYER_ID)
-  ) {
-    map.setFilter(
-      CITY_DOT_LAYER_ID,
-      withoutHidden(next.iconography.dots, next.pinnedId),
-    );
-  }
-  if (
-    (pinChanged ||
-      !sameNames(next.iconography.labels, current.iconography.labels)) &&
-    map.getLayer(CITY_LABEL_LAYER_ID)
+    next.pinnedId !== current.pinnedId ||
+    !sameNames(next.iconography.labels, current.iconography.labels)
   ) {
     map.setFilter(
       CITY_LABEL_LAYER_ID,
       withoutHidden(next.iconography.labels, next.pinnedId),
+    );
+  }
+  if (!sameNames(next.iconography.dots, current.iconography.dots)) {
+    map.setLayoutProperty(
+      CITY_LABEL_LAYER_ID,
+      "icon-image",
+      cityDotImage(next.iconography.dots),
     );
   }
 }
@@ -232,13 +248,88 @@ export function setPinnedCity(map: maplibregl.Map, id: number | null): void {
   setHidden(map, { ...current, pinnedId: id });
 }
 
+/** Dot radius and halo, in CSS pixels, at the icon's full size (zoom 10). */
+const DOT_RADIUS = 2.5;
+const DOT_HALO = 1.2;
+/**
+ * Scaled down to zoom 3 as the old circle layer was (radius 1.5 → 2.5, with a
+ * fixed 1.2 px halo): (1.5 + 1.2) / (2.5 + 1.2) ≈ 0.73.
+ */
+export const CITY_DOT_SIZE: maplibregl.ExpressionSpecification = [
+  "interpolate",
+  ["linear"],
+  ["zoom"],
+  3,
+  0.73,
+  10,
+  1,
+];
+
+/** `#rrggbb` or `rgba(r, g, b, a)` as 0–255 channels and a 0–1 alpha. */
+function parseColour(colour: string): [number, number, number, number] {
+  const hex = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(colour);
+  if (hex) return [...hex.slice(1).map((h) => parseInt(h, 16)), 1] as never;
+  const rgba = /^rgba?\(([^)]+)\)$/.exec(colour);
+  if (!rgba) throw new Error(`Unsupported colour: ${colour}`);
+  const [r, g, b, a = 1] = rgba[1].split(",").map(Number);
+  return [r, g, b, a];
+}
+
+/**
+ * The city dot, at pixel ratio 2: a {@link SETTLEMENT_TEXT_COLOR} disc inside a
+ * {@link LABEL_HALO_COLOR} ring, the names' own colours. Antialiased by
+ * sampling each pixel 4 × 4 times.
+ */
+export function buildCityDotIcon(): {
+  width: number;
+  height: number;
+  data: Uint8Array;
+} {
+  const RATIO = 2;
+  const SAMPLES = 4;
+  const outer = (DOT_RADIUS + DOT_HALO) * RATIO;
+  const inner = DOT_RADIUS * RATIO;
+  const size = Math.ceil(outer * 2);
+  const centre = size / 2;
+  const fill = parseColour(SETTLEMENT_TEXT_COLOR);
+  const ring = parseColour(LABEL_HALO_COLOR);
+  const data = new Uint8Array(size * size * 4);
+  for (let py = 0; py < size; py++) {
+    for (let px = 0; px < size; px++) {
+      let inFill = 0;
+      let inRing = 0;
+      for (let sy = 0; sy < SAMPLES; sy++) {
+        for (let sx = 0; sx < SAMPLES; sx++) {
+          const d = Math.hypot(
+            px + (sx + 0.5) / SAMPLES - centre,
+            py + (sy + 0.5) / SAMPLES - centre,
+          );
+          if (d <= inner) inFill++;
+          else if (d <= outer) inRing++;
+        }
+      }
+      const n = SAMPLES * SAMPLES;
+      const fillA = (inFill / n) * fill[3];
+      const ringA = (inRing / n) * ring[3];
+      const alpha = fillA + ringA;
+      const i = (py * size + px) * 4;
+      for (let c = 0; c < 3; c++) {
+        data[i + c] =
+          alpha > 0 ? Math.round((fill[c] * fillA + ring[c] * ringA) / alpha) : 0;
+      }
+      data[i + 3] = Math.round(255 * alpha);
+    }
+  }
+  return { width: size, height: size, data };
+}
+
 /** The places array last sent to each city source, so an unchanged dataset
  *  isn't re-sent. Keyed by source object: a style swap makes a new one. */
 const appliedPlaces = new WeakMap<object, readonly PlaceTuple[]>();
 
 /**
- * Add (or refresh) the city label source and layers. Added at the top of the
- * stack so the labels sit above the weather imagery. Idempotent: a second call
+ * Add (or refresh) the city label source and layer, and its dot image. Added
+ * at the top of the stack so the labels sit above the weather imagery. Idempotent: a second call
  * updates the data rather than throwing on a duplicate id.
  */
 export function addCityLabelLayer(
@@ -267,37 +358,13 @@ export function addCityLabelLayer(
   if (source) appliedPlaces.set(source, places);
 
   const hidden = hiddenCities.get(map) ?? NOTHING_HIDDEN;
-  const dotFilter = withoutHidden(hidden.iconography.dots, hidden.pinnedId);
   const labelFilter = withoutHidden(
     hidden.iconography.labels,
     hidden.pinnedId,
   );
 
-  // A small dot anchors the name to the actual point — the same coordinate a
-  // click on this label resolves to, so "where is this city" is unambiguous.
-  if (!map.getLayer(CITY_DOT_LAYER_ID)) {
-    map.addLayer({
-      id: CITY_DOT_LAYER_ID,
-      type: "circle",
-      source: CITY_LABEL_SOURCE_ID,
-      filter: dotFilter,
-      paint: {
-        "circle-radius": [
-          "interpolate",
-          ["linear"],
-          ["zoom"],
-          3,
-          1.5,
-          10,
-          2.5,
-        ],
-        "circle-color": SETTLEMENT_TEXT_COLOR,
-        "circle-stroke-color": LABEL_HALO_COLOR,
-        "circle-stroke-width": 1.2,
-      },
-    });
-  } else {
-    map.setFilter(CITY_DOT_LAYER_ID, dotFilter);
+  if (!map.hasImage(CITY_DOT_IMAGE_ID)) {
+    map.addImage(CITY_DOT_IMAGE_ID, buildCityDotIcon(), { pixelRatio: 2 });
   }
 
   if (!map.getLayer(CITY_LABEL_LAYER_ID)) {
@@ -316,6 +383,14 @@ export function addCityLabelLayer(
         "text-offset": CITY_TEXT_OFFSET,
         "text-max-width": 8,
         "text-padding": 2,
+        // A small dot anchors the name to the actual point — the same
+        // coordinate a click on this label resolves to. It is the label's own
+        // icon, so collision keeps or drops the dot and the name together: a
+        // separate circle layer takes no part in collision, and left dots
+        // without names wherever the names lost.
+        "icon-image": cityDotImage(hidden.iconography.dots),
+        "icon-size": CITY_DOT_SIZE,
+        "icon-padding": 0,
         // Bigger cities win collisions against smaller neighbours.
         "symbol-sort-key": ["-", 0, ["get", "population"]],
       },
