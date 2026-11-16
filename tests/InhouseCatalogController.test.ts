@@ -2175,6 +2175,12 @@ describe("InhouseCatalogController", () => {
       expect(result).toContain("25");
     });
 
+    it("writes air temp just below freezing as 0, not -0", () => {
+      const layer = makeLayer({ variable: "air_temperature_at_2m_agl" });
+      expect(ctrl.formatInhouseTooltipValue(layer, -0.196)).toMatch(/^0\b/);
+      expect(ctrl.formatInhouseTooltipValue(layer, 272.95)).toMatch(/^0\b/);
+    });
+
     it("formats non-air-temp with 2 decimals", () => {
       const layer = makeLayer({
         variable: "wind_speed",

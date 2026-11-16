@@ -113,6 +113,7 @@ import { WeatherWidgetRenderer } from "../lib/WeatherWidgetRenderer";
 import { CompactWidgetRenderer } from "../lib/CompactWidgetRenderer";
 import type { IconographyRenderer } from "../lib/iconographyTypes";
 import { t } from "../lib/i18n";
+import { formatWholeDegrees } from "../lib/formatTemperature";
 import { rasterLayerParameters } from "../lib/rasterBlending";
 
 type MapBoundsLike = {
@@ -1248,7 +1249,7 @@ export class LayerComposer {
               const displayValue = value > 100 ? value - 273.15 : value;
               this.deps.dom.inhouseTooltip.textContent = t(
                 "tooltip.tempValue",
-                { value: displayValue.toFixed(0) },
+                { value: formatWholeDegrees(displayValue) },
               );
               this.deps.dom.inhouseTooltip.setAttribute("aria-hidden", "false");
               const x = info.x ?? 0;

@@ -51,6 +51,7 @@ import type {
 } from "../lib/inhouseTypes";
 import type { DatetimeRange } from "../lib/timelineHelpers";
 import { t } from "../lib/i18n";
+import { formatWholeDegrees } from "../lib/formatTemperature";
 
 export interface CloudProviderDeps {
   loadDatasetSlice: (
@@ -2526,7 +2527,7 @@ export class InhouseCatalogController {
     const isAirTemp = layer.variable === "air_temperature_at_2m_agl";
     const displayValue = isAirTemp && value > 100 ? value - 273.15 : value;
     const formatted = isAirTemp
-      ? displayValue.toFixed(0)
+      ? formatWholeDegrees(displayValue)
       : displayValue.toFixed(2);
     return `${formatted}${unit ? ` ${unit}` : ""}`;
   }
