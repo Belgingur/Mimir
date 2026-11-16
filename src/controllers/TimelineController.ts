@@ -402,9 +402,12 @@ export class TimelineController {
         segment.classList.add("is-muted-label");
       }
       segment.textContent = block.label;
-      segment.addEventListener("click", () => {
-        const midpoint = Math.round((block.start + block.end) / 2);
-        void this.setSelectedIndex(midpoint, "user");
+      // The box goes to the time under the pointer, as the rail would, not to
+      // its day's midday: a click meant for the rail that lands here a few
+      // pixels low still gets the time it aimed at. The boxes share the
+      // rail's width and mapping, so the rail's own reading applies.
+      segment.addEventListener("click", (event) => {
+        this.applyTimelineIndexFromPointer(event.clientX);
       });
       this.timelineDaysEl?.appendChild(segment);
     });

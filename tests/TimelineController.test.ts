@@ -522,31 +522,72 @@ describe("TimelineController", () => {
       expect(segments[0].style.flex).toBe("");
     });
 
-    it("clicking day segment jumps to midpoint index", async () => {
-      const { deps, dom, spies } = createDeps();
-      const ctrl = new TimelineController(deps);
-      const datetimes = [
-        "2026-03-20T00:00:00Z",
-        "2026-03-20T03:00:00Z",
-        "2026-03-20T06:00:00Z",
-        "2026-03-20T09:00:00Z",
+    it("a day box goes to the step the rail gives at the clicked x (#94)", async () => {
+      const hourly = Array.from({ length: 48 }, (_, i) =>
+        new Date(Date.UTC(2026, 2, 20, i)).toISOString(),
+      );
+      // Hourly for a day, then 3-hourly for two more.
+      const changesStep = [
+        ...Array.from({ length: 24 }, (_, i) =>
+          new Date(Date.UTC(2026, 2, 20, i)).toISOString(),
+        ),
+        ...Array.from({ length: 16 }, (_, i) =>
+          new Date(Date.UTC(2026, 2, 21, i * 3)).toISOString(),
+        ),
       ];
-      ctrl.activeTimelineDatetimes = datetimes;
-      ctrl.ensureCustomTimeline(dom.timelineHost);
-      const firstSegment = dom.timelineHost.querySelector(
-        ".timeline-day-segment",
-      ) as HTMLDivElement;
-      firstSegment.click();
-      vi.advanceTimersByTime(160);
-      await flush();
-      expect(spies.scheduleUpdateLayers).toHaveBeenCalled();
-      // Segments are cut on local days, so how these four UTC instants divide
-      // depends on the runtime zone. The behaviour under test is "land on the
-      // clicked block's midpoint", so read that block back rather than assuming
-      // all four share one day.
-      const firstBlock = buildTimelineDayBlocks(datetimes)[0];
-      const midpoint = Math.round((firstBlock.start + firstBlock.end) / 2);
-      expect(ctrl.currentDatetime).toBe(datetimes[midpoint]);
+      const width = 800;
+      for (const datetimes of [hourly, changesStep]) {
+        document.body.innerHTML = "";
+        const { deps, dom } = createDeps();
+        const ctrl = new TimelineController(deps);
+        ctrl.activeTimelineDatetimes = datetimes;
+        ctrl.currentDatetime = datetimes[0];
+        ctrl.ensureCustomTimeline(dom.timelineHost);
+        const rail = dom.timelineHost.querySelector(
+          ".timeline-rail",
+        ) as HTMLDivElement;
+        Object.defineProperty(rail, "getBoundingClientRect", {
+          value: () => ({ left: 0, width, top: 0, bottom: 5, right: width, height: 5 }),
+        });
+        const railStep = (x: number) =>
+          Math.round((x / width) * (datetimes.length - 1));
+        const segments = Array.from(
+          dom.timelineHost.querySelectorAll<HTMLDivElement>(".timeline-day-segment"),
+        );
+        // Segments are cut on local days, so read the blocks back rather than
+        // assuming where the runtime zone puts midnight.
+        const blocks = buildTimelineDayBlocks(datetimes);
+        expect(segments.length).toBeGreaterThan(1);
+        for (const [i, segment] of segments.entries()) {
+          const left = (parseFloat(segment.style.left) / 100) * width;
+          const right =
+            ((blocks[i + 1]?.start ?? datetimes.length - 1) /
+              (datetimes.length - 1)) *
+              width -
+            1;
+          for (const x of [left, (left + right) / 2, right]) {
+            // Re-query: each render rebuilds the boxes.
+            const box = dom.timelineHost.querySelectorAll<HTMLDivElement>(
+              ".timeline-day-segment",
+            )[i];
+            box.dispatchEvent(
+              new MouseEvent("click", { clientX: x, bubbles: true }),
+            );
+            vi.advanceTimersByTime(160);
+            await flush();
+            expect(ctrl.currentDatetime).toBe(datetimes[railStep(x)]);
+          }
+          // The left edge is the day's first step, not the middle of the day.
+          expect(railStep(left)).toBe(blocks[i].start);
+        }
+        // And the box agrees with a press on the rail at the same x.
+        const x = width / 4;
+        rail.dispatchEvent(new MouseEvent("pointerdown", { clientX: x, bubbles: true }));
+        window.dispatchEvent(new MouseEvent("pointerup"));
+        vi.advanceTimersByTime(160);
+        await flush();
+        expect(ctrl.currentDatetime).toBe(datetimes[railStep(x)]);
+      }
     });
 
     it("play button sets autoplay intent when idle", async () => {
