@@ -1,12 +1,12 @@
 /**
- * Snow-fraction overlay — SVG implementation.
+ * Snow-fraction symbols, drawn as a MapLibre symbol layer.
  *
  * Symbol design follows public/data/snowflakes.js:
  *
  *   Tier 1 (0.25–0.50): two small white dots  per tile  — pt-snow-1 (r=0.75)
  *   Tier 2 (0.50–0.75): two medium white dots per tile  — pt-snow-2 (r=1 / r=1.25)
- *   Tier 3 (0.75–1.00): two SVG snowflake instances     — pt-snow-3 using #snow-flake
- *                        at scale 0.020 / 0.027 with -15° / +15° rotation
+ *   Tier 3 (0.75–1.00): two snowflakes                  — pt-snow-3 using #snow-flake
+ *                        at scale 0.020 / 0.027 with a per-block rotation
  *
  * Architecture
  * ────────────
@@ -15,12 +15,13 @@
  *   SnowPoint objects (one per symbol, two per tile block). The caller caches
  *   it per pair of frames, so it is recomputed only when a new frame loads.
  *
- * SnowOverlaySVG       owns a <svg> element mounted over the MapLibre canvas.
- *   update() is called from LayerComposer.updateLayers() on every viewport
- *   change; it projects each point's lat/lon to screen coordinates via
- *   MapLibre's map.project() and rebuilds the SVG content.
+ * syncSnowSymbols()    puts those points in a GeoJSON source drawn by a
+ *   symbol layer just under the first label layer above the weather, so place
+ *   names are drawn over the symbols. The symbols move with the map; their
+ *   size follows the zoom through the layer's icon-size expression.
  */
 
+import type * as maplibregl from "maplibre-gl";
 import type { InhouseLayer } from "./inhouseTypes";
 import { getInhouseLayerUnscale } from "./inhouseLayerHelpers";
 
@@ -79,41 +80,45 @@ export function snowBlockPx(
 }
 
 /**
- * The factor the symbols' base sizes are multiplied by, for a tile block
- * `blockPx` wide on screen.
- *
- * The larger snowflake is half a block high, as a block holds two symbols,
- * kept between MIN_FLAKE_PX and MAX_FLAKE_PX: zoomed out, a symbol stays big
- * enough to see; zoomed in, it stands for an area of the forecast grid and
- * doesn't grow over the map and its labels. Without a block size (a grid of
- * unknown spacing) the symbols are drawn at the smallest size.
+ * The zooms at which the larger snowflake, half a tile block high, reaches
+ * MIN_FLAKE_PX and MAX_FLAKE_PX on a grid of `gridSpacingMeters` at latitude
+ * `lat`. Between them it grows with the block (×2 per zoom); outside them it
+ * stays at the nearer limit: zoomed out, a symbol stays big enough to see;
+ * zoomed in, it stands for an area of the forecast grid and doesn't grow over
+ * the map and its labels. Null for a grid of unknown spacing.
  */
-export function snowSymbolScale(blockPx: number | null): number {
-  const flakePx =
-    blockPx !== null && Number.isFinite(blockPx)
-      ? Math.min(MAX_FLAKE_PX, Math.max(MIN_FLAKE_PX, blockPx / 2))
-      : MIN_FLAKE_PX;
-  return flakePx / (FLAKE_PATH_HEIGHT * LARGE_FLAKE_SIZE);
+export function snowFlakeZoomRange(
+  gridSpacingMeters: number | null,
+  lat: number,
+): [number, number] | null {
+  if (
+    gridSpacingMeters === null ||
+    !Number.isFinite(gridSpacingMeters) ||
+    gridSpacingMeters <= 0
+  ) {
+    return null;
+  }
+  const flakePxAtZoom0 = snowBlockPx(gridSpacingMeters, 0, lat) / 2;
+  const zoomFor = (px: number) => Math.log2(px / flakePxAtZoom0);
+  return [zoomFor(MIN_FLAKE_PX), zoomFor(MAX_FLAKE_PX)];
 }
 
 /**
  * The symbols' outline, which keeps them readable on light colours: a dark
- * stroke drawn behind the white fill, so half its width shows around the
- * symbol. Its width is in screen pixels and doesn't scale with the symbol.
- *
- * It replaces a drop-shadow filter on the whole group. A filter is drawn into
- * a bitmap the size of its region, and the group spans every symbol, also the
- * ones outside the view. WebKit caps that bitmap's size and then draws the
- * symbols at a lower resolution than the screen's: they came out blurred.
+ * edge of SYMBOL_OUTLINE_PX screen pixels centred on the symbol's outline, so
+ * half of it shows outside the white fill (as the SVG stroke drawn behind the
+ * fill did, #63). It is the icons' halo: the icons are signed distance
+ * fields, so the edge keeps its width in screen pixels at every icon size and
+ * stays sharp at any scale, in WebKit too.
  */
 export const SYMBOL_OUTLINE_PX = 1;
 export const SYMBOL_OUTLINE_COLOR = "rgba(0, 20, 80, 0.4)";
+export const SYMBOL_HALO_PX = SYMBOL_OUTLINE_PX / 2;
 
-// ─── Snowflake SVG path ───────────────────────────────────────────────────────
+// ─── Snowflake path ───────────────────────────────────────────────────────────
 // Copied verbatim from public/data/snowflakes.js (#snow-flake path data).
-// The original element carries transform="translate(-202 -202)"; that shift is
-// reproduced in the SVG <use> transform so the flake renders centred on (0,0)
-// before the positioning translate is applied.
+// The original element carries transform="translate(-202 -202)": the flake is
+// centred on (202, 202), which is the icon's centre and rotation point.
 const FLAKE_PATH_D =
   "M183.3125,43.09375L183.3125,83.8125L152.71875,66.125L137.1875,92.9375" +
   "L183.3125,119.65625L183.3125,179.75L131.5,149.8125L131.40625,96.28125" +
@@ -142,9 +147,10 @@ export interface SnowPoint {
   /** Rotation in degrees (meaningful for tier 3 flakes only). */
   rot: number;
   /**
-   * For tiers 1 & 2: circle radius in screen pixels.
-   * For tier 3: scale factor applied to the SVG path (matching pt-snow-3:
-   * scale(0.02) for the first symbol, scale(0.027) for the second).
+   * For tiers 1 & 2: circle radius, in the units of the snowflake path scaled
+   * by 1 (matching pt-snow-1 and pt-snow-2).
+   * For tier 3: scale factor applied to the snowflake path (matching
+   * pt-snow-3: scale(0.02) for the first symbol, scale(0.027) for the second).
    */
   size: number;
 }
@@ -329,151 +335,310 @@ export function extractSnowPoints(
   return points.length > 0 ? points : null;
 }
 
-// ─── SVG overlay ─────────────────────────────────────────────────────────────
+// ─── Map layer ───────────────────────────────────────────────────────────────
+
+export const SNOW_SOURCE_ID = "mimir-snow-symbols";
+export const SNOW_LAYER_ID = "mimir-snow-symbols";
+export const SNOW_IMAGE_IDS = {
+  dot: "mimir-snow-dot",
+  flake: "mimir-snow-flake",
+} as const;
 
 /**
- * Manages a <svg> element absolutely positioned over the MapLibre canvas.
- *
- * The SVG uses pointer-events:none so all map interactions pass through.
- * On each update() call the group content is rebuilt from the current
- * SnowPoint list projected to screen coordinates.
+ * Size of a symbol in its icon image, in image pixels: the snowflake path's
+ * height and the dot's diameter. Large enough that the thin arms of the flake
+ * stay resolved in the distance field.
  */
-export class SnowOverlaySVG {
-  private readonly svgEl: SVGSVGElement;
-  private readonly groupEl: SVGGElement;
-  /** True between the map's movestart and moveend (see beginMove). */
-  private moving = false;
+const ICON_SYMBOL_PX = 64;
+/**
+ * How far outside the symbol the distance field reaches, in image pixels.
+ * MapLibre's SDF encoding puts the edge at 6/8 and loses the field 6 px out,
+ * so a halo can't be wider than this many image pixels.
+ */
+const ICON_PAD_PX = 6;
+/** Image pixels per unit of distance in MapLibre's SDF alpha (SDF_PX). */
+const SDF_PX = 8;
+/** Alpha level of the edge in MapLibre's SDF encoding (6 / SDF_PX). */
+const SDF_EDGE = 6 / SDF_PX;
 
-  constructor(container: HTMLElement) {
-    const NS = "http://www.w3.org/2000/svg";
-    this.svgEl = document.createElementNS(NS, "svg") as SVGSVGElement;
+/** An icon image for map.addImage: RGBA, with the distance field in alpha. */
+export interface SdfImage {
+  width: number;
+  height: number;
+  data: Uint8Array;
+}
 
-    Object.assign(this.svgEl.style, {
-      position: "absolute",
-      top: "0",
-      left: "0",
-      width: "100%",
-      height: "100%",
-      pointerEvents: "none",
-      zIndex: "2",
-      overflow: "visible",
-    });
+/**
+ * Encode a signed distance (image px, negative inside) as MapLibre's SDF
+ * alpha: SDF_EDGE on the edge, falling by 1 / SDF_PX per pixel outward.
+ */
+function sdfAlpha(distance: number): number {
+  const a = SDF_EDGE - distance / SDF_PX;
+  return Math.round(255 * Math.min(1, Math.max(0, a)));
+}
 
-    // The snowflake path, and the group that gives every symbol its fill and
-    // its outline. The outline is a stroke drawn behind the fill, with a width
-    // in screen pixels whatever the symbol's scale (see SYMBOL_OUTLINE_PX).
-    this.svgEl.innerHTML = `
-      <defs>
-        <path id="sf" d="${FLAKE_PATH_D}" vector-effect="non-scaling-stroke"/>
-      </defs>
-      <g id="sf-g" fill="white" stroke="${SYMBOL_OUTLINE_COLOR}"
-         stroke-width="${SYMBOL_OUTLINE_PX}" stroke-linejoin="round"
-         paint-order="stroke"></g>
-    `;
-
-    this.groupEl = this.svgEl.querySelector("#sf-g") as SVGGElement;
-    container.appendChild(this.svgEl);
-  }
-
-  /**
-   * Re-project all points to screen coordinates and rebuild SVG content.
-   *
-   * @param points      Output of extractSnowPoints(), or null to clear.
-   * @param projectMap  map.project() bound to the current MapLibre instance.
-   * @param opacity     Layer opacity (0–1).
-   * @param zoomScale   Factor for the symbols' base sizes (snowSymbolScale).
-   * @param bounds      Current map viewport bounds for culling.
-   */
-  update(
-    points: SnowPoint[] | null,
-    projectMap: (coord: [number, number]) => { x: number; y: number },
-    opacity: number,
-    zoomScale: number,
-    bounds: { west: number; south: number; east: number; north: number },
-  ): void {
-    // Freshly projected: show it, unless the map is still moving (an update
-    // scheduled mid-move would be stale again by the time the move ends).
-    this.svgEl.style.visibility = this.moving ? "hidden" : "";
-    if (!points || opacity <= 0) {
-      this.groupEl.innerHTML = "";
-      this.groupEl.style.opacity = "0";
-      return;
+function sdfImage(
+  size: number,
+  signedDistance: (x: number, y: number) => number,
+): SdfImage {
+  const data = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const o = (y * size + x) * 4;
+      data[o] = data[o + 1] = data[o + 2] = 255;
+      data[o + 3] = sdfAlpha(signedDistance(x + 0.5, y + 0.5));
     }
+  }
+  return { width: size, height: size, data };
+}
 
-    // Geographic padding in degrees: cull points just outside the viewport.
-    const PAD = 3;
-    const { west, south, east, north } = bounds;
+/** The dot: a disc ICON_SYMBOL_PX across, centred in the image. */
+export function buildSnowDotIcon(): SdfImage {
+  const r = ICON_SYMBOL_PX / 2;
+  const size = 2 * (r + ICON_PAD_PX);
+  const c = size / 2;
+  return sdfImage(size, (x, y) => Math.hypot(x - c, y - c) - r);
+}
 
-    const parts: string[] = [];
+/** The snowflake path's vertices, in its own units. */
+function flakeVertices(): [number, number][] {
+  const nums = FLAKE_PATH_D.match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+  const points: [number, number][] = [];
+  for (let i = 0; i + 1 < nums.length; i += 2) points.push([nums[i], nums[i + 1]]);
+  return points;
+}
 
-    for (const pt of points) {
-      if (pt.lng < west - PAD || pt.lng > east + PAD) continue;
-      if (pt.lat < south - PAD || pt.lat > north + PAD) continue;
+/** Distance from (px, py) to the segment (ax, ay)–(bx, by). */
+function segmentDistance(
+  px: number,
+  py: number,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+): number {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const len2 = dx * dx + dy * dy;
+  const t =
+    len2 > 0
+      ? Math.min(1, Math.max(0, ((px - ax) * dx + (py - ay) * dy) / len2))
+      : 0;
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
 
-      const { x, y } = projectMap([pt.lng, pt.lat]);
-      const s = pt.size * zoomScale;
-
-      if (pt.tier === 3) {
-        // SVG transform (applied right-to-left in SVG):
-        //   1. translate(-202,-202) — centre the path near origin
-        //   2. scale(s)             — base size × zoom factor
-        //   3. rotate(rot)          — add visual variety
-        //   4. translate(x,y)       — position on screen
-        const xr = x.toFixed(1);
-        const yr = y.toFixed(1);
-        const sf = s.toFixed(4);
-        const r = pt.rot.toFixed(1);
-        parts.push(
-          `<use href="#sf" transform="translate(${xr},${yr}) rotate(${r}) scale(${sf}) translate(-202,-202)"/>`,
-        );
-      } else {
-        const xr = x.toFixed(1);
-        const yr = y.toFixed(1);
-        parts.push(`<circle cx="${xr}" cy="${yr}" r="${s.toFixed(2)}"/>`);
+/**
+ * The snowflake: the path scaled so it is ICON_SYMBOL_PX high, with its
+ * centre (202, 202) in the image's centre, so it rotates about it as the SVG
+ * symbol did.
+ */
+export function buildSnowFlakeIcon(): SdfImage {
+  const k = ICON_SYMBOL_PX / FLAKE_PATH_HEIGHT;
+  const verts = flakeVertices();
+  const reach = Math.max(
+    ...verts.map(([x, y]) => Math.max(Math.abs(x - 202), Math.abs(y - 202))),
+  );
+  const size = 2 * Math.ceil(reach * k + ICON_PAD_PX);
+  const c = size / 2;
+  const poly = verts.map(([x, y]) => [c + (x - 202) * k, c + (y - 202) * k]);
+  return sdfImage(size, (x, y) => {
+    let inside = false;
+    let d = Infinity;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [xi, yi] = poly[i];
+      const [xj, yj] = poly[j];
+      if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) {
+        inside = !inside;
       }
+      d = Math.min(d, segmentDistance(x, y, xi, yi, xj, yj));
     }
-
-    this.groupEl.style.opacity = String(opacity);
-    this.groupEl.innerHTML = parts.join("");
-  }
-
-  /**
-   * The map has started to move or zoom. The symbols sit at fixed screen
-   * positions and wouldn't follow it, so hide them until the move has ended
-   * and update() has re-projected them.
-   */
-  beginMove(): void {
-    this.moving = true;
-    this.svgEl.style.visibility = "hidden";
-  }
-
-  /** The map has stopped: the next update() re-projects and shows the symbols. */
-  endMove(): void {
-    this.moving = false;
-  }
-
-  /** Remove the SVG element from the DOM. */
-  remove(): void {
-    this.svgEl.remove();
-  }
+    return inside ? -d : d;
+  });
 }
 
-/** The part of a MapLibre map that hideSnowOverlayWhileMoving needs. */
-export interface MapMoveEvents {
-  on(type: "movestart" | "zoomstart" | "moveend", listener: () => void): unknown;
+/** On-screen height of the larger snowflake per unit of the symbols' scale. */
+const LARGE_FLAKE_HEIGHT = FLAKE_PATH_HEIGHT * LARGE_FLAKE_SIZE;
+
+/**
+ * A point's icon size for each pixel of the larger snowflake's height: its
+ * own height (a flake's) or diameter (a dot's) relative to the larger flake,
+ * over the size of its icon image.
+ */
+export function snowIconSizePerFlakePx(point: SnowPoint): number {
+  const height =
+    point.tier === 3
+      ? point.size * FLAKE_PATH_HEIGHT
+      : 2 * point.size;
+  return height / LARGE_FLAKE_HEIGHT / ICON_SYMBOL_PX;
+}
+
+/** The GeoJSON the snow layer draws, one feature per point. */
+export function snowFeatures(
+  points: readonly SnowPoint[],
+): GeoJSON.FeatureCollection<GeoJSON.Point> {
+  return {
+    type: "FeatureCollection",
+    features: points.map((point) => ({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [point.lng, point.lat] },
+      properties: {
+        icon: point.tier === 3 ? SNOW_IMAGE_IDS.flake : SNOW_IMAGE_IDS.dot,
+        size: snowIconSizePerFlakePx(point),
+        rot: point.rot,
+      },
+    })),
+  };
 }
 
 /**
- * Keep the snow overlay hidden while the map moves or zooms: from movestart
- * (or zoomstart) until moveend. The layer update that moveend schedules then
- * re-projects the symbols and shows them again. Drawing the symbols as a
- * MapLibre layer would let them move with the map instead.
+ * The layer's icon-size: the larger flake MIN_FLAKE_PX high up to the first
+ * zoom of `range`, growing ×2 per zoom to MAX_FLAKE_PX at the second, then
+ * held there; each symbol keeps its proportion to it (the feature's `size`).
+ * Without a range (unknown grid spacing) every zoom draws the smallest size.
  */
-export function hideSnowOverlayWhileMoving(
-  map: MapMoveEvents,
-  overlay: Pick<SnowOverlaySVG, "beginMove" | "endMove">,
-): void {
-  map.on("movestart", () => overlay.beginMove());
-  map.on("zoomstart", () => overlay.beginMove());
-  map.on("moveend", () => overlay.endMove());
+export function snowIconSizeExpression(
+  range: [number, number] | null,
+): maplibregl.DataDrivenPropertyValueSpecification<number> {
+  const at = (px: number) => ["*", px, ["get", "size"]];
+  if (!range) return at(MIN_FLAKE_PX) as never;
+  // Rounded so a small pan (another centre latitude) doesn't re-lay the layer.
+  const [z0, z1] = range.map((z) => Math.round(z * 100) / 100);
+  return [
+    "interpolate",
+    ["exponential", 2],
+    ["zoom"],
+    z0,
+    at(MIN_FLAKE_PX),
+    z1,
+    at(MAX_FLAKE_PX),
+  ] as never;
+}
+
+/** The part of a MapLibre map the snow layer uses. */
+export type SnowMap = Pick<
+  maplibregl.Map,
+  | "getSource"
+  | "addSource"
+  | "getLayer"
+  | "addLayer"
+  | "moveLayer"
+  | "getLayersOrder"
+  | "hasImage"
+  | "addImage"
+  | "setLayoutProperty"
+  | "setPaintProperty"
+>;
+
+/**
+ * The layer the snow symbols go under: the first symbol layer from
+ * `weatherBeforeId` up, the first label above the weather and its reference
+ * lines. Undefined (the top of the stack) when there is none.
+ */
+export function snowLayerBeforeId(
+  map: Pick<maplibregl.Map, "getLayersOrder" | "getLayer">,
+  weatherBeforeId: string | undefined,
+): string | undefined {
+  const order = map.getLayersOrder();
+  const from = weatherBeforeId ? Math.max(0, order.indexOf(weatherBeforeId)) : 0;
+  return order
+    .slice(from)
+    .find((id) => id !== SNOW_LAYER_ID && map.getLayer(id)?.type === "symbol");
+}
+
+export interface SnowSymbolState {
+  /** The points to draw, or null for none. */
+  points: readonly SnowPoint[] | null;
+  /** Layer opacity, 0–1. */
+  opacity: number;
+  /** From snowFlakeZoomRange for the model's grid. */
+  zoomRange: [number, number] | null;
+  /** The weather's anchor in the layer stack (see snowLayerBeforeId). */
+  weatherBeforeId: string | undefined;
+}
+
+/** What was last given to each map's layer, so unchanged values aren't re-sent. */
+const applied = new WeakMap<
+  SnowMap,
+  { points: readonly SnowPoint[] | null; size: string; opacity: number }
+>();
+
+/**
+ * Draw `state.points` as the snow layer, adding its images, source and layer
+ * on first use and again after a style swap removed them. With no points the
+ * layer stays and draws nothing.
+ *
+ * The layer allows overlap and ignores placement: a symbol is never dropped
+ * by label collision and never displaces a place name.
+ */
+export function syncSnowSymbols(map: SnowMap, state: SnowSymbolState): void {
+  if (!map.hasImage(SNOW_IMAGE_IDS.dot)) {
+    map.addImage(SNOW_IMAGE_IDS.dot, buildSnowDotIcon(), { sdf: true });
+  }
+  if (!map.hasImage(SNOW_IMAGE_IDS.flake)) {
+    map.addImage(SNOW_IMAGE_IDS.flake, buildSnowFlakeIcon(), { sdf: true });
+  }
+
+  const points = state.points && state.opacity > 0 ? state.points : null;
+  const iconSize = snowIconSizeExpression(state.zoomRange);
+  const sizeKey = JSON.stringify(iconSize);
+  const fresh = !map.getLayer(SNOW_LAYER_ID);
+  const last = fresh ? undefined : applied.get(map);
+
+  const source = map.getSource(SNOW_SOURCE_ID) as
+    | maplibregl.GeoJSONSource
+    | undefined;
+  const data = snowFeatures(points ?? []);
+  if (!source) map.addSource(SNOW_SOURCE_ID, { type: "geojson", data });
+  else if (!last || last.points !== points) source.setData(data);
+
+  const beforeId = snowLayerBeforeId(map, state.weatherBeforeId);
+  if (fresh) {
+    map.addLayer(
+      {
+        id: SNOW_LAYER_ID,
+        type: "symbol",
+        source: SNOW_SOURCE_ID,
+        layout: {
+          "icon-image": ["get", "icon"],
+          "icon-size": iconSize,
+          "icon-rotate": ["get", "rot"],
+          "icon-rotation-alignment": "viewport",
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+        },
+        paint: {
+          "icon-color": "#ffffff",
+          "icon-halo-color": SYMBOL_OUTLINE_COLOR,
+          "icon-halo-width": SYMBOL_HALO_PX,
+          "icon-opacity": state.opacity,
+        },
+      },
+      beforeId,
+    );
+  } else {
+    // Labels added after the layer (after a style swap) belong above it.
+    const order = map.getLayersOrder();
+    const below = beforeId
+      ? order[order.indexOf(beforeId) - 1]
+      : order[order.length - 1];
+    if (below !== SNOW_LAYER_ID) map.moveLayer(SNOW_LAYER_ID, beforeId);
+    if (last?.size !== sizeKey) {
+      map.setLayoutProperty(SNOW_LAYER_ID, "icon-size", iconSize);
+    }
+    if (last?.opacity !== state.opacity) {
+      map.setPaintProperty(SNOW_LAYER_ID, "icon-opacity", state.opacity);
+    }
+  }
+  applied.set(map, { points, size: sizeKey, opacity: state.opacity });
+}
+
+/** Draw no snow symbols (another view or parameter). Keeps the layer. */
+export function clearSnowSymbols(map: SnowMap): void {
+  const source = map.getSource(SNOW_SOURCE_ID) as
+    | maplibregl.GeoJSONSource
+    | undefined;
+  const last = applied.get(map);
+  if (!source || (last && last.points === null)) return;
+  source.setData(snowFeatures([]));
+  if (last) applied.set(map, { ...last, points: null });
 }
