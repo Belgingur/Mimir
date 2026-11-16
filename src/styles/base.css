@@ -383,7 +383,7 @@ input[type="range"] {
 /* The reader's own position (a maplibre Marker), drawn like the belgingur.is
    forecast map's: a yellow dot in a white ring and a soft dark one, readable
    over any weather colour. z-index lifts it above the interleaved map canvas
-   (see .meteogram-pin); it lets clicks through to the map. */
+   (see .meteogram-pin). A click or tap on it opens the forecast there. */
 .mimir-user-location {
   width: 12px;
   height: 12px;
@@ -392,6 +392,14 @@ input[type="range"] {
   box-shadow:
     0 0 0 2px #fff,
     0 0 0 4px rgba(0, 0, 0, 0.5);
-  pointer-events: none;
+  cursor: pointer;
   z-index: 3;
+}
+
+/* A 44 px target around the 12 px dot, so a finger can find it (#84). */
+.mimir-user-location::before {
+  content: "";
+  position: absolute;
+  inset: -16px;
+  border-radius: 50%;
 }

@@ -26,6 +26,7 @@ export const pt: Record<string, string> = {
   "map.myLocation": "Usar a minha localização",
   "map.locationUnavailable": "Não foi possível obter a sua localização.",
   "map.locationBlocked": "A localização está bloqueada para este site. Permita-a nas definições do navegador ou do telefone.",
+  "map.yourLocation": "A sua localização",
   "map.noForecastHere": "Sem previsão aqui — o ponto está fora da área de previsão.",
   "map.variable": "Variável",
   "map.variables": "Variáveis",
