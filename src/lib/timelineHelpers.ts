@@ -145,6 +145,62 @@ export const nowRailRatio = (
   return null;
 };
 
+export type TimelineTick = {
+  /** The step the tick marks. */
+  index: number;
+  /** Its place on the rail, from the rail's own mapping. */
+  ratio: number;
+  /** The first step at or after 00:00 or 12:00 on the viewer's clock. */
+  major: boolean;
+};
+
+const HOUR_MS = 3_600_000;
+
+/**
+ * Tick marks for the timeline's rail, one list per run (#83).
+ *
+ * A run's step can change partway through, so each step takes the rule of the
+ * part it belongs to, read from the gap that leads into it (the first step
+ * from the gap after it): in an hourly part a tick goes on the clock hours
+ * divisible by 3; in a 3- or 6-hourly part, on every step. A step that ends an
+ * hourly part therefore stays unticked rather than crowding the 3-hour tick an
+ * hour before it.
+ *
+ * The first step at or after each 00:00 and 12:00 on the viewer's clock is a
+ * major tick, so a 3-hourly run whose steps miss those hours in the viewer's
+ * zone still shows the day's halves. Ticks only go on steps the run has, and
+ * sit where the rail puts their step, so the axis stays index-linear.
+ */
+export const buildTimelineTicks = (datetimes: string[]): TimelineTick[] => {
+  const ms = datetimes.map((d) => Date.parse(d));
+  if (ms.length === 0 || ms.some((value) => !Number.isFinite(value))) return [];
+  const halfDay = (value: number) => {
+    const date = new Date(value);
+    return `${date.toDateString()} ${date.getHours() < 12 ? "am" : "pm"}`;
+  };
+  const ticks: TimelineTick[] = [];
+  for (let i = 0; i < ms.length; i += 1) {
+    const date = new Date(ms[i]);
+    const major =
+      i > 0
+        ? halfDay(ms[i]) !== halfDay(ms[i - 1])
+        : date.getHours() % 12 === 0 &&
+          date.getMinutes() === 0 &&
+          date.getSeconds() === 0;
+    const gap =
+      i > 0 ? ms[i] - ms[i - 1] : ms.length > 1 ? ms[1] - ms[0] : 3 * HOUR_MS;
+    const ticked = gap >= 3 * HOUR_MS || date.getHours() % 3 === 0;
+    if (major || ticked) {
+      ticks.push({
+        index: i,
+        ratio: timelineRailRatio(i, ms.length),
+        major,
+      });
+    }
+  }
+  return ticks;
+};
+
 export type DatetimeRange = {
   start?: string;
   end?: string;
