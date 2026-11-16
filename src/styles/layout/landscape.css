@@ -6,10 +6,6 @@
    ══════════════════════════════════════════════════════════════════ */
 
 @media (max-height: 500px) and (orientation: landscape) {
-  :root {
-    --bottom-bar-height: 36px;
-  }
-
   /* ── 0. Collapsible chrome: hamburger drives the top-right row ── */
   /* Landscape lays the stack out horizontally (a tall vertical menu would
      overflow the short viewport). The Menu button is always visible and pins to
@@ -195,19 +191,11 @@
   .timeline-play {
     width: 24px;
     height: 24px;
-    font-size: 10px;
     flex-shrink: 0;
   }
 
   .timeline-bubble {
-    top: -22px;
     padding: 2px 6px;
-    font-size: 9px;
-  }
-
-  .timeline-day-segment {
-    padding: 2px 4px;
-    font-size: 9px;
   }
 
   /* ── 4. LEGEND: bottom-left, scaled down for the short landscape canvas ── */
@@ -296,7 +284,7 @@
   }
 
   .chart-modal__subtitle {
-    font-size: 10px;
+    font-size: 11px;
   }
 
   .chart-modal__host {
