@@ -64,12 +64,11 @@ import {
   getInhouseLayerImageScale,
 } from "../lib/inhouseLayerHelpers";
 import {
+  clearSnowSymbols,
   extractSnowPoints,
-  hideSnowOverlayWhileMoving,
-  snowBlockPx,
+  snowFlakeZoomRange,
   snowFramesAreCurrent,
-  SnowOverlaySVG,
-  snowSymbolScale,
+  syncSnowSymbols,
 } from "../lib/snowOverlay";
 import { manifestGridSpacingMeters } from "../lib/modelConfig";
 import type { SnowPoint } from "../lib/snowOverlay";
@@ -276,7 +275,6 @@ export class LayerComposer {
   >(8, { maxBytes: 32 * 1024 * 1024, sizeOf: (c) => c.image.data.byteLength });
 
   /** SVG overlay element mounted over the MapLibre canvas. Created on first use. */
-  private snowOverlaySVG: SnowOverlaySVG | null = null;
 
   private readonly temperatureScaleCValue = TEMPERATURE_SCALE.map(
     ([value, hex]: [number, string]) => [value, parseHexColor(hex)],
@@ -689,13 +687,8 @@ export class LayerComposer {
     const uiState = this.deps.getUiState();
 
     if (layerGroupController.viewMode === "iconography") {
-      // Snow overlay must be hidden when switching to iconography view.
-      this.snowOverlaySVG?.update(null, this.deps.projectMap, 0, 0, {
-        west: 0,
-        south: 0,
-        east: 0,
-        north: 0,
-      });
+      // No snow symbols in the iconography view.
+      clearSnowSymbols(this.deps.getMap());
       const layers = this.buildIconographyLayers();
       this.deps.setOverlayProps({ layers: layers as unknown as LayersList });
       this.lastCompositeLayers = layers;
@@ -1769,8 +1762,9 @@ export class LayerComposer {
           })
         : null;
 
-    // Snow overlay: SVG element mounted over the map, updated on every viewport change.
+    // Snow symbols: a MapLibre symbol layer under the place labels.
     (() => {
+      const map = this.deps.getMap();
       const active = uiState.layerMode === "precip" && uiState.visible;
       const snowLayer = active
         ? catalogController.findInhouseLayerByCandidates(["snow_fraction"])
@@ -1791,20 +1785,8 @@ export class LayerComposer {
           catalogController.selectedFrameTime(layer),
         )
       ) {
-        // Clear overlay when not in precip mode, no data, or frames not current.
-        this.snowOverlaySVG?.update(null, this.deps.projectMap, 0, 0, {
-          west: 0,
-          south: 0,
-          east: 0,
-          north: 0,
-        });
+        clearSnowSymbols(map);
         return;
-      }
-
-      // Lazy-create the SVG element once (mounted to the MapLibre container).
-      if (!this.snowOverlaySVG) {
-        this.snowOverlaySVG = new SnowOverlaySVG(this.deps.getMapContainer());
-        hideSnowOverlayWhileMoving(this.deps.getMap(), this.snowOverlaySVG);
       }
 
       // Extract points; cache by the pair of frames so we re-extract only on new frames.
@@ -1818,30 +1800,16 @@ export class LayerComposer {
         });
       }
 
-      // 8–18 px, from how wide a block of the model's grid is on screen here.
-      const spacing = manifestGridSpacingMeters(snowLayer.manifest);
-      const mb = this.deps.getMapBounds();
-      const scale = snowSymbolScale(
-        spacing === null
-          ? null
-          : snowBlockPx(
-              spacing,
-              this.deps.getMapZoom(),
-              this.deps.getMapCenter().lat,
-            ),
-      );
-      this.snowOverlaySVG.update(
-        points.length > 0 ? points : null,
-        this.deps.projectMap,
-        uiState.opacity,
-        scale,
-        {
-          west: mb.getWest(),
-          south: mb.getSouth(),
-          east: mb.getEast(),
-          north: mb.getNorth(),
-        },
-      );
+      // 8–18 px, from how wide a block of the model's grid is on screen.
+      syncSnowSymbols(map, {
+        points: points.length > 0 ? points : null,
+        opacity: uiState.opacity,
+        zoomRange: snowFlakeZoomRange(
+          manifestGridSpacingMeters(snowLayer.manifest),
+          this.deps.getMapCenter().lat,
+        ),
+        weatherBeforeId: this.deps.getWeatherBeforeId?.(),
+      });
     })();
 
     const layers = [

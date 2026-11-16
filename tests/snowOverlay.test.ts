@@ -1,16 +1,25 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildSnowDotIcon,
+  buildSnowFlakeIcon,
+  clearSnowSymbols,
   extractSnowPoints,
-  hideSnowOverlayWhileMoving,
   MAX_FLAKE_PX,
   MIN_FLAKE_PX,
   type PrecipGrid,
   snowBlockPx,
+  snowFeatures,
+  snowFlakeZoomRange,
   snowFramesAreCurrent,
+  snowIconSizeExpression,
+  snowLayerBeforeId,
+  SNOW_IMAGE_IDS,
+  SNOW_LAYER_ID,
   SNOW_OVERLAY_MIN,
   SNOW_PRECIP_MIN_MM_H,
-  SnowOverlaySVG,
-  snowSymbolScale,
+  SNOW_SOURCE_ID,
+  type SnowMap,
+  syncSnowSymbols,
   SYMBOL_OUTLINE_COLOR,
   SYMBOL_OUTLINE_PX,
   type SnowPoint,
@@ -22,8 +31,34 @@ import { decodeScalarGrid } from "../src/lib/imageProcessing";
 
 /** Height of the snowflake path in its own units, as in snowOverlay.ts. */
 const FLAKE_PATH_HEIGHT = 326.84;
-/** On-screen height, in px, of the larger snowflake at a scale. */
-const largeFlakePx = (scale: number) => 0.027 * scale * FLAKE_PATH_HEIGHT;
+/** Size of a symbol in its icon image (path height, dot diameter), in px. */
+const ICON_SYMBOL_PX = 64;
+
+/**
+ * Evaluate the layer's icon-size at a zoom for a feature's `size`: either
+ * ["*", px, ["get", "size"]], or an exponential interpolation over zoom of
+ * two such stops, clamped outside them, as MapLibre evaluates it.
+ */
+function iconSizeAt(expr: unknown, zoom: number, size: number): number {
+  const product = (e: unknown) => (e as [string, number])[1] * size;
+  const e = expr as unknown[];
+  if (e[0] === "*") return product(e);
+  const [, [, base], , z0, a, z1, b] = e as [
+    string, [string, number], unknown, number, unknown, number, unknown,
+  ];
+  if (zoom <= z0) return product(a);
+  if (zoom >= z1) return product(b);
+  const t = (base ** (zoom - z0) - 1) / (base ** (z1 - z0) - 1);
+  return product(a) + t * (product(b) - product(a));
+}
+
+/** On-screen height, in px, of the larger snowflake on a grid at a zoom. */
+function largeFlakePx(spacing: number | null, zoom: number, lat = 64): number {
+  const large: SnowPoint = { lng: 0, lat: 0, tier: 3, rot: 0, size: 0.027 };
+  const size = snowFeatures([large]).features[0].properties?.size as number;
+  const expr = snowIconSizeExpression(snowFlakeZoomRange(spacing, lat));
+  return iconSizeAt(expr, zoom, size) * ICON_SYMBOL_PX;
+}
 
 describe("snowBlockPx", () => {
   it("is twelve cells of the grid, at the map's scale for the latitude", () => {
@@ -40,10 +75,14 @@ describe("snowBlockPx", () => {
   });
 });
 
-describe("snowSymbolScale", () => {
+describe("the symbols' size per zoom", () => {
   it("makes the larger snowflake half a block high between 8 and 18 px", () => {
-    expect(largeFlakePx(snowSymbolScale(20))).toBeCloseTo(10, 6);
-    expect(largeFlakePx(snowSymbolScale(30))).toBeCloseTo(15, 6);
+    for (const zoom of [5, 5.5, 6]) {
+      const half = snowBlockPx(2500, zoom, 64) / 2;
+      if (half < MIN_FLAKE_PX || half > MAX_FLAKE_PX) continue;
+      // The stops are rounded to 0.01 of a zoom: within 1 %.
+      expect(largeFlakePx(2500, zoom) / half).toBeCloseTo(1, 1);
+    }
   });
 
   it("keeps every symbol between MIN_FLAKE_PX and MAX_FLAKE_PX at every zoom", () => {
@@ -51,7 +90,7 @@ describe("snowSymbolScale", () => {
     expect(MAX_FLAKE_PX).toBe(18);
     for (const spacing of [2500, 9000, 25000]) {
       for (let zoom = 0; zoom <= 14; zoom += 0.5) {
-        const px = largeFlakePx(snowSymbolScale(snowBlockPx(spacing, zoom, 64)));
+        const px = largeFlakePx(spacing, zoom);
         expect(px).toBeGreaterThanOrEqual(MIN_FLAKE_PX - 1e-9);
         expect(px).toBeLessThanOrEqual(MAX_FLAKE_PX + 1e-9);
       }
@@ -61,15 +100,33 @@ describe("snowSymbolScale", () => {
   it("sizes a model it doesn't know by name from its resolution alone", () => {
     // No model id goes in. At zoom 5 and 64° N a 2.5 km grid's block is
     // about 28 px, so its flake is 14 px; a 25 km grid is at the 18 px cap.
-    const fine = largeFlakePx(snowSymbolScale(snowBlockPx(2500, 5, 64)));
-    const coarse = largeFlakePx(snowSymbolScale(snowBlockPx(25000, 5, 64)));
+    const fine = largeFlakePx(2500, 5);
     expect(fine).toBeGreaterThan(13);
     expect(fine).toBeLessThan(15);
-    expect(coarse).toBe(MAX_FLAKE_PX);
+    expect(largeFlakePx(25000, 5)).toBeCloseTo(MAX_FLAKE_PX, 6);
   });
 
   it("draws the smallest size for a grid of unknown spacing", () => {
-    expect(largeFlakePx(snowSymbolScale(null))).toBeCloseTo(MIN_FLAKE_PX, 6);
+    for (const zoom of [3, 9]) {
+      expect(largeFlakePx(null, zoom)).toBeCloseTo(MIN_FLAKE_PX, 6);
+    }
+  });
+
+  it("keeps each symbol's proportion to the larger flake, as the SVG drew them", () => {
+    const points: SnowPoint[] = [
+      { lng: 0, lat: 0, tier: 3, rot: 0, size: 0.02 },
+      { lng: 0, lat: 0, tier: 2, rot: 0, size: 1.25 },
+      { lng: 0, lat: 0, tier: 1, rot: 0, size: 0.75 },
+    ];
+    const [small, dot2, dot1] = snowFeatures(points).features.map(
+      (f) => (f.properties?.size as number) * ICON_SYMBOL_PX * 12,
+    );
+    // At a flake height of 12 px: the SVG's scale was 12 / (0.027 · 326.84),
+    // a flake path · 0.02 of it high, a dot of radius r of it.
+    const scale = 12 / (0.027 * FLAKE_PATH_HEIGHT);
+    expect(small).toBeCloseTo(0.02 * FLAKE_PATH_HEIGHT * scale, 6);
+    expect(dot2).toBeCloseTo(2 * 1.25 * scale, 6);
+    expect(dot1).toBeCloseTo(2 * 0.75 * scale, 6);
   });
 });
 
@@ -368,147 +425,204 @@ describe("snowFramesAreCurrent", () => {
   });
 });
 
-// ── SnowOverlaySVG while the map moves ───────────────────────────────────────
+// ── The map layer ────────────────────────────────────────────────────────────
 
-describe("SnowOverlaySVG while the map moves", () => {
-  /** A stand-in for MapLibre's event surface: on() and a way to fire. */
-  function stubMap() {
-    const listeners = new Map<string, Array<() => void>>();
-    return {
-      on(type: string, listener: () => void) {
-        listeners.set(type, [...(listeners.get(type) ?? []), listener]);
-      },
-      fire(type: string) {
-        for (const listener of listeners.get(type) ?? []) listener();
-      },
-    };
-  }
+/** A stand-in for the parts of a MapLibre map the snow layer uses. */
+function fakeMap(initial: { id: string; type: string }[]) {
+  const layers = [...initial];
+  const specs = new Map<string, Record<string, unknown>>();
+  const sources = new Map<string, { data: unknown; setData(d: unknown): void }>();
+  const images = new Map<string, { image: unknown; options: unknown }>();
+  const calls = { setData: 0, setLayout: 0, setPaint: 0, move: 0 };
+  const map = {
+    getLayersOrder: () => layers.map((l) => l.id),
+    getLayer: (id: string) => layers.find((l) => l.id === id),
+    addLayer(spec: { id: string; type: string }, before?: string) {
+      const i = before ? layers.findIndex((l) => l.id === before) : -1;
+      layers.splice(i < 0 ? layers.length : i, 0, { id: spec.id, type: spec.type });
+      specs.set(spec.id, spec as unknown as Record<string, unknown>);
+    },
+    moveLayer(id: string, before?: string) {
+      calls.move++;
+      const [layer] = layers.splice(layers.findIndex((l) => l.id === id), 1);
+      const i = before ? layers.findIndex((l) => l.id === before) : -1;
+      layers.splice(i < 0 ? layers.length : i, 0, layer);
+    },
+    getSource: (id: string) => sources.get(id),
+    addSource(id: string, spec: { data: unknown }) {
+      const source = {
+        data: spec.data,
+        setData(d: unknown) {
+          calls.setData++;
+          source.data = d;
+        },
+      };
+      sources.set(id, source);
+    },
+    hasImage: (id: string) => images.has(id),
+    addImage: (id: string, image: unknown, options: unknown) =>
+      images.set(id, { image, options }),
+    setLayoutProperty: () => calls.setLayout++,
+    setPaintProperty: () => calls.setPaint++,
+  };
+  /** A style swap: the style's own layers come back, Mímir's are gone. */
+  const swapStyle = () => {
+    layers.splice(0, layers.length, ...initial);
+    sources.clear();
+    images.clear();
+  };
+  return { map: map as unknown as SnowMap, layers, specs, sources, images, calls, swapStyle };
+}
 
-  const point: SnowPoint = { lng: 2, lat: 3, tier: 1, rot: 0, size: 4 };
-  const bounds = { west: -10, south: -10, east: 10, north: 10 };
-  // Two projections: the map before and after it has been panned 50 px.
-  const before = ([lng, lat]: [number, number]) => ({ x: lng * 10, y: lat * 10 });
-  const after = ([lng, lat]: [number, number]) => ({ x: lng * 10 + 50, y: lat * 10 });
+const STYLE = [
+  { id: "background", type: "background" },
+  { id: "water-name-basemap", type: "symbol" },
+  { id: "weather-raster", type: "custom" },
+  { id: "mimir-reference-coast", type: "line" },
+  { id: "mimir-landmark-water", type: "symbol" },
+  { id: "place-city", type: "symbol" },
+];
+const flake: SnowPoint = { lng: 1, lat: 1, tier: 3, rot: 10, size: 0.027 };
+const dot: SnowPoint = { lng: 2, lat: 3, tier: 2, rot: 0, size: 1.25 };
+const state = (points: SnowPoint[] | null, opacity = 1) => ({
+  points,
+  opacity,
+  zoomRange: snowFlakeZoomRange(2500, 64),
+  weatherBeforeId: "mimir-reference-coast",
+});
 
-  function setup() {
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    const overlay = new SnowOverlaySVG(container);
-    const map = stubMap();
-    hideSnowOverlayWhileMoving(map, overlay);
-    const svg = container.querySelector("svg") as SVGSVGElement;
-    const cx = () => svg.querySelector("circle")?.getAttribute("cx");
-    return { container, overlay, map, svg, cx };
-  }
-
-  it("hides the symbols on movestart and shows them re-projected after moveend", () => {
-    const { container, overlay, map, svg, cx } = setup();
-    overlay.update([point], before, 1, 1, bounds);
-    expect(svg.style.visibility).toBe("");
-    expect(cx()).toBe("20.0");
-
-    map.fire("movestart");
-    expect(svg.style.visibility).toBe("hidden");
-
-    // An update scheduled mid-move (zoomstart schedules one) keeps it hidden.
-    overlay.update([point], after, 1, 1, bounds);
-    expect(svg.style.visibility).toBe("hidden");
-
-    map.fire("moveend");
-    overlay.update([point], after, 1, 1, bounds);
-    expect(svg.style.visibility).toBe("");
-    expect(cx()).toBe("70.0");
-    container.remove();
+describe("the snow symbol layer", () => {
+  it("goes under the first label above the weather, so place names are drawn over it", () => {
+    const { map, layers } = fakeMap(STYLE);
+    expect(snowLayerBeforeId(map, "mimir-reference-coast")).toBe("mimir-landmark-water");
+    syncSnowSymbols(map, state([flake, dot]));
+    const ids = layers.map((l) => l.id);
+    expect(ids.indexOf(SNOW_LAYER_ID)).toBe(ids.indexOf("mimir-landmark-water") - 1);
+    // Above the weather and its reference lines.
+    expect(ids.indexOf(SNOW_LAYER_ID)).toBeGreaterThan(ids.indexOf("mimir-reference-coast"));
   });
 
-  it("draws the symbols at the scale it is given, 8–18 px for the flake", () => {
-    const { container, overlay, svg } = setup();
-    const flake: SnowPoint = { lng: 1, lat: 1, tier: 3, rot: 10, size: 0.027 };
-    const dot: SnowPoint = { lng: 2, lat: 3, tier: 2, rot: 0, size: 1.25 };
-    const sizes = () => {
-      const scale = Number(
-        svg.querySelector("use")?.getAttribute("transform")?.match(/scale\(([\d.]+)\)/)?.[1],
-      );
-      const radius = Number(svg.querySelector("circle")?.getAttribute("r"));
-      return { flakePx: scale * FLAKE_PATH_HEIGHT, dotPx: radius * 2 };
-    };
-
-    // A block 24 px wide: the flake is 12 px, the dot keeps its proportion.
-    overlay.update([flake, dot], before, 1, snowSymbolScale(24), bounds);
-    expect(sizes().flakePx).toBeCloseTo(12, 1);
-    expect(sizes().dotPx).toBeCloseTo((12 / (0.027 * FLAKE_PATH_HEIGHT)) * 2.5, 1);
-
-    // A tiny block (zoomed far out) and a huge one (deepest zoom).
-    overlay.update([flake, dot], before, 1, snowSymbolScale(2), bounds);
-    expect(sizes().flakePx).toBeCloseTo(MIN_FLAKE_PX, 1);
-    overlay.update([flake, dot], before, 1, snowSymbolScale(1000), bounds);
-    expect(sizes().flakePx).toBeCloseTo(MAX_FLAKE_PX, 1);
-    expect(sizes().dotPx).toBeLessThan(MAX_FLAKE_PX);
-    container.remove();
+  it("is never dropped by label collision and never displaces a label", () => {
+    const { map, specs } = fakeMap(STYLE);
+    syncSnowSymbols(map, state([flake]));
+    const layout = specs.get(SNOW_LAYER_ID)?.layout as Record<string, unknown>;
+    expect(layout["icon-allow-overlap"]).toBe(true);
+    expect(layout["icon-ignore-placement"]).toBe(true);
   });
 
-  it("hides the symbols on zoomstart too", () => {
-    const { container, overlay, map, svg } = setup();
-    overlay.update([point], before, 1, 1, bounds);
-    map.fire("zoomstart");
-    expect(svg.style.visibility).toBe("hidden");
-    map.fire("moveend");
-    overlay.update([point], after, 1, 1, bounds);
-    expect(svg.style.visibility).toBe("");
-    container.remove();
+  it("draws one feature per point, at the point, with its icon and rotation", () => {
+    const { map, sources } = fakeMap(STYLE);
+    syncSnowSymbols(map, state([flake, dot]));
+    const data = sources.get(SNOW_SOURCE_ID)?.data as GeoJSON.FeatureCollection<GeoJSON.Point>;
+    expect(data.features.map((f) => f.geometry.coordinates)).toEqual([[1, 1], [2, 3]]);
+    expect(data.features.map((f) => f.properties?.icon)).toEqual([
+      SNOW_IMAGE_IDS.flake,
+      SNOW_IMAGE_IDS.dot,
+    ]);
+    expect(data.features.map((f) => f.properties?.rot)).toEqual([10, 0]);
+  });
+
+  it("gives the symbols a white fill and a dark outline as a halo of the SDF icons", () => {
+    const { map, specs, images } = fakeMap(STYLE);
+    syncSnowSymbols(map, state([flake]));
+    for (const id of Object.values(SNOW_IMAGE_IDS)) {
+      expect(images.get(id)?.options).toEqual({ sdf: true });
+    }
+    const paint = specs.get(SNOW_LAYER_ID)?.paint as Record<string, unknown>;
+    expect(paint["icon-color"]).toBe("#ffffff");
+    expect(paint["icon-halo-color"]).toBe(SYMBOL_OUTLINE_COLOR);
+    // Half of a 1 px edge centred on the outline, as the SVG stroke behind
+    // the fill showed; in screen pixels, whatever the icon size.
+    expect(paint["icon-halo-width"]).toBe(SYMBOL_OUTLINE_PX / 2);
+  });
+
+  it("moves the symbols with the map: nothing listens for map moves", () => {
+    const { map, calls } = fakeMap(STYLE);
+    const points = [flake];
+    syncSnowSymbols(map, state(points));
+    syncSnowSymbols(map, state(points));
+    // The same points (one cached list per pair of frames) and size: nothing re-sent, nothing moved.
+    expect(calls).toEqual({ setData: 0, setLayout: 0, setPaint: 0, move: 0 });
+  });
+
+  it("sends new points, sizes and opacity only when they change", () => {
+    const { map, calls } = fakeMap(STYLE);
+    syncSnowSymbols(map, state([flake]));
+    syncSnowSymbols(map, state([dot], 0.5));
+    expect(calls).toMatchObject({ setData: 1, setPaint: 1, setLayout: 0 });
+    syncSnowSymbols(map, { ...state([dot], 0.5), zoomRange: snowFlakeZoomRange(9000, 64) });
+    expect(calls.setLayout).toBe(1);
+  });
+
+  it("clears to no features and back", () => {
+    const { map, sources } = fakeMap(STYLE);
+    syncSnowSymbols(map, state([flake, dot]));
+    clearSnowSymbols(map);
+    const count = () =>
+      (sources.get(SNOW_SOURCE_ID)?.data as GeoJSON.FeatureCollection).features.length;
+    expect(count()).toBe(0);
+    syncSnowSymbols(map, state([flake, dot]));
+    expect(count()).toBe(2);
+  });
+
+  it("is put back under the labels after a style swap", () => {
+    const { map, layers, images, swapStyle } = fakeMap(STYLE);
+    syncSnowSymbols(map, state([flake]));
+    swapStyle();
+    syncSnowSymbols(map, state([flake]));
+    const ids = layers.map((l) => l.id);
+    expect(ids.indexOf(SNOW_LAYER_ID)).toBe(ids.indexOf("mimir-landmark-water") - 1);
+    expect(images.size).toBe(2);
+  });
+
+  it("moves under a label layer added above the weather after it", () => {
+    const { map, layers } = fakeMap(STYLE);
+    syncSnowSymbols(map, state([flake]));
+    // A label layer slotted in right below the snow layer, above the weather.
+    layers.splice(layers.findIndex((l) => l.id === SNOW_LAYER_ID), 0, {
+      id: "mimir-landmark-peak",
+      type: "symbol",
+    });
+    syncSnowSymbols(map, state([flake]));
+    const ids = layers.map((l) => l.id);
+    expect(ids.indexOf(SNOW_LAYER_ID)).toBe(ids.indexOf("mimir-landmark-peak") - 1);
   });
 });
 
-// ── SnowOverlaySVG: the symbols' outline ─────────────────────────────────────
+describe("the snow icons", () => {
+  /** MapLibre's SDF edge: alpha 6/8 (192 of 255). */
+  const EDGE = 192;
+  const alphaAt = (icon: { width: number; data: Uint8Array }, x: number, y: number) =>
+    icon.data[(y * icon.width + x) * 4 + 3];
 
-describe("SnowOverlaySVG outline", () => {
-  const bounds = { west: -10, south: -10, east: 10, north: 10 };
-  const project = ([lng, lat]: [number, number]) => ({ x: lng * 10, y: lat * 10 });
-  const flake: SnowPoint = { lng: 1, lat: 1, tier: 3, rot: 10, size: 0.027 };
-  const dot: SnowPoint = { lng: 2, lat: 3, tier: 2, rot: 0, size: 1.25 };
-
-  function setup() {
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    const overlay = new SnowOverlaySVG(container);
-    const svg = container.querySelector("svg") as SVGSVGElement;
-    const group = svg.querySelector("#sf-g") as SVGGElement;
-    return { container, overlay, svg, group };
-  }
-
-  it("uses no SVG filter: WebKit draws a filtered group this large at a reduced resolution", () => {
-    const { container, overlay, svg, group } = setup();
-    overlay.update([flake, dot], project, 1, snowSymbolScale(1000), bounds);
-    expect(svg.querySelector("filter")).toBeNull();
-    expect(group.hasAttribute("filter")).toBe(false);
-    expect(svg.innerHTML).not.toContain("filter");
-    container.remove();
-  });
-
-  it("gives every symbol a dark outline, drawn behind its white fill", () => {
-    const { container, group } = setup();
-    expect(group.getAttribute("fill")).toBe("white");
-    expect(group.getAttribute("stroke")).toBe(SYMBOL_OUTLINE_COLOR);
-    expect(group.getAttribute("paint-order")).toBe("stroke");
-    container.remove();
-  });
-
-  it("keeps the outline's width in screen pixels, whatever the symbols' scale", () => {
-    const { container, overlay, svg, group } = setup();
-    // The snowflake path is drawn through <use> with a scale: only
-    // non-scaling-stroke on the path itself keeps the stroke from scaling.
-    expect(svg.querySelector("#sf")?.getAttribute("vector-effect")).toBe(
-      "non-scaling-stroke",
-    );
-    for (const zoom of [3, 5, 9.5]) {
-      overlay.update([flake, dot], project, 1, snowSymbolScale(zoom), bounds);
-      expect(group.getAttribute("stroke-width")).toBe(String(SYMBOL_OUTLINE_PX));
-      // No symbol overrides the group's outline.
-      for (const symbol of group.children) {
-        expect(symbol.hasAttribute("stroke-width")).toBe(false);
-        expect(symbol.hasAttribute("stroke")).toBe(false);
+  it("are distance fields: opaque inside, the edge at 6/8, room for the halo outside", () => {
+    for (const icon of [buildSnowDotIcon(), buildSnowFlakeIcon()]) {
+      const c = icon.width / 2;
+      // The centre of the dot and of the flake is inside the shape.
+      expect(alphaAt(icon, c, c)).toBe(255);
+      // The corner is outside, beyond the halo's reach.
+      expect(alphaAt(icon, 0, 0)).toBe(0);
+      // Some pixels sit on the edge band.
+      let edge = 0;
+      for (let i = 3; i < icon.data.length; i += 4) {
+        if (Math.abs(icon.data[i] - EDGE) <= 16) edge++;
       }
+      expect(edge).toBeGreaterThan(0);
     }
-    container.remove();
+  });
+
+  it("draw the dot ICON_SYMBOL_PX across and the flake ICON_SYMBOL_PX high", () => {
+    const span = (icon: { width: number; height: number; data: Uint8Array }, axis: "x" | "y") => {
+      const c = Math.floor(icon.width / 2);
+      let inside = 0;
+      for (let i = 0; i < icon.width; i++) {
+        const a = axis === "x" ? alphaAt(icon, i, c) : alphaAt(icon, c, i);
+        if (a >= EDGE) inside++;
+      }
+      return inside;
+    };
+    expect(Math.abs(span(buildSnowDotIcon(), "x") - ICON_SYMBOL_PX)).toBeLessThanOrEqual(1);
+    // The flake's vertical arm runs the path's full height through its centre.
+    expect(Math.abs(span(buildSnowFlakeIcon(), "y") - ICON_SYMBOL_PX)).toBeLessThanOrEqual(2);
   });
 });
