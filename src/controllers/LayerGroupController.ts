@@ -243,7 +243,7 @@ export class LayerGroupController {
 
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "layer-slot";
+      button.className = "layer-slot has-menu-label";
       button.dataset.layerMode = group.id;
       const groupTitle = t(group.title);
       button.title = isWindGroup
@@ -258,10 +258,12 @@ export class LayerGroupController {
         button.classList.add("layer-slot--wind");
         button.dataset.windStyleBadge = this.deps.getWindBadge();
       }
+      // The visible name (styles/components/menu-label.css) repeats the
+      // aria-label, so it is hidden from assistive tech: read once.
       button.innerHTML = `
+        <span class="menu-label" aria-hidden="true">${groupTitle}</span>
         <span class="layer-slot__button${isSelected ? " is-active" : ""}">
           <span class="layer-slot__icon" aria-hidden="true">${LAYER_GROUP_ICONS[group.id]}</span>
-          <span class="layer-slot__sr">${groupTitle}</span>
         </span>
       `;
 

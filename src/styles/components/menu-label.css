@@ -1,0 +1,124 @@
+/* ══════════════════════════════════════════════════════════════════
+   MENU LABELS — a name beside each icon button in the open menu column
+   ──────────────────────────────────────────────────────────────────
+   To give a button in the menu column a visible name:
+
+     <button class="… has-menu-label" aria-label="Name">
+       <span class="menu-label" aria-hidden="true">Name</span>
+       <span class="…icon square…">…</span>
+     </button>
+
+   - The label sits to the left of the icon, wherever it is in the markup.
+   - The button's aria-label is the same text as the label, from the same
+     translation key, and the label is aria-hidden: the name is read once,
+     and it is still there where the label is hidden (short landscape).
+   - The square (background, border, active orange) belongs on the icon,
+     not on the button: in the open column the button is a full-width row.
+
+   The labels show whenever the vertical menu is open (chrome-collapse.css's
+   scope, which leaves out short landscape screens, where the menu is a
+   horizontal strip and stays icons only). Anywhere else they are hidden.
+   ══════════════════════════════════════════════════════════════════ */
+
+.menu-label {
+  display: none;
+}
+
+@media not all and (max-height: 500px) and (orientation: landscape) {
+  body.chrome-open {
+    --menu-icon-size: var(--icon-button-size);
+  }
+
+  body.chrome-open .has-menu-label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    width: 100%;
+  }
+
+  body.chrome-open .has-menu-label > .menu-label {
+    display: block !important;
+    order: -1;
+    position: static;
+    transform: none;
+    opacity: 1;
+    padding: 0 0 0 6px;
+    border-radius: 0;
+    background: none;
+    color: var(--text-on-dark);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  /* The hover tooltip repeated the name; the label shows it now. */
+  body.chrome-open .layer-slot.has-menu-label::after {
+    display: none;
+  }
+
+  /* Rows fill the column; the language button has no label and keeps to the
+     right edge with the icons. */
+  body.chrome-open .view-toggle--map {
+    align-items: stretch;
+  }
+
+  body.chrome-open .view-toggle--map .locale-switcher {
+    align-self: flex-end;
+  }
+
+  /* Forecast / Icons: the square moves from the button to its icon. */
+  body.chrome-open .mode-icon-button.has-menu-label {
+    height: auto;
+    padding: 0;
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+    color: var(--text-on-dark);
+  }
+
+  body.chrome-open .mode-icon-button.has-menu-label .mode-icon-button__icon {
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    width: var(--menu-icon-size);
+    height: var(--menu-icon-size);
+    padding: calc((var(--menu-icon-size) - 22px) / 2);
+    border: 1px solid var(--border-on-dark);
+    border-radius: var(--radius-lg);
+    background: rgba(255, 255, 255, 0.08);
+    transition:
+      background 120ms ease,
+      border-color 120ms ease,
+      box-shadow 120ms ease;
+  }
+
+  body.chrome-open
+    .mode-icon-button.has-menu-label:is(:hover, :focus-visible)
+    .mode-icon-button__icon {
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.14);
+  }
+
+  body.chrome-open
+    .mode-icon-button.has-menu-label.is-active
+    .mode-icon-button__icon {
+    background: linear-gradient(
+      180deg,
+      var(--accent-orange-strong) 0%,
+      var(--accent-orange-strong-hover) 100%
+    );
+    color: var(--text-on-orange);
+    border-color: var(--accent-orange-border);
+    box-shadow: 0 8px 18px var(--accent-orange-glow);
+  }
+}
+
+/* Phones use the smaller square for the mode buttons (mobile-small.css). */
+@media (max-width: 480px) and (not ((max-height: 500px) and (orientation: landscape))) {
+  body.chrome-open {
+    --menu-icon-size: var(--icon-button-sm);
+  }
+}

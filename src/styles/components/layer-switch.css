@@ -321,18 +321,6 @@ body.view-iconography.chrome-open .layer-switch-card {
   height: 100%;
 }
 
-.layer-slot__sr {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
 .layer-slot:hover .layer-slot__button,
 .layer-slot:focus-visible .layer-slot__button {
   border-color: rgba(255, 255, 255, 0.2);

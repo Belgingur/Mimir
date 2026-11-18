@@ -337,7 +337,7 @@
             <button
               id="view-forecast"
               type="button"
-              class="mode-icon-button is-active"
+              class="mode-icon-button has-menu-label is-active"
               aria-label="Forecast"
               aria-pressed="true"
               title="Forecast"
@@ -367,19 +367,19 @@
                   <circle cx="12" cy="13" r="2" />
                 </svg>
               </span>
-              <span class="mode-icon-button__label" data-i18n="nav.forecast"
+              <span class="mode-icon-button__label menu-label" aria-hidden="true" data-i18n="nav.forecast"
                 >Forecast</span
               >
             </button>
             <button
               id="view-iconography"
               type="button"
-              class="mode-icon-button"
-              aria-label="Iconography"
+              class="mode-icon-button has-menu-label"
+              aria-label="Icons"
               aria-pressed="false"
-              title="Forecast icons"
-              data-i18n="nav.forecastIcons"
-              data-i18n-attr="title"
+              title="Icons"
+              data-i18n="nav.icons"
+              data-i18n-attr="aria-label,title"
             >
               <span class="mode-icon-button__icon" aria-hidden="true">
                 <svg
@@ -398,7 +398,7 @@
                   <path d="M9 22h6" />
                 </svg>
               </span>
-              <span class="mode-icon-button__label" data-i18n="nav.icons"
+              <span class="mode-icon-button__label menu-label" aria-hidden="true" data-i18n="nav.icons"
                 >Icons</span
               >
             </button>
