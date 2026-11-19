@@ -49,14 +49,28 @@ describe("setupLegendDrag", () => {
     setupLegendDrag(card, constraint);
   });
 
-  it("adds is-dragging class on pointerdown", () => {
-    const event = new PointerEvent("pointerdown", {
-      clientX: 150,
-      clientY: 120,
-      button: 0,
-    });
-    card.dispatchEvent(event);
+  it("adds is-dragging once the pointer has really moved", () => {
+    card.dispatchEvent(
+      new PointerEvent("pointerdown", { clientX: 150, clientY: 120, button: 0 }),
+    );
+    expect(card.classList.contains("is-dragging")).toBe(false);
+    window.dispatchEvent(
+      new PointerEvent("pointermove", { clientX: 180, clientY: 120 }),
+    );
     expect(card.classList.contains("is-dragging")).toBe(true);
+  });
+
+  it("treats a few pixels of wobble as a click: the card isn't moved", () => {
+    card.dispatchEvent(
+      new PointerEvent("pointerdown", { clientX: 150, clientY: 120, button: 0 }),
+    );
+    window.dispatchEvent(
+      new PointerEvent("pointermove", { clientX: 153, clientY: 118 }),
+    );
+    window.dispatchEvent(new PointerEvent("pointerup"));
+    expect(card.style.top).toBe("");
+    expect(card.style.left).toBe("");
+    expect(card.classList.contains("is-dragging")).toBe(false);
   });
 
   it("ignores non-primary button", () => {
@@ -96,6 +110,9 @@ describe("setupLegendDrag", () => {
       button: 0,
     });
     card.dispatchEvent(down);
+    window.dispatchEvent(
+      new PointerEvent("pointermove", { clientX: 200, clientY: 200 }),
+    );
     expect(card.classList.contains("is-dragging")).toBe(true);
 
     window.dispatchEvent(new PointerEvent("pointerup"));

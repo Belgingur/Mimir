@@ -1,3 +1,6 @@
+/** Pointer movement up to this many pixels is still a click, not a drag. */
+export const DRAG_SLOP_PX = 5;
+
 export function setupLegendDrag(
   card: HTMLDivElement,
   constraintEl: HTMLElement,
@@ -5,6 +8,9 @@ export function setupLegendDrag(
   let offsetX = 0;
   let offsetY = 0;
   let wasDragged = false;
+  let startX = 0;
+  let startY = 0;
+  let moving = false;
 
   const resetPosition = () => {
     if (!wasDragged) return;
@@ -26,6 +32,19 @@ export function setupLegendDrag(
   };
 
   const move = (event: PointerEvent) => {
+    // A click wobbles by a pixel or two; only a real move is a drag. Moving
+    // the card on that wobble pinned it to where it was, by its top edge, so
+    // it no longer followed the CSS position (e.g. its own height changing).
+    if (!moving) {
+      if (
+        Math.abs(event.clientX - startX) <= DRAG_SLOP_PX &&
+        Math.abs(event.clientY - startY) <= DRAG_SLOP_PX
+      ) {
+        return;
+      }
+      moving = true;
+      card.classList.add("is-dragging");
+    }
     const mapRect = constraintEl.getBoundingClientRect();
     const legendRect = card.getBoundingClientRect();
     const left = Math.min(
@@ -55,7 +74,9 @@ export function setupLegendDrag(
     const rect = card.getBoundingClientRect();
     offsetX = event.clientX - rect.left;
     offsetY = event.clientY - rect.top;
-    card.classList.add("is-dragging");
+    startX = event.clientX;
+    startY = event.clientY;
+    moving = false;
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", stop);
     window.addEventListener("pointercancel", stop);
