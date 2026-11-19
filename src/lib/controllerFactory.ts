@@ -43,6 +43,7 @@ import {
 } from "./resolveClickedPlace";
 import { resolveMapClickTarget } from "./mapClickRouting";
 import { setupLegendDrag } from "./legendDrag";
+import { setupLegendCollapse, type LegendCollapse } from "./legendCollapse";
 import { initMobileDrawer } from "./mobileDrawer";
 import { initCenterReadout, type CenterReadout } from "./centerReadout";
 import { isTransientCrosshairEnabled } from "./transientCrosshairFlag";
@@ -1350,7 +1351,10 @@ export function createControllers(config: ControllerFactoryConfig) {
   // shows "Reykjavík" rather than "64.143, -21.937".
   const placeLabeller = createPlaceLabeller();
 
+  // Set up with the legend card further down; read lazily by the map's click.
+  let legendCollapse: LegendCollapse | null = null;
   attachMapEventHandlers(map, {
+    takeMapClick: (x, y) => legendCollapse?.foldIfOver(x, y) ?? false,
     showTransientNotice: (message: string) => transientNotice.show(message),
     getPlaceResolver: () => placeResolver,
     onPlaceResolved: (
@@ -1404,6 +1408,7 @@ export function createControllers(config: ControllerFactoryConfig) {
 
   if (dom.legendStackCardEl) {
     setupLegendDrag(dom.legendStackCardEl, dom.mapWrap);
+    legendCollapse = setupLegendCollapse(dom.legendStackCardEl);
   }
   if (dom.mapTimeBubbleEl) {
     // Drag wiring lives on the element, so it only needs doing once. The

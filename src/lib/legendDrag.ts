@@ -67,6 +67,9 @@ export function setupLegendDrag(
 
   card.addEventListener("pointerdown", (event) => {
     if (event.button !== 0) return;
+    // A press on a button inside the card (the folded legend's tab) is a
+    // click, not the start of a drag.
+    if ((event.target as Element | null)?.closest("button")) return;
     // Never start a drag from a touch — a touch on the legend must fall through
     // to the map so panning/pinching keeps working over it. Dragging the legend
     // is a mouse/pen affordance only.

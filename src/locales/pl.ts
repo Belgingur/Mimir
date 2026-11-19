@@ -99,6 +99,10 @@ export const pl: Record<string, string> = {
   "unit.seconds": "s",
   "unit.metres": "m",
 
+  // ── Legend card ──────────────────────────────────────────────────────
+  "legend.show": "Pokaż legendę",
+  "legend.hide": "Ukryj legendę",
+
   // ── Compass directions (16-point) ────────────────────────────────────
   // International abbreviations are standard in Polish meteorology (IMGW notation).
   "dir.N": "N",

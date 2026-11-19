@@ -126,3 +126,22 @@ describe("the legend's height on desktop (#97)", () => {
     );
   });
 });
+
+describe("the legend's card", () => {
+  it("hugs the legend instead of taking the phone rule's full width", () => {
+    // mobile.css gives every .control `min-width: 100%` up to 640px wide; the
+    // card is see-through, so the stretch was invisible but took clicks and
+    // taps across the whole row.
+    const [rule] = rulesFor(legend, ".legend-stack-card.control");
+    expect(rule).toMatch(/min-width:\s*0/);
+  });
+
+  it("lets the folded tab take a tap on touch screens", () => {
+    const touch = legend.slice(
+      legend.indexOf("@media (hover: none) and (pointer: coarse)"),
+    );
+    expect(rulesFor(touch, "  .legend-stack-card .legend-expand")[0]).toMatch(
+      /pointer-events:\s*auto/,
+    );
+  });
+});

@@ -89,6 +89,10 @@ export const en: Record<string, string> = {
   "unit.seconds": "s",
   "unit.metres": "m",
 
+  // ── Legend card ──────────────────────────────────────────────────────
+  "legend.show": "Show legend",
+  "legend.hide": "Hide legend",
+
   // ── Compass directions (16-point) ────────────────────────────────────
   "dir.N": "N",
   "dir.NNE": "NNE",
