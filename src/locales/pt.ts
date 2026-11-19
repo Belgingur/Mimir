@@ -75,6 +75,10 @@ export const pt: Record<string, string> = {
   "unit.wm2": "W/m²",
   "unit.seconds": "s",
   "unit.metres": "m",
+
+  // ── Legend card ──────────────────────────────────────────────────────
+  "legend.show": "Mostrar legenda",
+  "legend.hide": "Ocultar legenda",
   // ── Compass directions (16-point) ────────────────────────────────────
   "dir.N": "N",
   "dir.NNE": "NNE",

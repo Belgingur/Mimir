@@ -33,6 +33,11 @@ export interface MapEventDeps {
   /** Resolves a clicked point to a named place — basemap label first, bundled
    *  dataset as fallback. Optional so the handlers still work headless. */
   getPlaceResolver?: () => PlaceResolver | null;
+  /** Given the click's screen position: true if something drawn over the map
+   *  took the click (on phones the legend lets touches through to the map so a
+   *  pan can start on it, and a tap on it folds it away), in which case the
+   *  click goes no further. */
+  takeMapClick?: (clientX: number, clientY: number) => boolean;
   /** Called with the resolved place (or null) on every map click, together with
    *  the clicked coordinate the result belongs to. */
   onPlaceResolved?: (
@@ -138,6 +143,9 @@ export function attachMapEventHandlers(
   });
 
   map.on("click", (event: maplibregl.MapMouseEvent) => {
+    const { clientX, clientY } = event.originalEvent;
+    if (deps.takeMapClick?.(clientX, clientY)) return;
+
     // Resolve the clicked place on every click, independently of what the click
     // goes on to open. Synchronous, and both paths are local — no geocoding.
     const resolved =

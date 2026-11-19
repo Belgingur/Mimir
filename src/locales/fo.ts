@@ -89,6 +89,10 @@ export const fo: Record<string, string> = {
   "unit.seconds": "s",
   "unit.metres": "m",
 
+  // ── Legend card ──────────────────────────────────────────────────────
+  "legend.show": "Vís tekningarlykil",
+  "legend.hide": "Fjal tekningarlykil",
+
   // ── Compass directions (16-point) ────────────────────────────────────
   // norður, eystur, suður, vestur
   "dir.N": "N",

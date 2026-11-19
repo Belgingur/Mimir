@@ -355,3 +355,59 @@ describe("attachMapEventHandlers hover while the meteogram is open", () => {
     expect(catalog.scheduleInhouseContourHover).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("a map click something over the map takes", () => {
+  function setup(taken: boolean) {
+    const { map, emit } = createMap(false);
+    const takeMapClick = vi.fn(() => taken);
+    const resolve = vi.fn(() => null);
+    const cancelPendingClick = vi.fn();
+    const deps = {
+      getOverlay: () => ({}),
+      getLayerComposer: () => ({}),
+      getCatalogController: () => ({ inhouseSelectedModel: "gfs-1" }),
+      getLayerGroupController: () => ({ viewMode: "forecast" }),
+      getTooltipController: () => ({ clearAllAddons: vi.fn() }),
+      getIconographyController: () => undefined,
+      getWavegramController: () => ({ isOpen: false }),
+      getMeteogramController: () => ({ cancelPendingClick }),
+      getPlaceResolver: () => ({ resolve }),
+      takeMapClick,
+      getUiState: () => ({ layerMode: "temperature" }),
+      getPersistedState: () => null,
+      styleLoaded: new Promise<void>(() => {}),
+      setMapReady: vi.fn(),
+      initWeather: vi.fn(() => Promise.resolve()),
+      scheduleUpdateLayers: vi.fn(),
+      schedulePersistState: vi.fn(),
+    } as unknown as MapEventDeps;
+    attachMapEventHandlers(map as never, deps);
+    const click = () =>
+      emit("click", {
+        point: { x: 30, y: 700 },
+        lngLat: { lng: -20, lat: 64 },
+        originalEvent: { clientX: 30, clientY: 700 },
+      });
+    return { click, takeMapClick, resolve, cancelPendingClick };
+  }
+
+  it("is offered the click's screen position first", () => {
+    const { click, takeMapClick } = setup(true);
+    click();
+    expect(takeMapClick).toHaveBeenCalledWith(30, 700);
+  });
+
+  it("stops it there: no place is resolved and no forecast is opened", () => {
+    const { click, resolve, cancelPendingClick } = setup(true);
+    click();
+    expect(resolve).not.toHaveBeenCalled();
+    expect(cancelPendingClick).not.toHaveBeenCalled();
+  });
+
+  it("lets the click through when it doesn't take it", () => {
+    const { click, resolve, cancelPendingClick } = setup(false);
+    click();
+    expect(resolve).toHaveBeenCalledTimes(1);
+    expect(cancelPendingClick).toHaveBeenCalledTimes(1);
+  });
+});

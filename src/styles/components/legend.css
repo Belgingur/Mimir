@@ -29,27 +29,17 @@
   border-radius: 0;
 }
 
-.legend-stack-card.is-dragging {
-  cursor: grabbing;
+/* Hug the legend. The phone rule `.control { min-width: 100% }` (mobile.css,
+   ≤640px) stretched this see-through card across the window, so a click or a
+   tap anywhere along that row counted as one on the legend. */
+.legend-stack-card.control {
+  min-width: 0;
 }
 
 /* The colour scale describes the forecast raster, which isn't shown in
    iconography view — hide it there. */
 body.view-iconography .legend-stack-card {
   display: none !important;
-}
-
-/* On touch devices the legend is purely informational — there is nothing to
-   tap inside it. Letting it intercept pointers meant a touch starting on (or
-   near) the colour ramp dragged the legend instead of panning the map.
-   pointer-events: none passes every touch straight through to the map, so
-   pan/pinch work everywhere, including over the legend. Mouse dragging is
-   preserved on hover-capable (desktop) devices, which don't match this query. */
-@media (hover: none) and (pointer: coarse) {
-  .legend-stack-card {
-    pointer-events: none;
-    touch-action: auto;
-  }
 }
 
 .legend-stack-card .legend-host {
@@ -177,4 +167,124 @@ body.view-iconography .legend-stack-card {
   width: 10px;
   margin-left: 3px;
   border-top: 1px solid var(--text);
+}
+
+/* ── Folding the legend away ───────────────────────────────────────────────
+   A click or tap on the legend folds it into a tab with the current layer's
+   icon (legendCollapse.ts). The open legend looks the same as before. */
+
+/* A click folds the open legend; the pointer says so. */
+.legend-stack-card:not(.is-collapsed) {
+  cursor: pointer;
+}
+
+.legend-stack-card:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.6);
+  outline-offset: 2px;
+}
+
+.legend-stack-card.is-dragging {
+  cursor: grabbing;
+}
+
+/* On touch devices every touch on the open legend goes straight through to
+   the map (pointer-events: none), so pan and pinch work over it too. Letting
+   it take pointers once meant a touch starting on the colour ramp dragged the
+   legend instead of panning the map. A tap still folds it: the tap reaches
+   the map as a click, and the map's click handler asks the legend first
+   (legendCollapse.ts, foldIfOver). The folded tab takes its own taps. Mouse
+   dragging stays on hover-capable (desktop) devices, which don't match this
+   query. */
+@media (hover: none) and (pointer: coarse) {
+  .legend-stack-card {
+    pointer-events: none;
+    touch-action: auto;
+  }
+
+  .legend-stack-card .legend-expand {
+    pointer-events: auto;
+  }
+}
+
+/* The hosts' display is set inline per layer, hence !important. */
+.legend-stack-card.is-collapsed > .legend-host {
+  display: none !important;
+}
+
+.legend-expand {
+  display: none;
+}
+
+/* Folded, the card becomes a tab on the window's left edge: rounded on the
+   right only, with the layer's icon and a small "›" that says it pulls out.
+   Two classes plus .map-wrap: the layout files set the card's left, bottom
+   (and, sideways on phones, a scale) per window size. */
+.map-wrap .legend-stack-card.is-collapsed {
+  /* Where the window has a safe area on the left (an iPhone held sideways:
+     ~50px kept clear for the notch), the other controls stay inside it, and
+     so does the tab, which then floats and gets all its corners rounded.
+     Elsewhere the safe area is 0 and the tab sits flush on the edge. */
+  left: var(--safe-area-left, 0px);
+  /* 8px above the info button (24px tall, 6px above the bottom bar) on every
+     layout. The open legend keeps its own, per-layout height: phones lift it
+     further, but the 40px tab doesn't need that room. */
+  bottom: calc(var(--bottom-bar-height) + var(--safe-area-bottom) + 38px);
+  transform: none;
+  /* 0 on a plain edge, the full radius (and a 1px border) beside a safe area. */
+  --tab-left-radius: clamp(
+    0px,
+    calc(var(--safe-area-left, 0px) * 100),
+    var(--radius-xl)
+  );
+  --tab-left-border: clamp(0px, calc(var(--safe-area-left, 0px) * 100), 1px);
+}
+
+/* Phones held sideways put the info button under the Menu, top right, so
+   the tab only has to clear the timeline bubble, which rides 7–25px above
+   the bottom bar there and reaches this corner at the start of the rail. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .map-wrap .legend-stack-card.is-collapsed {
+    bottom: calc(var(--bottom-bar-height) + var(--safe-area-bottom) + 32px);
+  }
+}
+
+.legend-stack-card.is-collapsed .legend-expand {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 40px;
+  padding: 0 7px 0 8px;
+  border: 1px solid var(--border-on-dark);
+  border-left-width: var(--tab-left-border);
+  border-radius: var(--tab-left-radius) var(--radius-xl) var(--radius-xl)
+    var(--tab-left-radius);
+  background: var(--surface-glass);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-card);
+  color: var(--text-on-dark);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 120ms ease;
+}
+
+.legend-stack-card.is-collapsed .legend-expand:hover {
+  background: rgba(16, 21, 26, 0.86);
+}
+
+.legend-expand:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.4);
+  outline-offset: 1px;
+}
+
+.legend-expand__icon {
+  display: inline-flex;
+}
+
+.legend-expand__icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.legend-expand__chevron {
+  opacity: 0.6;
 }

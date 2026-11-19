@@ -6,7 +6,7 @@ import type { IconographyStyle } from "../lib/viewerTypes";
 import { syncGridToggleButtonState } from "../lib/gridToggleUi";
 import { t } from "../lib/i18n";
 
-const LAYER_GROUP_ICONS: Record<UiState["layerMode"], string> = {
+export const LAYER_GROUP_ICONS: Record<UiState["layerMode"], string> = {
   temperature:
     '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 14.76V3.5a2 2 0 1 0-4 0v11.26a4 4 0 1 0 4 0Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 10h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
   wind: '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 8h9a3 3 0 1 0-3-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 12h15a2.5 2.5 0 1 1-2.5 2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16h8a2 2 0 1 1-2 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -444,6 +444,9 @@ export class LayerGroupController {
       card.style.left = "";
       card.style.right = "";
       card.style.bottom = "";
+      // The folded legend's button shows the current layer's icon.
+      const icon = card.querySelector(".legend-expand__icon");
+      if (icon) icon.innerHTML = LAYER_GROUP_ICONS[mode] ?? "";
     }
     this.deps.dom.legendHost.style.display =
       mode === "temperature" ? "block" : "none";
